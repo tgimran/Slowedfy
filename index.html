@@ -168,11 +168,46 @@
     /* Accessibility: Respect Reduced Motion */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
-        animation-duration: 0.01ms !important;
+        animation-duration: 0.001ms !important;
         animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
+        transition-duration: 0.001ms !important;
         scroll-behavior: auto !important;
       }
+      .artwork-ambient-rays,
+      .headphone-pulse,
+      .eq-bar,
+      .support-btn-glow {
+        animation: none !important;
+      }
+    }
+
+    /* ==========================================================================
+       ADAPTIVE PERFORMANCE ENGINE (Eco / High Fidelity / Battery Conservation)
+       ========================================================================== */
+    html[data-perf="lite"] .artwork-ambient-rays {
+      animation: none !important;
+      filter: blur(12px) !important;
+      opacity: 0.5 !important;
+      transform: none !important;
+    }
+
+    html[data-perf="lite"] .liquid-glass,
+    html[data-perf="lite"] .glass-dock,
+    html[data-perf="lite"] .glass-panel,
+    html[data-perf="lite"] .modal-dialog {
+      backdrop-filter: blur(10px) !important;
+      -webkit-backdrop-filter: blur(10px) !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    html[data-perf="lite"] .bg-layer {
+      filter: blur(calc(var(--dynamic-bg-blur, 31px) * 0.65)) saturate(1.15) !important;
+      will-change: auto !important;
+    }
+
+    html[data-perf="lite"] .headphone-pulse,
+    html[data-perf="lite"] .shimmer-light {
+      animation: none !important;
     }
 
     body {
@@ -2439,6 +2474,33 @@
           </div>
         </div>
       </div>
+
+      <!-- Adaptive Performance Engine Section -->
+      <div id="perf-engine-controls" class="dynamic-controls-box" style="margin-top: 0.85rem;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+          <span style="font-size: 0.85rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px;">
+            <span>⚡</span> Adaptive Performance
+          </span>
+          <span id="perf-status-badge" style="font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px; background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600; font-family: var(--font-mono);">
+            Auto (60 FPS)
+          </span>
+        </div>
+        
+        <div class="perf-mode-selector" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.45rem; margin-bottom: 0.45rem;">
+          <button type="button" class="perf-mode-btn active" data-mode="auto" id="perf-btn-auto" style="padding: 0.45rem 0.35rem; font-size: 0.72rem; border-radius: 8px; border: 1px solid rgba(78, 226, 236, 0.4); background: rgba(78, 226, 236, 0.15); color: #fff; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
+            Auto Adaptive
+          </button>
+          <button type="button" class="perf-mode-btn" data-mode="high" id="perf-btn-high" style="padding: 0.45rem 0.35rem; font-size: 0.72rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); color: var(--text-secondary); font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
+            Ultra Fidelity
+          </button>
+          <button type="button" class="perf-mode-btn" data-mode="eco" id="perf-btn-eco" style="padding: 0.45rem 0.35rem; font-size: 0.72rem; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.04); color: var(--text-secondary); font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap;">
+            Eco / Battery
+          </button>
+        </div>
+        <div style="font-size: 0.68rem; color: var(--text-muted); line-height: 1.35;">
+          Monitors hardware & FPS in real time. Automatically balances visual fidelity to ensure stutter-free audio & cooler battery.
+        </div>
+      </div>
     </div>
   </div>
 
@@ -3449,8 +3511,238 @@
       aboutModal: document.getElementById('about-modal'),
       closeAboutBtn: document.getElementById('close-about-btn'),
       logoTrigger: document.getElementById('logo-trigger'),
-      supportDevBtn: document.getElementById('support-dev-btn')
+      supportDevBtn: document.getElementById('support-dev-btn'),
+      perfStatusBadge: document.getElementById('perf-status-badge'),
+      perfBtnAuto: document.getElementById('perf-btn-auto'),
+      perfBtnHigh: document.getElementById('perf-btn-high'),
+      perfBtnEco: document.getElementById('perf-btn-eco')
     };
+
+    /* ==========================================================================
+       IMAGE & ASSET CACHE (Prevent Duplicate Network Requests & Allocation)
+       ========================================================================== */
+    const imagePreloadCache = new Set();
+    function preloadImageSafe(url) {
+      if (!url || imagePreloadCache.has(url)) return;
+      imagePreloadCache.add(url);
+      const img = new Image();
+      img.decoding = "async";
+      img.src = url;
+    }
+
+    /* ==========================================================================
+       ADAPTIVE PERFORMANCE & HARDWARE DETECTION ENGINE (FPS, Concurrency, Eco)
+       ========================================================================== */
+    const PerfEngine = (function() {
+      let mode = 'auto'; // 'auto' | 'high' | 'eco'
+      let currentTier = 'high'; // 'high' | 'lite'
+      let fpsHistory = [];
+      let lastFrameTime = performance.now();
+      let frameCount = 0;
+      let rafId = null;
+      let isMonitoring = false;
+      let consecutiveDrops = 0;
+      let consecutiveHighs = 0;
+      let lastReportedFps = 60;
+
+      // Hardware Capability Metrics
+      const hardwareConcurrency = navigator.hardwareConcurrency || 4;
+      const deviceMemory = (navigator).deviceMemory || 4;
+      const isTouch = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
+      const isSaveData = navigator.connection && navigator.connection.saveData;
+      const isLowEndDevice = hardwareConcurrency <= 2 || deviceMemory <= 2 || isSaveData;
+
+      function init() {
+        try {
+          const savedMode = localStorage.getItem('slowedfy_perf_mode');
+          if (savedMode && ['auto', 'high', 'eco'].includes(savedMode)) {
+            mode = savedMode;
+          }
+        } catch (e) {}
+
+        if (mode === 'eco') {
+          setTier('lite', false);
+        } else if (mode === 'high') {
+          setTier('high', false);
+        } else {
+          // Auto mode: initial guess based on hardware capability
+          if (isLowEndDevice) {
+            setTier('lite', false);
+          } else {
+            setTier('high', false);
+          }
+          startMonitoring();
+        }
+
+        updateButtons();
+        updateUI();
+
+        // Page Visibility listener: Pause FPS loop in background tabs to save 100% CPU
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) {
+            stopMonitoring();
+          } else {
+            if (mode === 'auto') {
+              lastFrameTime = performance.now();
+              startMonitoring();
+            }
+          }
+        });
+      }
+
+      function startMonitoring() {
+        if (isMonitoring || mode !== 'auto') return;
+        isMonitoring = true;
+        lastFrameTime = performance.now();
+        frameCount = 0;
+        fpsHistory = [];
+        rafId = requestAnimationFrame(measureFps);
+      }
+
+      function stopMonitoring() {
+        if (rafId) {
+          cancelAnimationFrame(rafId);
+          rafId = null;
+        }
+        isMonitoring = false;
+      }
+
+      function measureFps(now) {
+        if (!isMonitoring || document.hidden) return;
+
+        const delta = now - lastFrameTime;
+        lastFrameTime = now;
+
+        if (delta > 0 && delta < 500) {
+          const instantaneousFps = 1000 / delta;
+          fpsHistory.push(instantaneousFps);
+          if (fpsHistory.length > 60) fpsHistory.shift();
+          frameCount++;
+
+          if (frameCount >= 60) {
+            frameCount = 0;
+            const avgFps = Math.round(fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length);
+            lastReportedFps = Math.min(60, Math.max(15, avgFps));
+            evaluateAdaptiveQuality(lastReportedFps);
+          }
+        }
+
+        rafId = requestAnimationFrame(measureFps);
+      }
+
+      function evaluateAdaptiveQuality(avgFps) {
+        if (mode !== 'auto') return;
+
+        if (avgFps < 42) {
+          consecutiveDrops++;
+          consecutiveHighs = 0;
+          if (consecutiveDrops >= 2 && currentTier !== 'lite') {
+            setTier('lite', true);
+          }
+        } else if (avgFps >= 54) {
+          consecutiveHighs++;
+          consecutiveDrops = 0;
+          if (consecutiveHighs >= 4 && currentTier !== 'high' && !isLowEndDevice) {
+            setTier('high', true);
+          }
+        } else {
+          consecutiveDrops = 0;
+        }
+
+        updateUI();
+      }
+
+      function setTier(tier, notify = false) {
+        currentTier = tier;
+        document.documentElement.setAttribute('data-perf', tier);
+        updateUI();
+        if (notify && mode === 'auto') {
+          if (tier === 'lite') {
+            showToast("Adaptive Eco Mode: Optimized for smooth audio", "🍃");
+          }
+        }
+      }
+
+      function applyMode(newMode, save = true) {
+        mode = newMode;
+        if (save) {
+          try {
+            localStorage.setItem('slowedfy_perf_mode', newMode);
+          } catch (e) {}
+        }
+
+        if (mode === 'eco') {
+          stopMonitoring();
+          setTier('lite');
+          showToast("Performance Mode: Eco / Battery Saver", "🍃");
+        } else if (mode === 'high') {
+          stopMonitoring();
+          setTier('high');
+          showToast("Performance Mode: Ultra Fidelity", "⚡");
+        } else {
+          showToast("Performance Mode: Auto Adaptive", "⚡");
+          if (isLowEndDevice) {
+            setTier('lite');
+          } else {
+            setTier('high');
+          }
+          startMonitoring();
+        }
+
+        updateButtons();
+        updateUI();
+      }
+
+      function updateButtons() {
+        const btns = document.querySelectorAll('.perf-mode-btn');
+        btns.forEach(btn => {
+          if (btn.getAttribute('data-mode') === mode) {
+            btn.classList.add('active');
+            btn.style.borderColor = 'rgba(78, 226, 236, 0.4)';
+            btn.style.background = 'rgba(78, 226, 236, 0.15)';
+            btn.style.color = '#fff';
+          } else {
+            btn.classList.remove('active');
+            btn.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+            btn.style.background = 'rgba(255, 255, 255, 0.04)';
+            btn.style.color = 'var(--text-secondary)';
+          }
+        });
+      }
+
+      function updateUI() {
+        const badge = DOM.perfStatusBadge || document.getElementById('perf-status-badge');
+        if (!badge) return;
+
+        if (mode === 'eco') {
+          badge.textContent = '🍃 Eco Mode Active';
+          badge.style.color = '#34d399';
+          badge.style.background = 'rgba(52, 211, 153, 0.15)';
+        } else if (mode === 'high') {
+          badge.textContent = '⚡ Ultra Fidelity';
+          badge.style.color = 'var(--accent-cyan)';
+          badge.style.background = 'rgba(78, 226, 236, 0.15)';
+        } else {
+          if (currentTier === 'lite') {
+            badge.textContent = `🍃 Auto (${lastReportedFps} FPS • Eco)`;
+            badge.style.color = '#34d399';
+            badge.style.background = 'rgba(52, 211, 153, 0.15)';
+          } else {
+            badge.textContent = `⚡ Auto (${lastReportedFps} FPS • High)`;
+            badge.style.color = '#10b981';
+            badge.style.background = 'rgba(16, 185, 129, 0.15)';
+          }
+        }
+      }
+
+      return {
+        init,
+        applyMode,
+        getMode: () => mode,
+        getTier: () => currentTier,
+        getFps: () => lastReportedFps
+      };
+    })();
 
     /* ==========================================================================
        TOAST NOTIFICATIONS
@@ -3962,14 +4254,25 @@
       initYouTubePlayer();
     }
 
-    // Load official YouTube Iframe API asynchronously
-    (function loadYouTubeScript() {
+    // Load official YouTube Iframe API asynchronously without blocking first paint
+    function loadYouTubeScriptDeferred() {
+      if (document.querySelector('script[src*="youtube.com/iframe_api"]')) return;
       const tag = document.createElement('script');
       tag.src = "https://www.youtube.com/iframe_api";
       tag.async = true;
       const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-    })();
+      if (firstScriptTag && firstScriptTag.parentNode) {
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      } else {
+        document.head.appendChild(tag);
+      }
+    }
+
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => loadYouTubeScriptDeferred(), { timeout: 350 });
+    } else {
+      setTimeout(loadYouTubeScriptDeferred, 60);
+    }
 
     /* ==========================================================================
        DYNAMIC THEME ATMOSPHERE CONTROLLER
@@ -4267,6 +4570,23 @@
       });
     }
 
+    // Adaptive Performance Mode Selector Buttons
+    if (DOM.perfBtnAuto) {
+      DOM.perfBtnAuto.addEventListener('click', () => {
+        PerfEngine.applyMode('auto');
+      });
+    }
+    if (DOM.perfBtnHigh) {
+      DOM.perfBtnHigh.addEventListener('click', () => {
+        PerfEngine.applyMode('high');
+      });
+    }
+    if (DOM.perfBtnEco) {
+      DOM.perfBtnEco.addEventListener('click', () => {
+        PerfEngine.applyMode('eco');
+      });
+    }
+
     DOM.shortcutsBtn.addEventListener('click', () => {
       DOM.shortcutsModal.classList.add('open');
     });
@@ -4343,6 +4663,7 @@
        ========================================================================== */
     function init() {
       initTheme();
+      PerfEngine.init();
       buildPlaylistDOM();
       const firstTrack = state.playlist[0];
       if (firstTrack && DOM.bgLayer1) {
