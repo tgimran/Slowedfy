@@ -1,0 +1,7 @@
+{
+  "name": "Slowedfy",
+  "description": "A liquid glass music player and nostalgic slowed + reverb experience with official YouTube playlist streaming and dynamic artwork atmosphere.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
