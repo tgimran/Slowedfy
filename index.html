@@ -1932,6 +1932,27 @@
       fill: currentColor;
     }
 
+    .about-support-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      padding: 0.95rem 1rem;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(135deg, rgba(255, 0, 122, 0.08) 0%, rgba(0, 240, 255, 0.06) 100%);
+      backdrop-filter: blur(24px) saturate(200%);
+      -webkit-backdrop-filter: blur(24px) saturate(200%);
+      border: 1px solid rgba(255, 0, 122, 0.22);
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    }
+
+    .about-modal-support-btn {
+      width: 100%;
+      height: 44px;
+      font-size: 0.92rem;
+    }
+
     .about-modal-footer {
       display: flex;
       align-items: center;
@@ -2434,7 +2455,7 @@
             <span>Support Developer</span>
             <span class="support-heart">♥️</span>
           </a>
-          <p class="special-thanks-text">Thank you for supporting Slowedfy ❤️</p>
+          <p class="special-thanks-text">♥️ Thank you for supporting Slowedfy ♥️</p>
         </div>
 
       </aside>
@@ -2855,6 +2876,16 @@
             </a>
 
           </div>
+        </div>
+
+        <!-- Support Developer in Modal -->
+        <div class="about-support-wrapper">
+          <a href="https://razorpay.me/@kulsumkhatun1" target="_blank" rel="noopener noreferrer" class="glass-btn support-btn about-modal-support-btn" id="about-support-dev-btn" aria-label="Support Developer on Razorpay">
+            <span class="support-heart">♥️</span>
+            <span>Support Developer</span>
+            <span class="support-heart">♥️</span>
+          </a>
+          <p class="special-thanks-text" style="text-align: center; font-size: 0.76rem; margin: 0; color: #94a3b8;">♥️ Thank you for supporting Slowedfy ♥️</p>
         </div>
 
         <!-- Footer Signature in Modal -->
@@ -3772,6 +3803,7 @@
       closeAboutBtn: document.getElementById('close-about-btn'),
       logoTrigger: document.getElementById('logo-trigger'),
       supportDevBtn: document.getElementById('support-dev-btn'),
+      aboutSupportDevBtn: document.getElementById('about-support-dev-btn'),
       perfStatusBadge: document.getElementById('perf-status-badge'),
       perfBtnAuto: document.getElementById('perf-btn-auto'),
       perfBtnHigh: document.getElementById('perf-btn-high'),
