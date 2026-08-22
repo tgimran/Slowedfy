@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="sunset">
+<html lang="en" data-theme="dynamic-art">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -2640,7 +2640,7 @@
       
       <div class="theme-grid">
         <!-- Theme: Dynamic Album Art (Playing Track Artwork) -->
-        <div class="theme-card-option" data-theme-id="dynamic-art">
+        <div class="theme-card-option active" data-theme-id="dynamic-art">
           <div class="theme-swatch-circle" style="background: linear-gradient(135deg, #ff007a 0%, #a855f7 33%, #00f0ff 66%, #10b981 100%);"></div>
           <div class="theme-name-label">Dynamic Album Art</div>
           <div class="theme-desc-sub">Cinematic blurred artwork</div>
@@ -2668,7 +2668,7 @@
         </div>
 
         <!-- Theme 4: Sunset Velvet -->
-        <div class="theme-card-option active" data-theme-id="sunset">
+        <div class="theme-card-option" data-theme-id="sunset">
           <div class="theme-swatch-circle" style="background: linear-gradient(135deg, #f59e0b, #f43f5e, #fb923c);"></div>
           <div class="theme-name-label">Sunset Velvet</div>
           <div class="theme-desc-sub">Golden hour warmth</div>
@@ -2697,7 +2697,7 @@
       </div>
 
       <!-- Dynamic Album Art Adjustments & Sliders -->
-      <div id="dynamic-theme-controls" class="dynamic-controls-box" style="display: none;">
+      <div id="dynamic-theme-controls" class="dynamic-controls-box">
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem;">
           <span style="font-size: 0.85rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px;">
             <span>🎛️</span> Dynamic Background Controls
@@ -3733,7 +3733,7 @@
       currentTime: 0,
       duration: 0,
       buffered: 0,
-      currentTheme: 'sunset',
+      currentTheme: 'dynamic-art',
       dynamicBlur: 31,
       dynamicDarkness: 0,
       activeBgLayer: 1
@@ -4706,7 +4706,7 @@
           return;
         }
       } catch (e) {}
-      applyTheme('sunset', false);
+      applyTheme('dynamic-art', false);
     }
 
     /* ==========================================================================
