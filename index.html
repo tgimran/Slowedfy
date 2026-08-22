@@ -1002,6 +1002,125 @@
       color: var(--text-secondary);
     }
 
+
+    /* Premiere and Live Status Badges */
+    .premiere-art-badge {
+      position: absolute;
+      bottom: 2px;
+      left: 2px;
+      right: 2px;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      color: #ffffff;
+      font-size: 0.52rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 1px 2px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      box-shadow: 0 2px 6px rgba(220, 38, 38, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+      border: 0.5px solid rgba(255, 255, 255, 0.35);
+      z-index: 3;
+      pointer-events: none;
+      animation: premiere-pulse 2s ease-in-out infinite alternate;
+      line-height: 1.2;
+    }
+
+    .pulse-live-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 0 6px #ffffff, 0 0 10px #f87171;
+      animation: live-blink 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes live-blink {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.65); }
+    }
+
+    @keyframes premiere-pulse {
+      0% { box-shadow: 0 2px 6px rgba(220, 38, 38, 0.5); }
+      100% { box-shadow: 0 2px 12px rgba(239, 68, 68, 0.9), 0 0 10px rgba(239, 68, 68, 0.6); }
+    }
+
+    /* Floating Hero Premiere Badge on main artwork */
+    .hero-premiere-badge {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      color: #ffffff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      letter-spacing: 0.06em;
+      padding: 5px 12px;
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      box-shadow: 0 8px 24px rgba(220, 38, 38, 0.65), 0 0 16px rgba(239, 68, 68, 0.5), inset 0 1px 1px #fff;
+      z-index: 10;
+      animation: premiere-pulse 2s infinite alternate;
+      pointer-events: none;
+    }
+
+    .track-premiere-duration {
+      color: #f87171 !important;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .track-thumb-box.is-premiere-thumb {
+      border-color: rgba(239, 68, 68, 0.5);
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+    }
+
+    /* Playlist Auto-Sync Button */
+    .sync-refresh-btn {
+      background: rgba(78, 226, 236, 0.12);
+      border: 1px solid rgba(78, 226, 236, 0.35);
+      color: var(--accent-cyan);
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+      padding: 3px 8px;
+      border-radius: var(--radius-full);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.3, 0, 0.2, 1);
+    }
+
+    .sync-refresh-btn:hover {
+      background: rgba(78, 226, 236, 0.25);
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 12px rgba(78, 226, 236, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .sync-refresh-btn.syncing svg {
+      animation: spin-sync 0.8s linear infinite;
+    }
+
+    @keyframes spin-sync {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
     /* ==========================================================================
        SUPPORT DEVELOPER CARD (iOS-Inspired Liquid Glass with Deep Blur Effect)
        ========================================================================== */
@@ -2233,7 +2352,7 @@
         <!-- Active Playlist Count -->
         <div class="glass-btn pill-counter" id="playlist-badge-top">
           <div class="pulse-dot"></div>
-          <span id="header-song-count">99 Tracks</span>
+          <span id="header-song-count">100 Tracks</span>
         </div>
       </div>
     </header>
@@ -2248,6 +2367,10 @@
           <div class="artwork-ambient-rays"></div>
           
           <div class="artwork-glass-card" id="main-artwork-card" title="Click to toggle playback">
+            <div class="hero-premiere-badge" id="hero-premiere-badge" style="display: none;">
+              <span class="pulse-live-dot"></span>
+              <span id="hero-premiere-text">PREMIERE</span>
+            </div>
             <img id="main-artwork-img" class="artwork-img" src="" alt="Album Artwork" />
           </div>
         </div>
@@ -2271,16 +2394,24 @@
           <div class="playlist-card-header">
             <div class="playlist-title-wrap">
               <span class="playlist-title">Slowedfy Playlist</span>
-              <span class="playlist-count-badge" id="playlist-count-label">99 Songs</span>
+              <span class="playlist-count-badge" id="playlist-count-label">100 Songs</span>
             </div>
-            <a href="https://youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS&si=TFXs9xxb1dmMAj3" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Open YouTube Playlist">
-              <span>YouTube Synced</span>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                <polyline points="15 3 21 3 21 9"/>
-                <line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-            </a>
+            <div class="sync-actions-wrap" style="display: flex; align-items: center; gap: 8px;">
+              <button class="sync-refresh-btn" id="sync-refresh-btn" title="Auto-Sync with YouTube Playlist (Click to check updates)" aria-label="Auto Sync Playlist">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                </svg>
+                <span>Live Sync</span>
+              </button>
+              <a href="https://youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS&si=TFXs9xxb1dmMAj3" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Open Official YouTube Playlist">
+                <span>YouTube</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                  <polyline points="15 3 21 3 21 9"/>
+                  <line x1="10" y1="14" x2="21" y2="3"/>
+                </svg>
+              </a>
+            </div>
           </div>
 
           <div class="search-box">
@@ -2753,6 +2884,16 @@
     
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
+  {
+    "id": "6e3A3uy5-oE",
+    "title": "Tose Naina Part 2│Twin Strings│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "4:04",
+    "seconds": 244,
+    "thumb": "https://i.ytimg.com/vi/6e3A3uy5-oE/hqdefault.jpg",
+    "isPremiere": true,
+    "premiereText": "Upcoming"
+  },
   {
     "id": "u-7qtk4erLI",
     "title": "Sawaal│Abhijeet Srivastava│Siddhant Bhosle│Shayra Apoorva│(Slowed + Reverb) By Beat Badge × Slowedfy",
@@ -3579,6 +3720,10 @@
       bgLayer2: document.getElementById('bg-layer-2'),
       toast: document.getElementById('toast'),
       toastText: document.getElementById('toast-text'),
+      heroPremiereBadge: document.getElementById('hero-premiere-badge'),
+      heroPremiereText: document.getElementById('hero-premiere-text'),
+      syncRefreshBtn: document.getElementById('sync-refresh-btn'),
+      heroTagline: document.querySelector('.hero-tagline'),
       toastIcon: document.getElementById('toast-icon'),
       heroTitle: document.getElementById('hero-title'),
       mainArtworkCard: document.getElementById('main-artwork-card'),
@@ -3979,9 +4124,10 @@
         row.dataset.index = index;
         row.setAttribute('role', 'listitem');
         row.setAttribute('tabindex', '0');
+
         row.innerHTML = `
           <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
-          <div class="track-thumb-box">
+          <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
             <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" />
             <div class="track-playing-eq">
               <div class="eq-bar"></div>
@@ -3993,7 +4139,7 @@
             <div class="track-item-title">${item.title}</div>
             <div class="track-item-artist">${item.artist}</div>
           </div>
-          <div class="track-duration">${item.duration || '04:00'}</div>
+          <div class="track-duration ${item.isPremiere ? 'track-premiere-duration' : ''}">${item.duration || (item.isPremiere ? 'PREMIERE' : '04:00')}</div>
         `;
 
         if (isCurrent) currentActiveItemRow = row;
@@ -4068,6 +4214,29 @@
       // Update dock text
       DOM.dockSongTitle.textContent = track.title;
       DOM.dockSongArtist.textContent = track.artist;
+
+      // Handle Premiere / Upcoming Badge on Main Hero Artwork
+      if (DOM.heroPremiereBadge) {
+        if (track.isPremiere) {
+          DOM.heroPremiereBadge.style.display = 'flex';
+          if (DOM.heroPremiereText) DOM.heroPremiereText.textContent = track.premiereText || 'PREMIERE';
+        } else {
+          DOM.heroPremiereBadge.style.display = 'none';
+        }
+      }
+
+      if (DOM.heroTagline) {
+        const span = DOM.heroTagline.querySelector('span');
+        if (span) {
+          if (track.isPremiere) {
+            span.textContent = '● UPCOMING PREMIERE';
+            span.style.color = '#f87171';
+          } else {
+            span.textContent = '● NOW PLAYING';
+            span.style.color = 'var(--accent-cyan)';
+          }
+        }
+      }
 
       // Resolve and apply high-res artwork with request ID check to prevent race conditions
       const reqId = ++currentArtworkRequestId;
@@ -4798,10 +4967,208 @@
       }
     });
 
+
+    /* ==========================================================================
+       REAL-TIME YOUTUBE PLAYLIST AUTO-UPDATE & SYNC ENGINE
+       ========================================================================== */
+    let isSyncingPlaylist = false;
+    let autoSyncTimer = null;
+
+    async function fetchLatestPlaylistFromSource() {
+      // Strategy 1: Fast server-side proxy API
+      try {
+        const res = await fetch('/api/playlist?refresh=true', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.playlist) && data.playlist.length > 0) {
+            return data.playlist;
+          }
+        }
+      } catch (e) {
+        console.warn('Backend playlist API error, falling back to public mirrors:', e);
+      }
+
+      // Strategy 2: Direct public mirrors / Invidious API
+      const mirrors = [
+        'https://inv.tux.pizza/api/v1/playlists/PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS',
+        'https://invidious.nerdvpn.de/api/v1/playlists/PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS',
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS')
+      ];
+
+      for (const endpoint of mirrors) {
+        try {
+          const res = await fetch(endpoint, { cache: 'no-store' });
+          if (res.ok) {
+            if (endpoint.includes('/api/v1/playlists/')) {
+              const data = await res.json();
+              if (data && Array.isArray(data.videos) && data.videos.length > 0) {
+                return data.videos.map(v => {
+                  const isPrem = !!v.isUpcoming || (v.lengthSeconds === 0 && !v.liveNow);
+                  return {
+                    id: v.videoId,
+                    title: v.title,
+                    artist: (v.title.includes('GW IMRAN') || v.author?.includes('GW IMRAN')) ? 'GW IMRAN' : 'Slowedfy',
+                    duration: v.lengthSeconds ? formatTime(v.lengthSeconds) : (isPrem ? 'PREMIERE' : '03:30'),
+                    seconds: v.lengthSeconds || 210,
+                    thumb: `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`,
+                    isPremiere: isPrem,
+                    premiereText: isPrem ? 'Upcoming' : undefined
+                  };
+                });
+              }
+            } else {
+              const html = await res.text();
+              const match = html.match(/var ytInitialData = ({.*?});<\/script>/) ||
+                            html.match(/window\["ytInitialData"\] = ({.*?});/);
+              if (match) {
+                const ytData = JSON.parse(match[1]);
+                const videos = [];
+                const seen = new Set();
+                function extract(obj) {
+                  if (!obj) return;
+                  if (typeof obj === 'object') {
+                    if (obj.playlistVideoRenderer) {
+                      const pvr = obj.playlistVideoRenderer;
+                      const vid = pvr.videoId;
+                      if (vid && !seen.has(vid)) {
+                        seen.add(vid);
+                        const title = pvr.title?.runs?.[0]?.text || pvr.title?.simpleText || 'Slowed Track';
+                        const lengthText = pvr.lengthText?.simpleText || '';
+                        const lengthSec = pvr.lengthSeconds ? parseInt(pvr.lengthSeconds, 10) : 0;
+                        let isPrem = false;
+                        let premText = 'Upcoming';
+                        if (pvr.upcomingEventData) { isPrem = true; premText = 'Upcoming'; }
+                        if (Array.isArray(pvr.badges)) {
+                          for (const b of pvr.badges) {
+                            const lbl = b.metadataBadgeRenderer?.label || '';
+                            if (lbl.toUpperCase().includes('PREMIERE') || lbl.toUpperCase().includes('UPCOMING')) {
+                              isPrem = true;
+                              premText = lbl;
+                            }
+                          }
+                        }
+                        if (Array.isArray(pvr.thumbnailOverlays)) {
+                          for (const ov of pvr.thumbnailOverlays) {
+                            const t = ov.thumbnailOverlayTimeStatusRenderer;
+                            if (t) {
+                              const style = t.style || '';
+                              const txt = t.text?.simpleText || '';
+                              if (style.includes('UPCOMING') || style.includes('PREMIERE') || txt.toUpperCase().includes('PREMIERE') || txt.toUpperCase().includes('UPCOMING')) {
+                                isPrem = true;
+                                premText = txt || 'Upcoming';
+                              }
+                            }
+                          }
+                        }
+                        videos.push({
+                          id: vid,
+                          title,
+                          artist: (title.includes('GW IMRAN') || title.includes('By Beat Badge × GW IMRAN')) ? 'GW IMRAN' : 'Slowedfy',
+                          duration: lengthText || (isPrem ? 'PREMIERE' : '03:30'),
+                          seconds: lengthSec || 210,
+                          thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+                          isPremiere: isPrem,
+                          premiereText: isPrem ? premText : undefined
+                        });
+                      }
+                    }
+                    for (const k of Object.keys(obj)) extract(obj[k]);
+                  } else if (Array.isArray(obj)) {
+                    for (const item of obj) extract(item);
+                  }
+                }
+                extract(ytData);
+                if (videos.length > 0) return videos;
+              }
+            }
+          }
+        } catch (err) {}
+      }
+
+      return null;
+    }
+
+    async function syncPlaylistFromYouTube(isManual = false) {
+      if (isSyncingPlaylist) return;
+      isSyncingPlaylist = true;
+
+      const syncBtn = DOM.syncRefreshBtn || document.getElementById('sync-refresh-btn');
+      if (syncBtn) syncBtn.classList.add('syncing');
+
+      if (isManual) {
+        showToast("Checking YouTube playlist for new tracks...", "🔄");
+      }
+
+      try {
+        const latest = await fetchLatestPlaylistFromSource();
+        if (latest && Array.isArray(latest) && latest.length > 0) {
+          const currentIds = new Set(state.playlist.map(t => t.id));
+          const newTracks = latest.filter(t => !currentIds.has(t.id));
+          
+          let changed = newTracks.length > 0 || latest.length !== state.playlist.length;
+          if (!changed) {
+            // Check if any Premiere flag changed
+            changed = latest.some(t => {
+              const existing = state.playlist.find(p => p.id === t.id);
+              return existing && (existing.isPremiere !== t.isPremiere || existing.duration !== t.duration);
+            });
+          }
+
+          if (changed) {
+            const currentActiveTrackId = state.playlist[state.currentIndex]?.id;
+
+            state.playlist = latest;
+            try {
+              localStorage.setItem('slowedfy_synced_playlist_v2', JSON.stringify(latest));
+            } catch (e) {}
+
+            if (currentActiveTrackId) {
+              const newIndex = state.playlist.findIndex(t => t.id === currentActiveTrackId);
+              if (newIndex !== -1) {
+                state.currentIndex = newIndex;
+              }
+            }
+
+            buildPlaylistDOM();
+            updateActiveTrackUI();
+
+            if (newTracks.length > 0) {
+              const pTrack = newTracks.find(t => t.isPremiere);
+              if (pTrack) {
+                showToast(`✨ ${newTracks.length} New Track Synced (Premiere: ${pTrack.title})`, "🔴");
+              } else {
+                showToast(`✨ ${newTracks.length} New Track(s) Synced from YouTube!`, "🎵");
+              }
+            } else {
+              showToast(`✨ Playlist Synced • ${latest.length} Tracks`, "🎵");
+            }
+          } else if (isManual) {
+            showToast(`Playlist is up to date (${latest.length} Tracks)`, "✓");
+          }
+        }
+      } catch (err) {
+        console.error("Auto sync error:", err);
+      } finally {
+        isSyncingPlaylist = false;
+        if (syncBtn) syncBtn.classList.remove('syncing');
+      }
+    }
+
     /* ==========================================================================
        INITIALIZATION BOOTSTRAP
        ========================================================================== */
     function init() {
+      // Load saved playlist from previous syncs if available
+      try {
+        const saved = localStorage.getItem('slowedfy_synced_playlist_v2');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
+            state.playlist = parsed;
+          }
+        }
+      } catch (e) {}
+
       initTheme();
       PerfEngine.init();
       buildPlaylistDOM();
@@ -4810,6 +5177,26 @@
         DOM.bgLayer1.style.backgroundImage = `url('https://i.ytimg.com/vi/${firstTrack.id}/mqdefault.jpg')`;
       }
       updateActiveTrackUI();
+
+      // Hook manual sync button
+      if (DOM.syncRefreshBtn) {
+        DOM.syncRefreshBtn.addEventListener('click', () => {
+          syncPlaylistFromYouTube(true);
+        });
+      }
+
+      // Initial auto-sync from YouTube
+      setTimeout(() => {
+        syncPlaylistFromYouTube(false);
+      }, 800);
+
+      // Periodic background auto-sync every 2.5 minutes
+      if (!autoSyncTimer) {
+        autoSyncTimer = setInterval(() => {
+          syncPlaylistFromYouTube(false);
+        }, 150000);
+      }
+
       showToast("Welcome to Slowedfy • Press Space to Play", "🎧");
     }
 
