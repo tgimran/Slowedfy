@@ -2921,9 +2921,7 @@
     "artist": "Slowedfy",
     "duration": "4:04",
     "seconds": 244,
-    "thumb": "https://i.ytimg.com/vi/6e3A3uy5-oE/hqdefault.jpg",
-    "isPremiere": true,
-    "premiereText": "Upcoming"
+    "thumb": "https://i.ytimg.com/vi/6e3A3uy5-oE/hqdefault.jpg"
   },
   {
     "id": "u-7qtk4erLI",
@@ -4234,6 +4232,59 @@
     });
 
     /* ==========================================================================
+       AUTOMATIC LIVE STATUS TRANSITION HANDLER
+       ========================================================================== */
+    function markTrackAsLive(trackId, durationSeconds) {
+      if (!trackId) return;
+      const track = state.playlist.find(t => t.id === trackId);
+      if (!track) return;
+
+      const wasPremiere = !!track.isPremiere;
+      if (wasPremiere || (durationSeconds && durationSeconds > 0 && track.duration === 'PREMIERE')) {
+        track.isPremiere = false;
+        delete track.premiereText;
+
+        if (durationSeconds && durationSeconds > 0) {
+          track.seconds = Math.round(durationSeconds);
+          track.duration = formatTime(durationSeconds);
+        }
+
+        // Update corresponding playlist row element if present
+        const row = playlistItemElements.get(trackId);
+        if (row) {
+          const thumbBox = row.querySelector('.track-thumb-box');
+          if (thumbBox) thumbBox.classList.remove('is-premiere-thumb');
+
+          const durElem = row.querySelector('.track-duration');
+          if (durElem) {
+            durElem.classList.remove('track-premiere-duration');
+            durElem.textContent = track.duration || formatTime(track.seconds || 240);
+          }
+        }
+
+        // If this is currently active track, immediately update hero UI
+        const currentActive = state.playlist[state.currentIndex];
+        if (currentActive && currentActive.id === trackId) {
+          if (DOM.heroPremiereBadge) {
+            DOM.heroPremiereBadge.style.display = 'none';
+          }
+          if (DOM.heroTagline) {
+            const span = DOM.heroTagline.querySelector('span');
+            if (span) {
+              span.textContent = '● NOW PLAYING';
+              span.style.color = 'var(--accent-cyan)';
+            }
+          }
+        }
+
+        // Persist update so it stays live across sessions
+        try {
+          localStorage.setItem('slowedfy_synced_playlist_v2', JSON.stringify(state.playlist));
+        } catch (e) {}
+      }
+    }
+
+    /* ==========================================================================
        UI UPDATE CONTROLLER
        ========================================================================== */
     function updateActiveTrackUI() {
@@ -4447,6 +4498,11 @@
               state.duration = duration;
             }
 
+            const currentTrack = state.playlist[state.currentIndex];
+            if (currentTrack && currentTrack.isPremiere && current > 0) {
+              markTrackAsLive(currentTrack.id, duration || currentTrack.seconds);
+            }
+
             const bufferedPct = Math.round(loaded * 100);
             if (bufferedPct !== state.buffered) {
               state.buffered = bufferedPct;
@@ -4505,7 +4561,13 @@
       try {
         ytPlayer.setVolume(state.volume);
         const dur = ytPlayer.getDuration();
-        if (dur > 0) state.duration = dur;
+        if (dur > 0) {
+          state.duration = dur;
+          const currentTrack = state.playlist[state.currentIndex];
+          if (currentTrack && currentTrack.isPremiere) {
+            markTrackAsLive(currentTrack.id, dur);
+          }
+        }
       } catch (e) {}
       updateProgressUI(true);
     }
@@ -4514,10 +4576,15 @@
       if (event.data === YT.PlayerState.PLAYING) {
         state.isPlaying = true;
         consecutiveErrors = 0;
+        let dur = 0;
         try {
-          const dur = ytPlayer.getDuration();
+          dur = ytPlayer.getDuration();
           if (dur > 0) state.duration = dur;
         } catch (e) {}
+        const currentTrack = state.playlist[state.currentIndex];
+        if (currentTrack) {
+          markTrackAsLive(currentTrack.id, dur || currentTrack.seconds || 240);
+        }
         updatePlayPauseBtnUI(true);
       } else if (event.data === YT.PlayerState.PAUSED) {
         state.isPlaying = false;
@@ -5035,7 +5102,7 @@
               const data = await res.json();
               if (data && Array.isArray(data.videos) && data.videos.length > 0) {
                 return data.videos.map(v => {
-                  const isPrem = !!v.isUpcoming || (v.lengthSeconds === 0 && !v.liveNow);
+                  const isPrem = !!v.isUpcoming || (v.lengthSeconds === 0 && !v.liveNow && !v.length);
                   return {
                     id: v.videoId,
                     title: v.title,
@@ -5070,7 +5137,7 @@
                         let isPrem = false;
                         let premText = 'Upcoming';
                         if (pvr.upcomingEventData) { isPrem = true; premText = 'Upcoming'; }
-                        if (Array.isArray(pvr.badges)) {
+                        if (!lengthSec && Array.isArray(pvr.badges)) {
                           for (const b of pvr.badges) {
                             const lbl = b.metadataBadgeRenderer?.label || '';
                             if (lbl.toUpperCase().includes('PREMIERE') || lbl.toUpperCase().includes('UPCOMING')) {
@@ -5079,7 +5146,7 @@
                             }
                           }
                         }
-                        if (Array.isArray(pvr.thumbnailOverlays)) {
+                        if (!lengthSec && Array.isArray(pvr.thumbnailOverlays)) {
                           for (const ov of pvr.thumbnailOverlays) {
                             const t = ov.thumbnailOverlayTimeStatusRenderer;
                             if (t) {
@@ -5091,6 +5158,9 @@
                               }
                             }
                           }
+                        }
+                        if (lengthSec && lengthSec > 0 && !pvr.upcomingEventData) {
+                          isPrem = false;
                         }
                         videos.push({
                           id: vid,
@@ -5196,6 +5266,13 @@
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
+            parsed.forEach(p => {
+              const official = OFFICIAL_PLAYLIST.find(o => o.id === p.id);
+              if (official && !official.isPremiere && p.isPremiere) {
+                p.isPremiere = false;
+                delete p.premiereText;
+              }
+            });
             state.playlist = parsed;
           }
         }

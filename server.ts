@@ -95,20 +95,19 @@ function parseYouTubePlaylist(html: string): PlaylistItem[] {
           // Check upcoming / premiere object
           if (pvr.upcomingEventData) {
             isPremiere = true;
-            premiereText = "PREMIERE";
+            premiereText = "Upcoming";
             if (pvr.upcomingEventData.startTime) {
               startTime = parseInt(pvr.upcomingEventData.startTime, 10) * 1000;
             }
           }
 
-          // Check badges
-          if (Array.isArray(pvr.badges)) {
+          // Check badges only if no duration or upcomingEventData present
+          if (!lengthSec && Array.isArray(pvr.badges)) {
             for (const b of pvr.badges) {
               const label = b.metadataBadgeRenderer?.label || "";
               if (
                 label.toUpperCase().includes("PREMIERE") ||
-                label.toUpperCase().includes("UPCOMING") ||
-                label.toUpperCase().includes("LIVE")
+                label.toUpperCase().includes("UPCOMING")
               ) {
                 isPremiere = true;
                 premiereText = label.toUpperCase();
@@ -116,8 +115,8 @@ function parseYouTubePlaylist(html: string): PlaylistItem[] {
             }
           }
 
-          // Check thumbnail overlays
-          if (Array.isArray(pvr.thumbnailOverlays)) {
+          // Check thumbnail overlays only if no duration or upcomingEventData present
+          if (!lengthSec && Array.isArray(pvr.thumbnailOverlays)) {
             for (const ov of pvr.thumbnailOverlays) {
               const t = ov.thumbnailOverlayTimeStatusRenderer;
               if (t) {
@@ -126,25 +125,19 @@ function parseYouTubePlaylist(html: string): PlaylistItem[] {
                 if (
                   style.includes("UPCOMING") ||
                   style.includes("PREMIERE") ||
-                  style.includes("LIVE") ||
                   text.toUpperCase().includes("PREMIERE") ||
                   text.toUpperCase().includes("UPCOMING")
                 ) {
                   isPremiere = true;
-                  premiereText = text || "PREMIERE";
+                  premiereText = text || "Upcoming";
                 }
               }
             }
           }
 
-          // Check title for premiere keywords
-          const upperTitle = title.toUpperCase();
-          if (
-            upperTitle.includes("[PREMIERE]") ||
-            upperTitle.includes("(PREMIERE)") ||
-            (!lengthText && upperTitle.includes("PREMIERE"))
-          ) {
-            isPremiere = true;
+          // If the video has a normal playback duration and no upcoming event data, it is LIVE
+          if (lengthSec && parseInt(lengthSec, 10) > 0 && !pvr.upcomingEventData) {
+            isPremiere = false;
           }
 
           let artist = "Slowedfy";
