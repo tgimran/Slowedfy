@@ -58,13 +58,29 @@ function fetchUrl(targetUrl: string): Promise<string> {
 function parseYouTubePlaylist(html: string): PlaylistItem[] {
   let ytInitialData: any = null;
   const match = html.match(/var ytInitialData = ({.*?});<\/script>/) ||
-                html.match(/window\["ytInitialData"\] = ({.*?});/);
+                html.match(/window\["ytInitialData"\] = ({.*?});/) ||
+                html.match(/ytInitialData\s*=\s*({.+?});/s);
 
   if (match) {
     try {
       ytInitialData = JSON.parse(match[1]);
     } catch (err) {
-      console.error("Failed to parse ytInitialData JSON:", err);
+      console.error("Failed to parse ytInitialData JSON via regex:", err);
+    }
+  }
+
+  if (!ytInitialData) {
+    const idx = html.indexOf("ytInitialData = ");
+    if (idx !== -1) {
+      const rest = html.slice(idx + "ytInitialData = ".length);
+      const endScript = rest.indexOf(";</script>");
+      if (endScript !== -1) {
+        try {
+          ytInitialData = JSON.parse(rest.slice(0, endScript));
+        } catch (e) {
+          console.error("Failed to parse ytInitialData JSON via slice:", e);
+        }
+      }
     }
   }
 
@@ -86,13 +102,13 @@ function parseYouTubePlaylist(html: string): PlaylistItem[] {
           const title =
             pvr.title?.runs?.[0]?.text || pvr.title?.simpleText || "Slowed Track";
           const lengthText = pvr.lengthText?.simpleText || "";
-          const lengthSec = pvr.lengthSeconds;
+          const lengthSec = pvr.lengthSeconds ? parseInt(pvr.lengthSeconds, 10) : 0;
 
           let isPremiere = false;
-          let premiereText = "PREMIERE";
+          let premiereText = "Upcoming";
           let startTime = 0;
 
-          // Check upcoming / premiere object
+          // 1. Check upcomingEventData
           if (pvr.upcomingEventData) {
             isPremiere = true;
             premiereText = "Upcoming";
@@ -101,42 +117,42 @@ function parseYouTubePlaylist(html: string): PlaylistItem[] {
             }
           }
 
-          // Check badges only if no duration or upcomingEventData present
-          if (!lengthSec && Array.isArray(pvr.badges)) {
-            for (const b of pvr.badges) {
-              const label = b.metadataBadgeRenderer?.label || "";
-              if (
-                label.toUpperCase().includes("PREMIERE") ||
-                label.toUpperCase().includes("UPCOMING")
-              ) {
-                isPremiere = true;
-                premiereText = label.toUpperCase();
-              }
-            }
-          }
-
-          // Check thumbnail overlays only if no duration or upcomingEventData present
-          if (!lengthSec && Array.isArray(pvr.thumbnailOverlays)) {
+          // 2. Check thumbnailOverlays
+          if (Array.isArray(pvr.thumbnailOverlays)) {
             for (const ov of pvr.thumbnailOverlays) {
               const t = ov.thumbnailOverlayTimeStatusRenderer;
               if (t) {
-                const style = t.style || "";
-                const text = t.text?.simpleText || "";
+                const style = (t.style || "").toUpperCase();
+                const text = (t.text?.simpleText || (t.text?.runs?.[0]?.text) || "").toUpperCase();
+                const accessibilityLabel = (t.text?.accessibility?.accessibilityData?.label || "").toUpperCase();
                 if (
                   style.includes("UPCOMING") ||
                   style.includes("PREMIERE") ||
-                  text.toUpperCase().includes("PREMIERE") ||
-                  text.toUpperCase().includes("UPCOMING")
+                  text.includes("UPCOMING") ||
+                  text.includes("PREMIERE") ||
+                  accessibilityLabel.includes("UPCOMING") ||
+                  accessibilityLabel.includes("PREMIERE")
                 ) {
                   isPremiere = true;
-                  premiereText = text || "Upcoming";
+                  premiereText = t.text?.simpleText || t.text?.runs?.[0]?.text || "Upcoming";
                 }
               }
             }
           }
 
-          // If the video has a normal playback duration and no upcoming event data, it is LIVE
-          if (lengthSec && parseInt(lengthSec, 10) > 0 && !pvr.upcomingEventData) {
+          // 3. Check badges
+          if (Array.isArray(pvr.badges)) {
+            for (const b of pvr.badges) {
+              const label = (b.metadataBadgeRenderer?.label || "").toUpperCase();
+              if (label.includes("PREMIERE") || label.includes("UPCOMING")) {
+                isPremiere = true;
+                premiereText = b.metadataBadgeRenderer?.label || "Upcoming";
+              }
+            }
+          }
+
+          // 4. If duration exists and none of the upcoming markers are present, it is a regular live track
+          if (lengthSec > 0 && !pvr.upcomingEventData && !isPremiere) {
             isPremiere = false;
           }
 
@@ -145,10 +161,8 @@ function parseYouTubePlaylist(html: string): PlaylistItem[] {
             artist = "GW IMRAN";
           }
 
-          let sec = 0;
-          if (lengthSec) {
-            sec = parseInt(lengthSec, 10);
-          } else if (lengthText && lengthText.includes(":")) {
+          let sec = lengthSec;
+          if (!sec && lengthText && lengthText.includes(":")) {
             const parts = lengthText.split(":").map((p: string) => parseInt(p, 10));
             if (parts.length === 2) {
               sec = parts[0] * 60 + parts[1];
@@ -157,15 +171,19 @@ function parseYouTubePlaylist(html: string): PlaylistItem[] {
             }
           }
 
+          const formattedDuration = isPremiere
+            ? "PREMIERE"
+            : (lengthText || (sec ? `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, "0")}` : "03:30"));
+
           videos.push({
             id: vid,
             title,
             artist,
-            duration: lengthText || (isPremiere ? "PREMIERE" : "03:30"),
-            seconds: sec || 210,
+            duration: formattedDuration,
+            seconds: sec || 240,
             thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
             isPremiere,
-            premiereText: isPremiere ? premiereText : undefined,
+            premiereText: isPremiere ? (premiereText || "Upcoming") : undefined,
             startTime: startTime || undefined,
           });
         }

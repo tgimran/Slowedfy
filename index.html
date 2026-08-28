@@ -2916,6 +2916,16 @@
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
   {
+    "id": "pDjOa01cJZ8",
+    "title": "HUM TUMKO NIGAHON MEIN│UDIT NARAYAN│SHREYA GHOSHAL│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "PREMIERE",
+    "seconds": 388,
+    "thumb": "https://i.ytimg.com/vi/pDjOa01cJZ8/hqdefault.jpg",
+    "isPremiere": true,
+    "premiereText": "Upcoming"
+  },
+  {
     "id": "6e3A3uy5-oE",
     "title": "Tose Naina Part 2│Twin Strings│(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Slowedfy",
@@ -5084,7 +5094,7 @@
           }
         }
       } catch (e) {
-        console.warn('Backend playlist API error, falling back to public mirrors:', e);
+        console.warn('Backend playlist API error, trying public mirrors:', e);
       }
 
       // Strategy 2: Direct public mirrors / Invidious API
@@ -5107,8 +5117,8 @@
                     id: v.videoId,
                     title: v.title,
                     artist: (v.title.includes('GW IMRAN') || v.author?.includes('GW IMRAN')) ? 'GW IMRAN' : 'Slowedfy',
-                    duration: v.lengthSeconds ? formatTime(v.lengthSeconds) : (isPrem ? 'PREMIERE' : '03:30'),
-                    seconds: v.lengthSeconds || 210,
+                    duration: isPrem ? 'PREMIERE' : (v.lengthSeconds ? formatTime(v.lengthSeconds) : '03:30'),
+                    seconds: v.lengthSeconds || 240,
                     thumb: `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`,
                     isPremiere: isPrem,
                     premiereText: isPrem ? 'Upcoming' : undefined
@@ -5117,10 +5127,25 @@
               }
             } else {
               const html = await res.text();
-              const match = html.match(/var ytInitialData = ({.*?});<\/script>/) ||
-                            html.match(/window\["ytInitialData"\] = ({.*?});/);
+              let ytData = null;
+              const match = html.match(/var ytInitialData = ({.*?});<\x2Fscript>/) ||
+                            html.match(/window\["ytInitialData"\] = ({.*?});/) ||
+                            html.match(/ytInitialData\s*=\s*({.+?});/s);
               if (match) {
-                const ytData = JSON.parse(match[1]);
+                try { ytData = JSON.parse(match[1]); } catch (e) {}
+              }
+              if (!ytData) {
+                const idx = html.indexOf("ytInitialData = ");
+                if (idx !== -1) {
+                  const rest = html.slice(idx + "ytInitialData = ".length);
+                  const endScript = rest.indexOf(";<\x2Fscript>");
+                  if (endScript !== -1) {
+                    try { ytData = JSON.parse(rest.slice(0, endScript)); } catch (e) {}
+                  }
+                }
+              }
+
+              if (ytData) {
                 const videos = [];
                 const seen = new Set();
                 function extract(obj) {
@@ -5136,41 +5161,56 @@
                         const lengthSec = pvr.lengthSeconds ? parseInt(pvr.lengthSeconds, 10) : 0;
                         let isPrem = false;
                         let premText = 'Upcoming';
-                        if (pvr.upcomingEventData) { isPrem = true; premText = 'Upcoming'; }
-                        if (!lengthSec && Array.isArray(pvr.badges)) {
-                          for (const b of pvr.badges) {
-                            const lbl = b.metadataBadgeRenderer?.label || '';
-                            if (lbl.toUpperCase().includes('PREMIERE') || lbl.toUpperCase().includes('UPCOMING')) {
-                              isPrem = true;
-                              premText = lbl;
-                            }
-                          }
+
+                        if (pvr.upcomingEventData) {
+                          isPrem = true;
+                          premText = 'Upcoming';
                         }
-                        if (!lengthSec && Array.isArray(pvr.thumbnailOverlays)) {
+                        if (Array.isArray(pvr.thumbnailOverlays)) {
                           for (const ov of pvr.thumbnailOverlays) {
                             const t = ov.thumbnailOverlayTimeStatusRenderer;
                             if (t) {
-                              const style = t.style || '';
-                              const txt = t.text?.simpleText || '';
-                              if (style.includes('UPCOMING') || style.includes('PREMIERE') || txt.toUpperCase().includes('PREMIERE') || txt.toUpperCase().includes('UPCOMING')) {
+                              const style = (t.style || '').toUpperCase();
+                              const txt = (t.text?.simpleText || (t.text?.runs?.[0]?.text) || '').toUpperCase();
+                              const aLabel = (t.text?.accessibility?.accessibilityData?.label || '').toUpperCase();
+                              if (style.includes('UPCOMING') || style.includes('PREMIERE') || txt.includes('UPCOMING') || txt.includes('PREMIERE') || aLabel.includes('UPCOMING') || aLabel.includes('PREMIERE')) {
                                 isPrem = true;
-                                premText = txt || 'Upcoming';
+                                premText = t.text?.simpleText || t.text?.runs?.[0]?.text || 'Upcoming';
                               }
                             }
                           }
                         }
-                        if (lengthSec && lengthSec > 0 && !pvr.upcomingEventData) {
+                        if (Array.isArray(pvr.badges)) {
+                          for (const b of pvr.badges) {
+                            const lbl = (b.metadataBadgeRenderer?.label || '').toUpperCase();
+                            if (lbl.includes('PREMIERE') || lbl.includes('UPCOMING')) {
+                              isPrem = true;
+                              premText = b.metadataBadgeRenderer?.label || 'Upcoming';
+                            }
+                          }
+                        }
+                        if (lengthSec > 0 && !pvr.upcomingEventData && !isPrem) {
                           isPrem = false;
                         }
+
+                        let sec = lengthSec;
+                        if (!sec && lengthText && lengthText.includes(':')) {
+                          const parts = lengthText.split(':').map(p => parseInt(p, 10));
+                          if (parts.length === 2) sec = parts[0] * 60 + parts[1];
+                          else if (parts.length === 3) sec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+                        }
+
+                        const finalDuration = isPrem ? 'PREMIERE' : (lengthText || (sec ? formatTime(sec) : '03:30'));
+
                         videos.push({
                           id: vid,
                           title,
                           artist: (title.includes('GW IMRAN') || title.includes('By Beat Badge × GW IMRAN')) ? 'GW IMRAN' : 'Slowedfy',
-                          duration: lengthText || (isPrem ? 'PREMIERE' : '03:30'),
-                          seconds: lengthSec || 210,
+                          duration: finalDuration,
+                          seconds: sec || 240,
                           thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
                           isPremiere: isPrem,
-                          premiereText: isPrem ? premText : undefined
+                          premiereText: isPrem ? (premText || 'Upcoming') : undefined
                         });
                       }
                     }
@@ -5207,12 +5247,11 @@
           const currentIds = new Set(state.playlist.map(t => t.id));
           const newTracks = latest.filter(t => !currentIds.has(t.id));
           
-          let changed = newTracks.length > 0 || latest.length !== state.playlist.length;
+          let changed = latest.length !== state.playlist.length || newTracks.length > 0;
           if (!changed) {
-            // Check if any Premiere flag changed
-            changed = latest.some(t => {
-              const existing = state.playlist.find(p => p.id === t.id);
-              return existing && (existing.isPremiere !== t.isPremiere || existing.duration !== t.duration);
+            changed = latest.some((lat, i) => {
+              const cur = state.playlist[i];
+              return !cur || cur.id !== lat.id || !!cur.isPremiere !== !!lat.isPremiere || cur.duration !== lat.duration;
             });
           }
 
@@ -5237,7 +5276,7 @@
             if (newTracks.length > 0) {
               const pTrack = newTracks.find(t => t.isPremiere);
               if (pTrack) {
-                showToast(`✨ ${newTracks.length} New Track Synced (Premiere: ${pTrack.title})`, "🔴");
+                showToast(`✨ ${newTracks.length} New Track Synced (Upcoming: ${pTrack.title})`, "🔴");
               } else {
                 showToast(`✨ ${newTracks.length} New Track(s) Synced from YouTube!`, "🎵");
               }
@@ -5260,20 +5299,24 @@
        INITIALIZATION BOOTSTRAP
        ========================================================================== */
     function init() {
-      // Load saved playlist from previous syncs if available
+      // Load saved playlist from previous syncs if available and up-to-date
       try {
         const saved = localStorage.getItem('slowedfy_synced_playlist_v2');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
-            parsed.forEach(p => {
-              const official = OFFICIAL_PLAYLIST.find(o => o.id === p.id);
-              if (official && !official.isPremiere && p.isPremiere) {
-                p.isPremiere = false;
-                delete p.premiereText;
-              }
-            });
-            state.playlist = parsed;
+            // Ensure first official item is present in saved playlist
+            const hasFirstOfficial = parsed.some(p => p.id === OFFICIAL_PLAYLIST[0].id);
+            if (hasFirstOfficial) {
+              parsed.forEach(p => {
+                const official = OFFICIAL_PLAYLIST.find(o => o.id === p.id);
+                if (official && !official.isPremiere && p.isPremiere) {
+                  p.isPremiere = false;
+                  delete p.premiereText;
+                }
+              });
+              state.playlist = parsed;
+            }
           }
         }
       } catch (e) {}
@@ -5294,16 +5337,27 @@
         });
       }
 
-      // Initial auto-sync from YouTube
+      // Initial immediate auto-sync from YouTube
       setTimeout(() => {
         syncPlaylistFromYouTube(false);
-      }, 800);
+      }, 150);
 
-      // Periodic background auto-sync every 2.5 minutes
+      // Trigger sync when tab becomes visible again
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          syncPlaylistFromYouTube(false);
+        }
+      });
+
+      window.addEventListener('focus', () => {
+        syncPlaylistFromYouTube(false);
+      });
+
+      // Periodic background auto-sync every 60 seconds
       if (!autoSyncTimer) {
         autoSyncTimer = setInterval(() => {
           syncPlaylistFromYouTube(false);
-        }, 150000);
+        }, 60000);
       }
 
       showToast("Welcome to Slowedfy • Press Space to Play", "🎧");
