@@ -1271,6 +1271,95 @@
       margin: 0;
     }
 
+    /* UPI ID Quick Support Box */
+    .upi-support-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.55rem;
+      width: 100%;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(20, 26, 42, 0.6) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: var(--radius-lg);
+      padding: 0.5rem 0.65rem;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+      user-select: none;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+      text-decoration: none;
+    }
+
+    .upi-support-box:hover {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0%, rgba(0, 240, 255, 0.12) 100%);
+      border-color: rgba(0, 240, 255, 0.45);
+      transform: translateY(-1.5px);
+      box-shadow: 0 6px 20px rgba(0, 240, 255, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.3);
+    }
+
+    .upi-support-box:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .upi-left-info {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .upi-tag {
+      background: linear-gradient(135deg, #10b981, #00f0ff);
+      color: #050b14;
+      font-size: 0.64rem;
+      font-weight: 900;
+      padding: 0.2rem 0.45rem;
+      border-radius: 4px;
+      letter-spacing: 0.06em;
+      line-height: 1;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
+    }
+
+    .upi-address {
+      font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: -0.01em;
+    }
+
+    .upi-copy-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: var(--radius-sm);
+      padding: 0.25rem 0.55rem;
+      color: #f1f5f9;
+      font-size: 0.7rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .upi-support-box:hover .upi-copy-action {
+      background: rgba(0, 240, 255, 0.22);
+      border-color: rgba(0, 240, 255, 0.6);
+      color: #00f0ff;
+    }
+
+    .upi-copy-action.is-copied {
+      background: rgba(16, 185, 129, 0.25) !important;
+      border-color: #10b981 !important;
+      color: #10b981 !important;
+    }
+
     /* ==========================================================================
        FLOATING 2026 iOS LIQUID GLASS MUSIC PLAYER (Docked Bottom)
        ========================================================================== */
@@ -2455,6 +2544,22 @@
             <span>Support Developer</span>
             <span class="support-heart">♥️</span>
           </a>
+
+          <!-- UPI ID Quick Box -->
+          <div class="upi-support-box" title="Click to copy UPI ID: KulsumKhatun933@ybl" id="upi-support-box" role="button" tabindex="0" onclick="copyUpiId(this, 'KulsumKhatun933@ybl')" aria-label="UPI ID: KulsumKhatun933@ybl, click to copy">
+            <div class="upi-left-info">
+              <span class="upi-tag">UPI</span>
+              <span class="upi-address">KulsumKhatun933@ybl</span>
+            </div>
+            <button class="upi-copy-action" type="button" aria-label="Copy UPI ID">
+              <svg class="upi-copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span class="upi-copy-label">Copy</span>
+            </button>
+          </div>
+
           <p class="special-thanks-text">♥️ Thank you for supporting Slowedfy ♥️</p>
         </div>
 
@@ -2885,6 +2990,22 @@
             <span>Support Developer</span>
             <span class="support-heart">♥️</span>
           </a>
+
+          <!-- UPI ID Quick Box in Modal -->
+          <div class="upi-support-box" title="Click to copy UPI ID: KulsumKhatun933@ybl" id="about-upi-support-box" role="button" tabindex="0" onclick="copyUpiId(this, 'KulsumKhatun933@ybl')" aria-label="UPI ID: KulsumKhatun933@ybl, click to copy">
+            <div class="upi-left-info">
+              <span class="upi-tag">UPI</span>
+              <span class="upi-address">KulsumKhatun933@ybl</span>
+            </div>
+            <button class="upi-copy-action" type="button" aria-label="Copy UPI ID">
+              <svg class="upi-copy-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              <span class="upi-copy-label">Copy</span>
+            </button>
+          </div>
+
           <p class="special-thanks-text" style="text-align: center; font-size: 0.76rem; margin: 0; color: #94a3b8;">♥️ Thank you for supporting Slowedfy ♥️</p>
         </div>
 
@@ -5045,6 +5166,55 @@
         }
       });
     }
+
+    // Global 1-Click Copy UPI ID Handler with Feedback
+    window.copyUpiId = function(el, upi) {
+      if (!upi) upi = 'KulsumKhatun933@ybl';
+      const fallback = (text) => {
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        temp.style.position = 'fixed';
+        temp.style.opacity = '0';
+        document.body.appendChild(temp);
+        temp.focus();
+        temp.select();
+        try { document.execCommand('copy'); } catch(e){}
+        document.body.removeChild(temp);
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(upi).catch(() => fallback(upi));
+      } else {
+        fallback(upi);
+      }
+
+      showToast(`UPI ID Copied: ${upi}`, "📋");
+
+      const boxes = document.querySelectorAll('.upi-support-box');
+      boxes.forEach(box => {
+        const btn = box.querySelector('.upi-copy-action');
+        const label = box.querySelector('.upi-copy-label');
+        const icon = box.querySelector('.upi-copy-icon');
+        if (btn) btn.classList.add('is-copied');
+        if (label) label.textContent = 'Copied!';
+        if (icon) {
+          icon.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+        }
+      });
+
+      setTimeout(() => {
+        boxes.forEach(box => {
+          const btn = box.querySelector('.upi-copy-action');
+          const label = box.querySelector('.upi-copy-label');
+          const icon = box.querySelector('.upi-copy-icon');
+          if (btn) btn.classList.remove('is-copied');
+          if (label) label.textContent = 'Copy';
+          if (icon) {
+            icon.innerHTML = '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>';
+          }
+        });
+      }, 2200);
+    };
 
     // Keyboard Shortcuts Global Handler
     window.addEventListener('keydown', (e) => {
