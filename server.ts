@@ -22,7 +22,7 @@ interface PlaylistItem {
 
 let cachedPlaylist: PlaylistItem[] | null = null;
 let lastFetchTime = 0;
-const CACHE_TTL_MS = 45 * 1000; // 45 seconds cache
+const CACHE_TTL_MS = 20 * 1000; // 20 seconds cache
 
 function fetchUrl(targetUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -55,11 +55,173 @@ function fetchUrl(targetUrl: string): Promise<string> {
   });
 }
 
-function parseYouTubePlaylist(html: string): PlaylistItem[] {
+function postJson(targetUrl: string, payload: any): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const dataStr = JSON.stringify(payload);
+    const urlObj = new URL(targetUrl);
+    const options = {
+      hostname: urlObj.hostname,
+      port: urlObj.port || (urlObj.protocol === "https:" ? 443 : 80),
+      path: urlObj.pathname + urlObj.search,
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": Buffer.byteLength(dataStr),
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "X-YouTube-Client-Name": "1",
+        "X-YouTube-Client-Version": "2.20240101.00.00",
+        "Origin": "https://www.youtube.com",
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let body = "";
+      res.on("data", (chunk) => {
+        body += chunk;
+      });
+      res.on("end", () => {
+        try {
+          const parsed = JSON.parse(body);
+          resolve(parsed);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on("error", reject);
+    req.setTimeout(12000, () => {
+      req.destroy();
+      reject(new Error("POST timeout"));
+    });
+    req.write(dataStr);
+    req.end();
+  });
+}
+
+function extractContinuationToken(obj: any): string | null {
+  if (!obj || typeof obj !== "object") return null;
+  const cir = obj.continuationItemRenderer || obj;
+  const endpoint = cir.continuationEndpoint;
+  if (!endpoint) return null;
+
+  const directCmd = endpoint.continuationCommand;
+  if (directCmd && directCmd.token) {
+    return directCmd.token;
+  }
+
+  const execCmds = endpoint.commandExecutorCommand?.commands;
+  if (Array.isArray(execCmds)) {
+    for (const ec of execCmds) {
+      const cc = ec.continuationCommand;
+      if (cc && cc.token) {
+        return cc.token;
+      }
+    }
+  }
+  return null;
+}
+
+function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null {
+  const vid = pvr?.videoId;
+  if (!vid || seenIds.has(vid)) return null;
+  seenIds.add(vid);
+
+  const title = pvr.title?.runs?.[0]?.text || pvr.title?.simpleText || "Slowed Track";
+  const lengthText = pvr.lengthText?.simpleText || "";
+  const lengthSec = pvr.lengthSeconds ? parseInt(pvr.lengthSeconds, 10) : 0;
+
+  let isPremiere = false;
+  let premiereText = "Upcoming";
+  let startTime = 0;
+
+  // 1. Check upcomingEventData
+  if (pvr.upcomingEventData) {
+    isPremiere = true;
+    premiereText = pvr.upcomingEventData.upcomingEventText?.runs?.map((r: any) => r.text).join("") || "Upcoming";
+    if (pvr.upcomingEventData.startTime) {
+      startTime = parseInt(pvr.upcomingEventData.startTime, 10) * 1000;
+    }
+  }
+
+  // 2. Check thumbnailOverlays
+  if (Array.isArray(pvr.thumbnailOverlays)) {
+    for (const ov of pvr.thumbnailOverlays) {
+      const t = ov.thumbnailOverlayTimeStatusRenderer;
+      if (t) {
+        const style = (t.style || "").toUpperCase();
+        const text = (t.text?.simpleText || (t.text?.runs?.[0]?.text) || "").toUpperCase();
+        const accessibilityLabel = (t.text?.accessibility?.accessibilityData?.label || "").toUpperCase();
+        if (
+          style.includes("UPCOMING") ||
+          style.includes("PREMIERE") ||
+          text.includes("UPCOMING") ||
+          text.includes("PREMIERE") ||
+          accessibilityLabel.includes("UPCOMING") ||
+          accessibilityLabel.includes("PREMIERE")
+        ) {
+          isPremiere = true;
+          premiereText = t.text?.simpleText || t.text?.runs?.[0]?.text || premiereText || "Upcoming";
+        }
+      }
+    }
+  }
+
+  // 3. Check badges
+  if (Array.isArray(pvr.badges)) {
+    for (const b of pvr.badges) {
+      const label = (b.metadataBadgeRenderer?.label || "").toUpperCase();
+      if (label.includes("PREMIERE") || label.includes("UPCOMING")) {
+        isPremiere = true;
+        premiereText = b.metadataBadgeRenderer?.label || premiereText || "Upcoming";
+      }
+    }
+  }
+
+  // 4. If duration exists and none of upcoming markers, regular track
+  if (lengthSec > 0 && !pvr.upcomingEventData && !isPremiere) {
+    isPremiere = false;
+  }
+
+  let artist = "Slowedfy";
+  if (title.includes("By Beat Badge × GW IMRAN") || title.includes("GW IMRAN")) {
+    artist = "GW IMRAN";
+  }
+
+  let sec = lengthSec;
+  if (!sec && lengthText && lengthText.includes(":")) {
+    const parts = lengthText.split(":").map((p: string) => parseInt(p, 10));
+    if (parts.length === 2) {
+      sec = parts[0] * 60 + parts[1];
+    } else if (parts.length === 3) {
+      sec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+  }
+
+  const formattedDuration = isPremiere
+    ? "PREMIERE"
+    : (lengthText || (sec ? `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, "0")}` : "03:30"));
+
+  return {
+    id: vid,
+    title,
+    artist,
+    duration: formattedDuration,
+    seconds: sec || 240,
+    thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+    isPremiere,
+    premiereText: isPremiere ? (premiereText || "Upcoming") : undefined,
+    startTime: startTime || undefined,
+  };
+}
+
+async function fetchFullYouTubePlaylist(html: string): Promise<PlaylistItem[]> {
   let ytInitialData: any = null;
-  const match = html.match(/var ytInitialData = ({.*?});<\/script>/) ||
-                html.match(/window\["ytInitialData"\] = ({.*?});/) ||
-                html.match(/ytInitialData\s*=\s*({.+?});/s);
+  const match =
+    html.match(/var ytInitialData = ({.*?});<\/script>/) ||
+    html.match(/window\["ytInitialData"\] = ({.*?});/) ||
+    html.match(/ytInitialData\s*=\s*({.+?});/s);
 
   if (match) {
     try {
@@ -88,117 +250,81 @@ function parseYouTubePlaylist(html: string): PlaylistItem[] {
     return [];
   }
 
+  const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+  const apiKey = apiKeyMatch ? apiKeyMatch[1] : "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
+
   const videos: PlaylistItem[] = [];
   const seenIds = new Set<string>();
+  const continuationTokens: string[] = [];
 
-  function extractVideos(obj: any) {
+  function walk(obj: any) {
     if (!obj) return;
     if (typeof obj === "object") {
       if (obj.playlistVideoRenderer) {
-        const pvr = obj.playlistVideoRenderer;
-        const vid = pvr.videoId;
-        if (vid && !seenIds.has(vid)) {
-          seenIds.add(vid);
-          const title =
-            pvr.title?.runs?.[0]?.text || pvr.title?.simpleText || "Slowed Track";
-          const lengthText = pvr.lengthText?.simpleText || "";
-          const lengthSec = pvr.lengthSeconds ? parseInt(pvr.lengthSeconds, 10) : 0;
-
-          let isPremiere = false;
-          let premiereText = "Upcoming";
-          let startTime = 0;
-
-          // 1. Check upcomingEventData
-          if (pvr.upcomingEventData) {
-            isPremiere = true;
-            premiereText = "Upcoming";
-            if (pvr.upcomingEventData.startTime) {
-              startTime = parseInt(pvr.upcomingEventData.startTime, 10) * 1000;
-            }
-          }
-
-          // 2. Check thumbnailOverlays
-          if (Array.isArray(pvr.thumbnailOverlays)) {
-            for (const ov of pvr.thumbnailOverlays) {
-              const t = ov.thumbnailOverlayTimeStatusRenderer;
-              if (t) {
-                const style = (t.style || "").toUpperCase();
-                const text = (t.text?.simpleText || (t.text?.runs?.[0]?.text) || "").toUpperCase();
-                const accessibilityLabel = (t.text?.accessibility?.accessibilityData?.label || "").toUpperCase();
-                if (
-                  style.includes("UPCOMING") ||
-                  style.includes("PREMIERE") ||
-                  text.includes("UPCOMING") ||
-                  text.includes("PREMIERE") ||
-                  accessibilityLabel.includes("UPCOMING") ||
-                  accessibilityLabel.includes("PREMIERE")
-                ) {
-                  isPremiere = true;
-                  premiereText = t.text?.simpleText || t.text?.runs?.[0]?.text || "Upcoming";
-                }
-              }
-            }
-          }
-
-          // 3. Check badges
-          if (Array.isArray(pvr.badges)) {
-            for (const b of pvr.badges) {
-              const label = (b.metadataBadgeRenderer?.label || "").toUpperCase();
-              if (label.includes("PREMIERE") || label.includes("UPCOMING")) {
-                isPremiere = true;
-                premiereText = b.metadataBadgeRenderer?.label || "Upcoming";
-              }
-            }
-          }
-
-          // 4. If duration exists and none of the upcoming markers are present, it is a regular live track
-          if (lengthSec > 0 && !pvr.upcomingEventData && !isPremiere) {
-            isPremiere = false;
-          }
-
-          let artist = "Slowedfy";
-          if (title.includes("By Beat Badge × GW IMRAN") || title.includes("GW IMRAN")) {
-            artist = "GW IMRAN";
-          }
-
-          let sec = lengthSec;
-          if (!sec && lengthText && lengthText.includes(":")) {
-            const parts = lengthText.split(":").map((p: string) => parseInt(p, 10));
-            if (parts.length === 2) {
-              sec = parts[0] * 60 + parts[1];
-            } else if (parts.length === 3) {
-              sec = parts[0] * 3600 + parts[1] * 60 + parts[2];
-            }
-          }
-
-          const formattedDuration = isPremiere
-            ? "PREMIERE"
-            : (lengthText || (sec ? `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, "0")}` : "03:30"));
-
-          videos.push({
-            id: vid,
-            title,
-            artist,
-            duration: formattedDuration,
-            seconds: sec || 240,
-            thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
-            isPremiere,
-            premiereText: isPremiere ? (premiereText || "Upcoming") : undefined,
-            startTime: startTime || undefined,
-          });
-        }
+        const item = parseVideoRenderer(obj.playlistVideoRenderer, seenIds);
+        if (item) videos.push(item);
+      }
+      if (obj.continuationItemRenderer) {
+        const tok = extractContinuationToken(obj.continuationItemRenderer);
+        if (tok) continuationTokens.push(tok);
       }
       for (const key of Object.keys(obj)) {
-        extractVideos(obj[key]);
+        walk(obj[key]);
       }
     } else if (Array.isArray(obj)) {
       for (const item of obj) {
-        extractVideos(item);
+        walk(item);
       }
     }
   }
 
-  extractVideos(ytInitialData);
+  walk(ytInitialData);
+
+  // Paginate through continuations to fetch all songs beyond 100
+  let loopCount = 0;
+  while (continuationTokens.length > 0 && loopCount < 20) {
+    loopCount++;
+    const nextToken = continuationTokens.shift();
+    if (!nextToken) continue;
+
+    try {
+      const browseUrl = `https://www.youtube.com/youtubei/v1/browse?key=${apiKey}`;
+      const payload = {
+        context: {
+          client: {
+            clientName: "WEB",
+            clientVersion: "2.20240101.00.00",
+            hl: "en",
+            gl: "US",
+          },
+        },
+        continuation: nextToken,
+      };
+
+      const cData = await postJson(browseUrl, payload);
+      const actions = [
+        ...(cData.onResponseReceivedActions || []),
+        ...(cData.onResponseReceivedEndpoints || []),
+      ];
+
+      for (const act of actions) {
+        const contItems = act.appendContinuationItemsAction?.continuationItems || [];
+        for (const ci of contItems) {
+          if (ci.playlistVideoRenderer) {
+            const item = parseVideoRenderer(ci.playlistVideoRenderer, seenIds);
+            if (item) videos.push(item);
+          }
+          if (ci.continuationItemRenderer) {
+            const tok = extractContinuationToken(ci.continuationItemRenderer);
+            if (tok) continuationTokens.push(tok);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[YouTube Sync] Continuation fetch error:", err);
+    }
+  }
+
   return videos;
 }
 
@@ -210,7 +336,7 @@ async function getLatestPlaylist(forceRefresh = false): Promise<PlaylistItem[]> 
 
   try {
     const html = await fetchUrl(YOUTUBE_URL);
-    const parsed = parseYouTubePlaylist(html);
+    const parsed = await fetchFullYouTubePlaylist(html);
     if (parsed && parsed.length > 0) {
       cachedPlaylist = parsed;
       lastFetchTime = now;
@@ -237,7 +363,11 @@ async function startServer() {
 
   app.get("/api/playlist", async (req, res) => {
     try {
-      const force = req.query.refresh === "true";
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+
+      const force = req.query.refresh === "true" || (Date.now() - lastFetchTime > CACHE_TTL_MS);
       const playlist = await getLatestPlaylist(force);
       res.json({
         success: true,
@@ -253,8 +383,11 @@ async function startServer() {
     }
   });
 
-  // Pre-fetch playlist in background on startup
+  // Pre-fetch playlist in background on startup and poll every 35 seconds
   getLatestPlaylist(true).catch(() => {});
+  setInterval(() => {
+    getLatestPlaylist(true).catch(() => {});
+  }, 35000);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
