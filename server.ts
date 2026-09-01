@@ -22,18 +22,26 @@ interface PlaylistItem {
 
 let cachedPlaylist: PlaylistItem[] | null = null;
 let lastFetchTime = 0;
-const CACHE_TTL_MS = 20 * 1000; // 20 seconds cache
+const CACHE_TTL_MS = 15 * 1000; // 15 seconds cache
 
 function fetchUrl(targetUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const client = targetUrl.startsWith("https") ? https : http;
+    const urlObj = new URL(targetUrl);
+    // Add cache busting param to avoid YouTube caching old playlist versions
+    urlObj.searchParams.set("disable_polymer", "true");
+    urlObj.searchParams.set("hl", "en");
+    urlObj.searchParams.set("_t", Date.now().toString());
+
+    const client = urlObj.protocol === "https:" ? https : http;
     const req = client.get(
-      targetUrl,
+      urlObj.toString(),
       {
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
           "Accept-Language": "en-US,en;q=0.9",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
         },
       },
       (res) => {
@@ -172,14 +180,40 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
   if (Array.isArray(pvr.badges)) {
     for (const b of pvr.badges) {
       const label = (b.metadataBadgeRenderer?.label || "").toUpperCase();
-      if (label.includes("PREMIERE") || label.includes("UPCOMING")) {
+      if (label.includes("PREMIERE") || label.includes("UPCOMING") || label.includes("LIVE")) {
         isPremiere = true;
         premiereText = b.metadataBadgeRenderer?.label || premiereText || "Upcoming";
       }
     }
   }
 
-  // 4. If duration exists and none of upcoming markers, regular track
+  // 4. Check videoInfo runs (e.g. "Premieres 09/02/26", "Live in 2 days", "Upcoming")
+  if (Array.isArray(pvr.videoInfo?.runs)) {
+    for (const r of pvr.videoInfo.runs) {
+      const txt = (r.text || "").toUpperCase();
+      if (txt.includes("PREMIERE") || txt.includes("UPCOMING") || txt.includes("LIVE IN") || txt.includes("SCHEDULED")) {
+        isPremiere = true;
+        premiereText = r.text || premiereText || "Upcoming";
+      }
+    }
+  }
+
+  // 5. Check publishedTimeText
+  if (pvr.publishedTimeText?.simpleText) {
+    const pubTxt = pvr.publishedTimeText.simpleText.toUpperCase();
+    if (pubTxt.includes("PREMIERE") || pubTxt.includes("UPCOMING")) {
+      isPremiere = true;
+      premiereText = pvr.publishedTimeText.simpleText || premiereText || "Upcoming";
+    }
+  }
+
+  // 6. Zero length with no duration text indicates unreleased / upcoming premiere
+  if (lengthSec === 0 && !lengthText && !isPremiere) {
+    isPremiere = true;
+    premiereText = "Upcoming";
+  }
+
+  // 7. If duration exists and none of upcoming markers, regular track
   if (lengthSec > 0 && !pvr.upcomingEventData && !isPremiere) {
     isPremiere = false;
   }
@@ -383,11 +417,11 @@ async function startServer() {
     }
   });
 
-  // Pre-fetch playlist in background on startup and poll every 35 seconds
+  // Pre-fetch playlist in background on startup and poll every 15 seconds
   getLatestPlaylist(true).catch(() => {});
   setInterval(() => {
     getLatestPlaylist(true).catch(() => {});
-  }, 35000);
+  }, 15000);
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

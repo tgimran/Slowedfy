@@ -3037,15 +3037,22 @@
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
   {
+    "id": "DBDOXlXqJSc",
+    "title": "Sammi Meri Waar\u2502Lashari_Waves\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "1:29",
+    "seconds": 89,
+    "thumb": "https://i.ytimg.com/vi/DBDOXlXqJSc/hqdefault.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "eEvEWdrjNnY",
     "title": "SAWAN AAYA HAI\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
-    "duration": "PREMIERE",
+    "duration": "5:09",
     "seconds": 309,
     "thumb": "https://i.ytimg.com/vi/eEvEWdrjNnY/hqdefault.jpg",
-    "isPremiere": true,
-    "premiereText": "Upcoming",
-    "startTime": 1788089160000
+    "isPremiere": false
   },
   {
     "id": "pDjOa01cJZ8",
@@ -4527,7 +4534,7 @@
 
         // Persist update so it stays live across sessions
         try {
-          localStorage.setItem('slowedfy_synced_playlist_v4', JSON.stringify(state.playlist));
+          localStorage.setItem('slowedfy_synced_playlist_v5', JSON.stringify(state.playlist));
         } catch (e) {}
       }
     }
@@ -5371,12 +5378,16 @@
     let autoSyncTimer = null;
 
     async function fetchLatestPlaylistFromSource() {
-      // Strategy 1: Fast server-side proxy API with cache busting
+      // Strategy 1: Fast server-side proxy API with AbortController timeout
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
         const res = await fetch(`/api/playlist?refresh=true&_t=${Date.now()}`, {
+          signal: controller.signal,
           cache: 'no-store',
           headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
         });
+        clearTimeout(timeoutId);
         if (res.ok) {
           const data = await res.json();
           if (data && data.success && Array.isArray(data.playlist) && data.playlist.length > 0) {
@@ -5387,16 +5398,18 @@
         console.warn('Backend playlist API error, trying public mirrors:', e);
       }
 
-      // Strategy 2: Direct public mirrors / Invidious API
+      // Strategy 2: Direct public mirrors with fast 3500ms timeouts
       const mirrors = [
-        'https://inv.tux.pizza/api/v1/playlists/PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS',
         'https://invidious.nerdvpn.de/api/v1/playlists/PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS',
         'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS')
       ];
 
       for (const endpoint of mirrors) {
         try {
-          const res = await fetch(endpoint, { cache: 'no-store' });
+          const ctrl = new AbortController();
+          const tId = setTimeout(() => ctrl.abort(), 3500);
+          const res = await fetch(endpoint, { signal: ctrl.signal, cache: 'no-store' });
+          clearTimeout(tId);
           if (res.ok) {
             if (endpoint.includes('/api/v1/playlists/')) {
               const data = await res.json();
@@ -5477,11 +5490,24 @@
                         if (Array.isArray(pvr.badges)) {
                           for (const b of pvr.badges) {
                             const lbl = (b.metadataBadgeRenderer?.label || '').toUpperCase();
-                            if (lbl.includes('PREMIERE') || lbl.includes('UPCOMING')) {
+                            if (lbl.includes('PREMIERE') || lbl.includes('UPCOMING') || lbl.includes('LIVE')) {
                               isPrem = true;
                               premText = b.metadataBadgeRenderer?.label || premText || 'Upcoming';
                             }
                           }
+                        }
+                        if (Array.isArray(pvr.videoInfo?.runs)) {
+                          for (const r of pvr.videoInfo.runs) {
+                            const txt = (r.text || '').toUpperCase();
+                            if (txt.includes('PREMIERE') || txt.includes('UPCOMING') || txt.includes('LIVE IN') || txt.includes('SCHEDULED')) {
+                              isPrem = true;
+                              premText = r.text || premText || 'Upcoming';
+                            }
+                          }
+                        }
+                        if (lengthSec === 0 && !lengthText && !isPrem) {
+                          isPrem = true;
+                          premText = 'Upcoming';
                         }
                         if (lengthSec > 0 && !pvr.upcomingEventData && !isPrem) {
                           isPrem = false;
@@ -5555,7 +5581,7 @@
 
             state.playlist = latest;
             try {
-              localStorage.setItem('slowedfy_synced_playlist_v4', JSON.stringify(latest));
+              localStorage.setItem('slowedfy_synced_playlist_v5', JSON.stringify(latest));
             } catch (e) {}
 
             if (currentActiveTrackId) {
@@ -5571,9 +5597,9 @@
             if (newTracks.length > 0) {
               const pTrack = newTracks.find(t => t.isPremiere);
               if (pTrack) {
-                showToast(`✨ New Upcoming Track Synced: ${pTrack.title}`, "🔴");
+                showToast(`✨ Upcoming Premiere Detected: ${pTrack.title}`, "🔴");
               } else {
-                showToast(`✨ ${newTracks.length} New Track(s) Synced from YouTube!`, "🎵");
+                showToast(`✨ ${newTracks.length} New Track(s) Added from YouTube!`, "🎵");
               }
             } else {
               showToast(`✨ Playlist Synced • ${latest.length} Tracks`, "🎵");
@@ -5596,7 +5622,7 @@
     function init() {
       // Load saved playlist from storage if available and valid
       try {
-        const saved = localStorage.getItem('slowedfy_synced_playlist_v4');
+        const saved = localStorage.getItem('slowedfy_synced_playlist_v5');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
@@ -5644,11 +5670,11 @@
         syncPlaylistFromYouTube(false);
       });
 
-      // Periodic background auto-sync every 25 seconds for real-time upcoming detection
+      // Periodic background auto-sync every 15 seconds for real-time upcoming detection
       if (!autoSyncTimer) {
         autoSyncTimer = setInterval(() => {
           syncPlaylistFromYouTube(false);
-        }, 25000);
+        }, 15000);
       }
 
       showToast("Welcome to Slowedfy • Press Space to Play", "🎧");
