@@ -147,7 +147,12 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
   // 1. Check upcomingEventData
   if (pvr.upcomingEventData) {
     isPremiere = true;
-    premiereText = pvr.upcomingEventData.upcomingEventText?.runs?.map((r: any) => r.text).join("") || "Upcoming";
+    const rawTxt = pvr.upcomingEventData.upcomingEventText?.runs?.map((r: any) => r.text).join("") || "";
+    if (rawTxt && !rawTxt.includes("DATE_PLACEHOLDER") && rawTxt.trim() !== "Premieres") {
+      premiereText = rawTxt.trim();
+    } else {
+      premiereText = "Upcoming Premiere";
+    }
     if (pvr.upcomingEventData.startTime) {
       startTime = parseInt(pvr.upcomingEventData.startTime, 10) * 1000;
     }
@@ -170,7 +175,10 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
           accessibilityLabel.includes("PREMIERE")
         ) {
           isPremiere = true;
-          premiereText = t.text?.simpleText || t.text?.runs?.[0]?.text || premiereText || "Upcoming";
+          const label = t.text?.simpleText || t.text?.runs?.[0]?.text;
+          if (label && !label.includes("DATE_PLACEHOLDER")) {
+            premiereText = label;
+          }
         }
       }
     }
@@ -182,7 +190,9 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
       const label = (b.metadataBadgeRenderer?.label || "").toUpperCase();
       if (label.includes("PREMIERE") || label.includes("UPCOMING") || label.includes("LIVE")) {
         isPremiere = true;
-        premiereText = b.metadataBadgeRenderer?.label || premiereText || "Upcoming";
+        if (b.metadataBadgeRenderer?.label) {
+          premiereText = b.metadataBadgeRenderer.label;
+        }
       }
     }
   }
@@ -193,7 +203,9 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
       const txt = (r.text || "").toUpperCase();
       if (txt.includes("PREMIERE") || txt.includes("UPCOMING") || txt.includes("LIVE IN") || txt.includes("SCHEDULED")) {
         isPremiere = true;
-        premiereText = r.text || premiereText || "Upcoming";
+        if (r.text && !r.text.includes("DATE_PLACEHOLDER")) {
+          premiereText = r.text;
+        }
       }
     }
   }
@@ -203,7 +215,7 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
     const pubTxt = pvr.publishedTimeText.simpleText.toUpperCase();
     if (pubTxt.includes("PREMIERE") || pubTxt.includes("UPCOMING")) {
       isPremiere = true;
-      premiereText = pvr.publishedTimeText.simpleText || premiereText || "Upcoming";
+      premiereText = pvr.publishedTimeText.simpleText;
     }
   }
 
@@ -213,9 +225,10 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
     premiereText = "Upcoming";
   }
 
-  // 7. If duration exists and none of upcoming markers, regular track
-  if (lengthSec > 0 && !pvr.upcomingEventData && !isPremiere) {
-    isPremiere = false;
+  // 7. Check title for explicit premiere tags
+  const upperTitle = title.toUpperCase();
+  if (upperTitle.includes("[PREMIERE]") || upperTitle.includes("(PREMIERE)") || upperTitle.includes("[UPCOMING]")) {
+    isPremiere = true;
   }
 
   let artist = "Slowedfy";
@@ -397,12 +410,22 @@ async function startServer() {
 
   app.get("/api/playlist", async (req, res) => {
     try {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
 
       const force = req.query.refresh === "true" || (Date.now() - lastFetchTime > CACHE_TTL_MS);
-      const playlist = await getLatestPlaylist(force);
+      let playlist = cachedPlaylist;
+      if (!playlist || playlist.length === 0) {
+        playlist = await getLatestPlaylist(true);
+      } else if (force) {
+        // Trigger fresh sync in background and return existing cache immediately
+        getLatestPlaylist(true).catch(() => {});
+      }
+
       res.json({
         success: true,
         count: playlist.length,
