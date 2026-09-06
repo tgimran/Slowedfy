@@ -844,7 +844,6 @@
       overflow-y: auto;
       padding-right: 4px;
       flex: 1;
-      min-height: 0;
       display: flex;
       flex-direction: column;
       gap: 0.4rem;
@@ -903,11 +902,6 @@
       font-family: var(--font-mono);
       color: var(--text-muted);
       text-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      flex-shrink: 0;
     }
 
     .playlist-item.active .track-num {
@@ -976,10 +970,6 @@
     }
 
     .track-text-details {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-width: 0;
       overflow: hidden;
     }
 
@@ -987,21 +977,11 @@
       font-size: 0.85rem;
       font-weight: 600;
       color: var(--text-primary);
-      margin-bottom: 2px;
-      opacity: 1;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      line-height: 1.25;
-    }
-
-    .track-title-text {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      min-width: 0;
-      flex: 1;
+      margin-bottom: 2px;
+      opacity: 1;
     }
 
     .playlist-item.active .track-item-title {
@@ -1020,13 +1000,6 @@
       font-size: 0.75rem;
       font-family: var(--font-mono);
       color: var(--text-secondary);
-      justify-self: end;
-      text-align: right;
-      white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
     }
 
 
@@ -1115,13 +1088,7 @@
       box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
     }
 
-    /* Playlist Auto-Sync Button & YouTube Link */
-    .sync-actions-wrap {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
+    /* Playlist Auto-Sync Button */
     .sync-refresh-btn {
       background: rgba(78, 226, 236, 0.12);
       border: 1px solid rgba(78, 226, 236, 0.35);
@@ -1129,16 +1096,12 @@
       font-size: 0.72rem;
       font-weight: 700;
       font-family: var(--font-display);
-      padding: 0 8px;
-      height: 24px;
-      box-sizing: border-box;
+      padding: 3px 8px;
       border-radius: var(--radius-full);
       display: inline-flex;
       align-items: center;
-      justify-content: center;
       gap: 5px;
       cursor: pointer;
-      line-height: 1;
       transition: all 0.2s cubic-bezier(0.3, 0, 0.2, 1);
     }
 
@@ -1146,32 +1109,6 @@
       background: rgba(78, 226, 236, 0.25);
       border-color: var(--accent-cyan);
       box-shadow: 0 0 12px rgba(78, 226, 236, 0.35);
-      transform: translateY(-1px);
-    }
-
-    .sync-yt-link {
-      background: rgba(78, 226, 236, 0.08);
-      border: 1px solid rgba(78, 226, 236, 0.28);
-      color: var(--accent-cyan);
-      font-size: 0.72rem;
-      font-weight: 600;
-      font-family: var(--font-display);
-      padding: 0 8px;
-      height: 24px;
-      box-sizing: border-box;
-      border-radius: var(--radius-full);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      text-decoration: none;
-      line-height: 1;
-      transition: all 0.2s cubic-bezier(0.3, 0, 0.2, 1);
-    }
-
-    .sync-yt-link:hover {
-      background: rgba(78, 226, 236, 0.2);
-      border-color: var(--accent-cyan);
       transform: translateY(-1px);
     }
 
@@ -1579,7 +1516,6 @@
       align-items: center;
       gap: 0.75rem;
       width: 220px;
-      min-width: 0;
       flex-shrink: 0;
     }
 
@@ -1607,8 +1543,6 @@
     }
 
     .dock-text {
-      flex: 1;
-      min-width: 0;
       overflow: hidden;
     }
 
@@ -1637,7 +1571,6 @@
       align-items: center;
       justify-content: center;
       gap: 0.65rem;
-      flex: 1;
     }
 
     .ctrl-btn {
@@ -1667,8 +1600,8 @@
       font-size: 0.75rem;
       font-family: var(--font-mono);
       font-weight: 700;
-      width: 40px;
-      height: 40px;
+      width: 42px;
+      height: 42px;
       background: rgba(255, 255, 255, 0.09);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
@@ -1694,13 +1627,6 @@
       box-shadow: 0 8px 26px rgba(255, 255, 255, 0.3), 0 0 22px rgba(78, 226, 236, 0.5), inset 0 1px 1px #ffffff;
       font-size: 1.15rem;
       margin: 0 0.25rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    #play-icon {
-      transform: translateX(1.5px);
     }
 
     .play-master-btn:hover {
@@ -2459,344 +2385,7 @@
       text-overflow: ellipsis;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
     }
-  
-    /* ==========================================================================
-       UPCOMING PREMIERE SPOTLIGHT BANNER & BADGES
-       ========================================================================== */
-    .upcoming-spotlight-banner {
-      margin-bottom: 12px;
-      border-radius: var(--radius-lg);
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(20, 15, 25, 0.55) 100%);
-      border: 1px solid rgba(239, 68, 68, 0.45);
-      box-shadow: 0 4px 20px rgba(220, 38, 38, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.25);
-      padding: 10px 12px;
-      position: relative;
-      overflow: hidden;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      animation: banner-fade-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
-    }
-
-    @keyframes banner-fade-in {
-      from { opacity: 0; transform: translateY(-6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .upcoming-banner-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-
-    .upcoming-badge-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: linear-gradient(135deg, #ef4444, #dc2626);
-      color: #ffffff;
-      font-size: 0.62rem;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      letter-spacing: 0.04em;
-      padding: 2px 8px;
-      border-radius: var(--radius-full);
-      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.5);
-    }
-
-    .upcoming-countdown-tag {
-      font-size: 0.72rem;
-      font-weight: 700;
-      font-family: var(--font-mono);
-      color: #fca5a5;
-      text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
-    }
-
-    .upcoming-banner-body {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .upcoming-banner-thumb-wrap {
-      position: relative;
-      width: 48px;
-      height: 48px;
-      flex-shrink: 0;
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid rgba(239, 68, 68, 0.5);
-      box-shadow: 0 2px 10px rgba(220, 38, 38, 0.3);
-    }
-
-    .upcoming-banner-thumb {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .upcoming-banner-details {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .upcoming-banner-title {
-      font-size: 0.82rem;
-      font-weight: 700;
-      color: #ffffff;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-bottom: 2px;
-    }
-
-    .upcoming-banner-artist {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      margin-bottom: 6px;
-    }
-
-    .upcoming-banner-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .upcoming-yt-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      height: 26px;
-      box-sizing: border-box;
-      background: linear-gradient(135deg, #ef4444, #b91c1c);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: #ffffff;
-      font-size: 0.7rem;
-      font-weight: 700;
-      font-family: var(--font-display);
-      padding: 0 10px;
-      border-radius: var(--radius-full);
-      text-decoration: none;
-      line-height: 1;
-      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
-      transition: all 0.2s ease;
-    }
-
-    .upcoming-yt-btn:hover {
-      transform: scale(1.02);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
-    }
-
-    .upcoming-preview-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      height: 26px;
-      box-sizing: border-box;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: var(--text-primary);
-      font-size: 0.7rem;
-      font-weight: 600;
-      font-family: var(--font-display);
-      padding: 0 10px;
-      border-radius: var(--radius-full);
-      cursor: pointer;
-      line-height: 1;
-      transition: all 0.2s ease;
-    }
-
-    .upcoming-preview-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .upcoming-indicator-tag {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(239, 68, 68, 0.22);
-      border: 1px solid rgba(239, 68, 68, 0.55);
-      color: #f87171;
-      font-size: 0.55rem;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      padding: 0 5px;
-      height: 16px;
-      box-sizing: border-box;
-      border-radius: 4px;
-      letter-spacing: 0.04em;
-      flex-shrink: 0;
-      line-height: 1;
-    }
-
-    /* Modal Backdrop & Card for Upcoming Premiere */
-    .upcoming-modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      padding: 16px;
-      animation: modal-fade-in 0.25s ease-out;
-    }
-
-    @keyframes modal-fade-in {
-      from { opacity: 0; transform: scale(0.96); }
-      to { opacity: 1; transform: scale(1); }
-    }
-
-    .upcoming-modal-card {
-      max-width: 420px;
-      width: 100%;
-      border-radius: 20px;
-      padding: 24px 20px;
-      border: 1px solid rgba(239, 68, 68, 0.45);
-      background: rgba(20, 16, 26, 0.94);
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85), 0 0 30px rgba(239, 68, 68, 0.25);
-      text-align: center;
-      position: relative;
-    }
-
-    .upcoming-modal-close {
-      position: absolute;
-      top: 14px;
-      right: 14px;
-      background: rgba(255, 255, 255, 0.1);
-      border: none;
-      color: var(--text-secondary);
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.9rem;
-      transition: all 0.2s ease;
-    }
-
-    .upcoming-modal-close:hover {
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff;
-    }
-
-    .upcoming-modal-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: linear-gradient(135deg, #ef4444, #b91c1c);
-      color: #ffffff;
-      font-size: 0.65rem;
-      font-weight: 800;
-      font-family: var(--font-mono);
-      letter-spacing: 0.05em;
-      padding: 4px 12px;
-      border-radius: var(--radius-full);
-      margin-bottom: 16px;
-      box-shadow: 0 2px 10px rgba(239, 68, 68, 0.5);
-    }
-
-    .upcoming-modal-artwork-wrap {
-      position: relative;
-      width: 160px;
-      height: 160px;
-      margin: 0 auto 16px;
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1.5px solid rgba(239, 68, 68, 0.5);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(239, 68, 68, 0.35);
-    }
-
-    .upcoming-modal-thumb {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .upcoming-modal-countdown {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: rgba(0, 0, 0, 0.85);
-      color: #fca5a5;
-      font-family: var(--font-mono);
-      font-size: 0.72rem;
-      font-weight: 800;
-      padding: 4px;
-      letter-spacing: 0.04em;
-    }
-
-    .upcoming-modal-title {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #ffffff;
-      margin-bottom: 4px;
-      line-height: 1.35;
-    }
-
-    .upcoming-modal-artist {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      margin-bottom: 12px;
-    }
-
-    .upcoming-modal-desc {
-      font-size: 0.78rem;
-      color: rgba(255, 255, 255, 0.75);
-      line-height: 1.5;
-      margin-bottom: 18px;
-    }
-
-    .upcoming-modal-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .upcoming-modal-yt-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      background: #dc2626;
-      color: #ffffff;
-      font-size: 0.84rem;
-      font-weight: 700;
-      padding: 10px 16px;
-      border-radius: var(--radius-full);
-      text-decoration: none;
-      box-shadow: 0 4px 14px rgba(220, 38, 38, 0.5);
-      transition: all 0.2s ease;
-    }
-
-    .upcoming-modal-yt-btn:hover {
-      background: #b91c1c;
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(220, 38, 38, 0.7);
-    }
-
-    .upcoming-modal-dismiss-btn {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: var(--text-primary);
-      font-size: 0.8rem;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: var(--radius-full);
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .upcoming-modal-dismiss-btn:hover {
-      background: rgba(255, 255, 255, 0.18);
-    }
-</style>
+  </style>
 </head>
 <body>
 
@@ -2815,37 +2404,7 @@
   </div>
 
   <!-- Toast Notification (iOS Dynamic Island Liquid Glass) -->
-  
-  <!-- UPCOMING PREMIERE MODAL -->
-  <div id="upcoming-premiere-modal" class="upcoming-modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="upcoming-modal-title">
-    <div class="upcoming-modal-card">
-      <button class="upcoming-modal-close" id="upcoming-modal-close" aria-label="Close dialog">✕</button>
-      <div class="upcoming-modal-badge">
-        <span class="pulse-live-dot"></span>
-        <span>UPCOMING YOUTUBE PREMIERE</span>
-      </div>
-      <div class="upcoming-modal-artwork-wrap">
-        <img id="upcoming-modal-thumb" class="upcoming-modal-thumb" src="" alt="Upcoming track thumbnail" />
-        <div class="upcoming-modal-countdown" id="upcoming-modal-countdown">Starts Soon</div>
-      </div>
-      <h3 class="upcoming-modal-title" id="upcoming-modal-title">Track Title</h3>
-      <p class="upcoming-modal-artist" id="upcoming-modal-artist">Slowedfy</p>
-      <p class="upcoming-modal-desc">This video song is scheduled to premiere soon on YouTube. Audio playback will become available automatically when the premiere airs.</p>
-      <div class="upcoming-modal-buttons">
-        <a id="upcoming-modal-yt-btn" href="#" target="_blank" rel="noopener noreferrer" class="upcoming-modal-yt-btn">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-          </svg>
-          <span>Watch Live Premiere on YouTube</span>
-        </a>
-        <button type="button" class="upcoming-modal-dismiss-btn" id="upcoming-modal-dismiss-btn">
-          <span>Close</span>
-        </button>
-      </div>
-    </div>
-  </div>
-
-<div id="toast" class="toast-pill" role="status" aria-live="polite">
+  <div id="toast" class="toast-pill" role="status" aria-live="polite">
     <span id="toast-icon" class="toast-icon-badge">✨</span>
     <span id="toast-text">Slowedfy Ready</span>
   </div>
@@ -2947,14 +2506,14 @@
               <span class="playlist-title">Slowedfy Playlist</span>
               <span class="playlist-count-badge" id="playlist-count-label">100 Songs</span>
             </div>
-            <div class="sync-actions-wrap">
+            <div class="sync-actions-wrap" style="display: flex; align-items: center; gap: 8px;">
               <button class="sync-refresh-btn" id="sync-refresh-btn" title="Auto-Sync with YouTube Playlist (Click to check updates)" aria-label="Auto Sync Playlist">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                 </svg>
                 <span>Live Sync</span>
               </button>
-              <a href="https://youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS&si=TFXs9xxb1dmMAj3" target="_blank" rel="noopener noreferrer" class="sync-yt-link" title="Open Official YouTube Playlist">
+              <a href="https://youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS&si=TFXs9xxb1dmMAj3" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Open Official YouTube Playlist">
                 <span>YouTube</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -2973,38 +2532,7 @@
             <input type="text" id="playlist-search-input" class="search-input" placeholder="Search track or artist..." aria-label="Search playlist" />
           </div>
 
-          
-          <!-- Real-Time Upcoming Premiere Alert Banner -->
-          <div id="upcoming-spotlight-banner" class="upcoming-spotlight-banner" style="display: none;">
-            <div class="upcoming-banner-top">
-              <span class="upcoming-badge-pill">
-                <span class="pulse-live-dot"></span>
-                <span>UPCOMING PREMIERE</span>
-              </span>
-              <span id="upcoming-countdown-tag" class="upcoming-countdown-tag">Starts Soon</span>
-            </div>
-            <div class="upcoming-banner-body">
-              <div class="upcoming-banner-thumb-wrap">
-                <img id="upcoming-banner-thumb" class="upcoming-banner-thumb" src="" alt="Upcoming Song Artwork" loading="lazy" />
-              </div>
-              <div class="upcoming-banner-details">
-                <div id="upcoming-banner-title" class="upcoming-banner-title">Upcoming Song Title</div>
-                <div id="upcoming-banner-artist" class="upcoming-banner-artist">Slowedfy</div>
-                <div class="upcoming-banner-actions">
-                  <a id="upcoming-banner-yt-link" href="#" target="_blank" rel="noopener noreferrer" class="upcoming-yt-btn" title="Open YouTube Premiere">
-                    <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
-                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                    </svg>
-                    <span>Watch on YouTube</span>
-                  </a>
-                  <button id="upcoming-banner-preview-btn" type="button" class="upcoming-preview-btn" title="Preview Upcoming Song">
-                    <span>Preview</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-<div class="playlist-scroll" id="playlist-items-container" role="list">
+          <div class="playlist-scroll" id="playlist-items-container" role="list">
             <!-- Dynamically populated playlist items -->
           </div>
         </div>
@@ -3509,19 +3037,8 @@
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
   {
-    "id": "KeqMouF_d38",
-    "title": "Mohabbat Ne Mohabbat Ko│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy",
-    "artist": "Slowedfy",
-    "duration": "PREMIERE",
-    "seconds": 318,
-    "thumb": "https://i.ytimg.com/vi/KeqMouF_d38/hqdefault.jpg",
-    "isPremiere": true,
-    "premiereText": "Upcoming",
-    "startTime": 1788607560000
-  },
-  {
     "id": "DBDOXlXqJSc",
-    "title": "Sammi Meri Waar│Lashari_Waves│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Sammi Meri Waar\u2502Lashari_Waves\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "1:29",
     "seconds": 89,
@@ -3530,7 +3047,7 @@
   },
   {
     "id": "eEvEWdrjNnY",
-    "title": "SAWAN AAYA HAI│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "SAWAN AAYA HAI\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:09",
     "seconds": 309,
@@ -3539,7 +3056,7 @@
   },
   {
     "id": "pDjOa01cJZ8",
-    "title": "HUM TUMKO NIGAHON MEIN│UDIT NARAYAN│SHREYA GHOSHAL│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "HUM TUMKO NIGAHON MEIN\u2502UDIT NARAYAN\u2502SHREYA GHOSHAL\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "6:28",
     "seconds": 388,
@@ -3548,7 +3065,7 @@
   },
   {
     "id": "6e3A3uy5-oE",
-    "title": "Tose Naina Part 2│Twin Strings│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Tose Naina Part 2\u2502Twin Strings\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:04",
     "seconds": 244,
@@ -3557,7 +3074,7 @@
   },
   {
     "id": "u-7qtk4erLI",
-    "title": "Sawaal│Abhijeet Srivastava│Siddhant Bhosle│Shayra Apoorva│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Sawaal\u2502Abhijeet Srivastava\u2502Siddhant Bhosle\u2502Shayra Apoorva\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:48",
     "seconds": 228,
@@ -3566,7 +3083,7 @@
   },
   {
     "id": "Rqj84MPskYg",
-    "title": "Barsaat X Spider-Man (Brand New Day Edition)│Banjaare│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Barsaat X Spider-Man (Brand New Day Edition)\u2502Banjaare\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:36",
     "seconds": 216,
@@ -3575,7 +3092,7 @@
   },
   {
     "id": "CGhj1PiFtik",
-    "title": "Ae Watan│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Ae Watan\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:00",
     "seconds": 240,
@@ -3584,7 +3101,7 @@
   },
   {
     "id": "-CKojNFWePw",
-    "title": "Desh Mere│Arijit Singh│Arko│Manoj Muntashir│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Desh Mere\u2502Arijit Singh\u2502Arko\u2502Manoj Muntashir\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:39",
     "seconds": 219,
@@ -3593,7 +3110,7 @@
   },
   {
     "id": "t6Gui-sGGLo",
-    "title": "Bandhu 2.0│Pritam│Kavita Seth│Neeraj Shridhar│Irshad Kamil│(Slowed + Reverb)By Beat Badge × Slowedfy",
+    "title": "Bandhu 2.0\u2502Pritam\u2502Kavita Seth\u2502Neeraj Shridhar\u2502Irshad Kamil\u2502(Slowed + Reverb)By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:18",
     "seconds": 258,
@@ -3602,7 +3119,7 @@
   },
   {
     "id": "GfJwmqN8rjw",
-    "title": "Barsaat│Banjaare│Roni│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Barsaat\u2502Banjaare\u2502Roni\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:36",
     "seconds": 216,
@@ -3611,7 +3128,7 @@
   },
   {
     "id": "S0fanhGd3cQ",
-    "title": "KALYANI (Remix)│ARJN│KDS│FIFTY4│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "KALYANI (Remix)\u2502ARJN\u2502KDS\u2502FIFTY4\u2502Shreya Ghoshal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:13",
     "seconds": 313,
@@ -3620,7 +3137,7 @@
   },
   {
     "id": "ZHNfNS79LEU",
-    "title": "Baarish│Ash King│Shashaa Tirupati│Tanishk Bagchi│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Baarish\u2502Ash King\u2502Shashaa Tirupati\u2502Tanishk Bagchi\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:21",
     "seconds": 321,
@@ -3629,7 +3146,7 @@
   },
   {
     "id": "ySDg2muCu5g",
-    "title": "HANGOVER│Meet Bros Anjjan│Shreya Ghoshal│Salman Khan│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "HANGOVER\u2502Meet Bros Anjjan\u2502Shreya Ghoshal\u2502Salman Khan\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "7:15",
     "seconds": 435,
@@ -3638,7 +3155,7 @@
   },
   {
     "id": "kyCZhqZCKo4",
-    "title": "Halka Halka│Fanney Khan│Sunidhi Chauhan│Divya Kumar│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Halka Halka\u2502Fanney Khan\u2502Sunidhi Chauhan\u2502Divya Kumar\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:47",
     "seconds": 287,
@@ -3647,7 +3164,7 @@
   },
   {
     "id": "JWW8LTBKvX4",
-    "title": "Itna Na Mujhse Tu Pyar Barha (E V)│Lashari Waves│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Itna Na Mujhse Tu Pyar Barha (E V)\u2502Lashari Waves\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "6:36",
     "seconds": 396,
@@ -3656,7 +3173,7 @@
   },
   {
     "id": "LfcM7UG7LGo",
-    "title": "Tu Aashiqui Hai Meri│Payal Dev│Stebin Ben│Kunaal Vermaa│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Tu Aashiqui Hai Meri\u2502Payal Dev\u2502Stebin Ben\u2502Kunaal Vermaa\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:56",
     "seconds": 236,
@@ -3665,7 +3182,7 @@
   },
   {
     "id": "ngt6qNFd3Dw",
-    "title": "Udd Jaa Kaale Kaava│Mithoon│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Udd Jaa Kaale Kaava\u2502Mithoon\u2502Udit Narayan\u2502Alka Yagnik\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:34",
     "seconds": 334,
@@ -3674,7 +3191,7 @@
   },
   {
     "id": "M_XdVD1fKZk",
-    "title": "Teri Saanson Mein│Arijit Singh│Palak Muchhal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Teri Saanson Mein\u2502Arijit Singh\u2502Palak Muchhal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "7:02",
     "seconds": 422,
@@ -3683,7 +3200,7 @@
   },
   {
     "id": "6nW8lL3a1HM",
-    "title": "Marjaana│B Praak│Siddhaant Miishhraa│Sameer Anjaan│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Marjaana\u2502B Praak\u2502Siddhaant Miishhraa\u2502Sameer Anjaan\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "6:09",
     "seconds": 369,
@@ -3692,7 +3209,7 @@
   },
   {
     "id": "h5yECiD4XOw",
-    "title": "Guzaara│Josh Brar│Parampara Tandon│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Guzaara\u2502Josh Brar\u2502Parampara Tandon\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:43",
     "seconds": 283,
@@ -3701,7 +3218,7 @@
   },
   {
     "id": "C0rr10to1WQ",
-    "title": "Inaam│Jasleen Royal│Badshah│Ansh Chahal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Inaam\u2502Jasleen Royal\u2502Badshah\u2502Ansh Chahal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:28",
     "seconds": 208,
@@ -3710,7 +3227,7 @@
   },
   {
     "id": "F2v3VEHp86E",
-    "title": "Sheesha│Swara Verma│Mitta Ror│Yeah Ishwar│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Sheesha\u2502Swara Verma\u2502Mitta Ror\u2502Yeah Ishwar\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:48",
     "seconds": 228,
@@ -3719,7 +3236,7 @@
   },
   {
     "id": "11u8LYPQj_U",
-    "title": "Dooron Dooron│Paresh Pahuja│Shiv Tandan│Meghdeep Bose│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Dooron Dooron\u2502Paresh Pahuja\u2502Shiv Tandan\u2502Meghdeep Bose\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:11",
     "seconds": 251,
@@ -3728,7 +3245,7 @@
   },
   {
     "id": "of4tzitGzuI",
-    "title": "Teri Meri Kahaani│Arijit Singh│Palak Muchhal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Teri Meri Kahaani\u2502Arijit Singh\u2502Palak Muchhal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "6:24",
     "seconds": 384,
@@ -3737,7 +3254,7 @@
   },
   {
     "id": "eW74hcWkcMc",
-    "title": "MANWA LAAGE│VISHAL-SHEKHAR│SHREYA GHOSHAL│ARIJIT SINGH│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "MANWA LAAGE\u2502VISHAL-SHEKHAR\u2502SHREYA GHOSHAL\u2502ARIJIT SINGH\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:16",
     "seconds": 316,
@@ -3746,7 +3263,7 @@
   },
   {
     "id": "Cik-CBXIbds",
-    "title": "Udi Udi│Aneesh│Sarkar│Hruday│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Udi Udi\u2502Aneesh\u2502Sarkar\u2502Hruday\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:02",
     "seconds": 182,
@@ -3755,7 +3272,7 @@
   },
   {
     "id": "yYkANg_nzus",
-    "title": "Tera Yaar Hoon Main│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Tera Yaar Hoon Main\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:07",
     "seconds": 307,
@@ -3764,7 +3281,7 @@
   },
   {
     "id": "F8IyE3lB4mY",
-    "title": "Tum Kya Mile│Pritam│Arijit Singh│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Tum Kya Mile\u2502Pritam\u2502Arijit Singh\u2502Shreya Ghoshal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:22",
     "seconds": 322,
@@ -3773,7 +3290,7 @@
   },
   {
     "id": "4f0cM93wOIg",
-    "title": "Ve Kamleya│Pritam│Arijit Singh│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Ve Kamleya\u2502Pritam\u2502Arijit Singh\u2502Shreya Ghoshal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:47",
     "seconds": 287,
@@ -3782,7 +3299,7 @@
   },
   {
     "id": "LNTJwfqMZI0",
-    "title": "Baarish Mein Phir│Saahel│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Baarish Mein Phir\u2502Saahel\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:26",
     "seconds": 206,
@@ -3791,7 +3308,7 @@
   },
   {
     "id": "QSDuk5lHijI",
-    "title": "Bairan│Banjaare│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Bairan\u2502Banjaare\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "2:56",
     "seconds": 176,
@@ -3800,7 +3317,7 @@
   },
   {
     "id": "uh_z6cfvqDk",
-    "title": "Gehra Hua│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Gehra Hua\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "6:59",
     "seconds": 419,
@@ -3809,7 +3326,7 @@
   },
   {
     "id": "fUWYADr1ims",
-    "title": "Naach Meri Jaan│Pritam│Kamaal Khan│Nakash Aziz & Dev Negi│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Naach Meri Jaan\u2502Pritam\u2502Kamaal Khan\u2502Nakash Aziz & Dev Negi\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:22",
     "seconds": 322,
@@ -3818,7 +3335,7 @@
   },
   {
     "id": "81qAr4g7Lvg",
-    "title": "Main Agar│Pritam│Atif Aslam│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Main Agar\u2502Pritam\u2502Atif Aslam\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:24",
     "seconds": 324,
@@ -3827,7 +3344,7 @@
   },
   {
     "id": "mUfBpDoVrbc",
-    "title": "Khat│Navjot Ahuja│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Khat\u2502Navjot Ahuja\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:32",
     "seconds": 332,
@@ -3836,7 +3353,7 @@
   },
   {
     "id": "zX861h8JRI8",
-    "title": "O Khuda│Amaal Mallik│Palak Muchhal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "O Khuda\u2502Amaal Mallik\u2502Palak Muchhal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:44",
     "seconds": 344,
@@ -3845,7 +3362,7 @@
   },
   {
     "id": "I8hdvhHlrqw",
-    "title": "Sab Tera│Armaan Malik│Shraddha Kapoor│Amaal Malik│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Sab Tera\u2502Armaan Malik\u2502Shraddha Kapoor\u2502Amaal Malik\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:16",
     "seconds": 256,
@@ -3854,7 +3371,7 @@
   },
   {
     "id": "Q2EbDqptQys",
-    "title": "Tu Hi Disda│Pritam│Arijit Singh│Nikhita Gandhi│Kumaar│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Tu Hi Disda\u2502Pritam\u2502Arijit Singh\u2502Nikhita Gandhi\u2502Kumaar\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:11",
     "seconds": 311,
@@ -3863,7 +3380,7 @@
   },
   {
     "id": "GLUC51EVYTk",
-    "title": "Mahi Aaja (Unplugged)│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Mahi Aaja (Unplugged)\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:15",
     "seconds": 255,
@@ -3872,7 +3389,7 @@
   },
   {
     "id": "QpUCa02EnIk",
-    "title": "Awara│Muskaan│Salman Ali│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Awara\u2502Muskaan\u2502Salman Ali\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:44",
     "seconds": 344,
@@ -3881,7 +3398,7 @@
   },
   {
     "id": "kLqC9_LxAy0",
-    "title": "Oh Sanam│Tony Kakkar│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Oh Sanam\u2502Tony Kakkar\u2502Shreya Ghoshal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:04",
     "seconds": 244,
@@ -3890,7 +3407,7 @@
   },
   {
     "id": "Urtlx47w2XY",
-    "title": "Udta Jaaye│Alok│Rashmeet Kaur│KR$NA│Garena Free Fire MAX│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Udta Jaaye\u2502Alok\u2502Rashmeet Kaur\u2502KR$NA\u2502Garena Free Fire MAX\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:26",
     "seconds": 206,
@@ -3899,7 +3416,7 @@
   },
   {
     "id": "f8Kcieoe0zM",
-    "title": "Sahiba│Jasleen Royal│Stebin Ben (Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Sahiba\u2502Jasleen Royal\u2502Stebin Ben (Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:13",
     "seconds": 253,
@@ -3908,7 +3425,7 @@
   },
   {
     "id": "gzP_ojMFCmQ",
-    "title": "Mera Dil Bhi Kitna Pagal Hai│Stebin Ben│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Mera Dil Bhi Kitna Pagal Hai\u2502Stebin Ben\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:54",
     "seconds": 234,
@@ -3917,7 +3434,7 @@
   },
   {
     "id": "vTKEMER9kiU",
-    "title": "Oh Humsafar│Neha Kakkar│Tony Kakkar│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Oh Humsafar\u2502Neha Kakkar\u2502Tony Kakkar\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "6:23",
     "seconds": 383,
@@ -3926,7 +3443,7 @@
   },
   {
     "id": "X11T1jOhDAA",
-    "title": "Mansoob│Kaifi Khalil│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Mansoob\u2502Kaifi Khalil\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:11",
     "seconds": 191,
@@ -3935,7 +3452,7 @@
   },
   {
     "id": "gFSlaYkfuIY",
-    "title": "Kitab│Mr Dutt│Vipin Foji│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Kitab\u2502Mr Dutt\u2502Vipin Foji\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:32",
     "seconds": 212,
@@ -3944,7 +3461,7 @@
   },
   {
     "id": "Mwg5LDUHaSc",
-    "title": "Toota Jo Kabhi Tara│Atif Aslam│Sumedha Karmahe│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Toota Jo Kabhi Tara\u2502Atif Aslam\u2502Sumedha Karmahe\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:53",
     "seconds": 353,
@@ -3953,7 +3470,7 @@
   },
   {
     "id": "x8Y-NgZioCc",
-    "title": "Khoobsurat│Kunaal Vermaa│Jubin Nautiyal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Khoobsurat\u2502Kunaal Vermaa\u2502Jubin Nautiyal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:58",
     "seconds": 298,
@@ -3962,7 +3479,7 @@
   },
   {
     "id": "7cVIosSjAkQ",
-    "title": "ISHQ MUBARAK│Arijit Singh│Ankit Tiwari│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "ISHQ MUBARAK\u2502Arijit Singh\u2502Ankit Tiwari\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:44",
     "seconds": 344,
@@ -3971,7 +3488,7 @@
   },
   {
     "id": "P_ocoe9JUpM",
-    "title": "Suno- Na Sangemarmar│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Suno- Na Sangemarmar\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:55",
     "seconds": 235,
@@ -3980,7 +3497,7 @@
   },
   {
     "id": "CCbELrSOuqM",
-    "title": "Heeriye│Arijit Singh│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Heeriye\u2502Arijit\u00a0Singh\u2502Shreya\u00a0Ghoshal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "6:24",
     "seconds": 384,
@@ -3989,7 +3506,7 @@
   },
   {
     "id": "gfOZBwK56D8",
-    "title": "Jo Tum Mere Ho│Anuv Jain│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Jo Tum Mere Ho\u2502Anuv Jain\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:52",
     "seconds": 292,
@@ -3998,7 +3515,7 @@
   },
   {
     "id": "vc4DCNN_xRw",
-    "title": "Zaalima│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Zaalima\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:47",
     "seconds": 347,
@@ -4007,7 +3524,7 @@
   },
   {
     "id": "OxY62_zpb_E",
-    "title": "OODHNI│Udit Narayan│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "OODHNI\u2502Udit Narayan\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "7:54",
     "seconds": 474,
@@ -4016,7 +3533,7 @@
   },
   {
     "id": "bwBtM3Of6co",
-    "title": "Dekhte Dekhte│Atif Aslam│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Dekhte Dekhte\u2502Atif Aslam\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:58",
     "seconds": 298,
@@ -4025,7 +3542,7 @@
   },
   {
     "id": "n2Onfs_35IE",
-    "title": "KAUN TUJHE│Palak Muchhal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "KAUN TUJHE\u2502Palak Muchhal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:40",
     "seconds": 280,
@@ -4034,7 +3551,7 @@
   },
   {
     "id": "jVUdEj8OyNc",
-    "title": "Janam Janam│Pritam│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Janam Janam\u2502Pritam\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "4:19",
     "seconds": 259,
@@ -4043,7 +3560,7 @@
   },
   {
     "id": "kLg481Z_ils",
-    "title": "RABBA│Mohit Chauhan│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "RABBA\u2502Mohit Chauhan\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:18",
     "seconds": 318,
@@ -4052,7 +3569,7 @@
   },
   {
     "id": "1WYLobgdKcw",
-    "title": "Mann Jogiya│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Mann Jogiya\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:08",
     "seconds": 308,
@@ -4061,7 +3578,7 @@
   },
   {
     "id": "ModNSPkRaZY",
-    "title": "Chal Wahan Jaate Hain│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Chal Wahan Jaate Hain\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "6:18",
     "seconds": 378,
@@ -4070,7 +3587,7 @@
   },
   {
     "id": "sAtL_fvmkzE",
-    "title": "Raaz Aankhein Teri│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Raaz Aankhein Teri\u2502Arijit Singh\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:38",
     "seconds": 338,
@@ -4079,7 +3596,7 @@
   },
   {
     "id": "wBrNMIgeVfo",
-    "title": "Sunn Raha Hai Na Tu│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Sunn Raha Hai Na Tu\u2502Shreya Ghoshal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "6:05",
     "seconds": 365,
@@ -4088,7 +3605,7 @@
   },
   {
     "id": "jaqQbp0BxR0",
-    "title": "Sun Saawariya｜Accha Insaan｜(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Sun Saawariya\uff5cAccha Insaan\uff5c(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:02",
     "seconds": 182,
@@ -4097,7 +3614,7 @@
   },
   {
     "id": "z8ke-aXvi2A",
-    "title": "Aarzu｜Noor, Khan｜Madhurxo｜(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Aarzu\uff5cNoor, Khan\uff5cMadhurxo\uff5c(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:38",
     "seconds": 218,
@@ -4106,7 +3623,7 @@
   },
   {
     "id": "g3LQrsoR52U",
-    "title": "Arz Kiya Hai｜Coke Studio Bharat｜Anuv Jain (Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Arz Kiya Hai\uff5cCoke Studio Bharat\uff5cAnuv Jain (Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:34",
     "seconds": 334,
@@ -4115,7 +3632,7 @@
   },
   {
     "id": "F_0mG_IuVnI",
-    "title": "Majboor | Sheheryar Rehan × Zoha Waseem (Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "Majboor | Sheheryar Rehan \u00d7 Zoha Waseem (Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "2:50",
     "seconds": 170,
@@ -4124,7 +3641,7 @@
   },
   {
     "id": "F0B6HMOb5q8",
-    "title": "The Last Letter - Maan Panu (Slowed + Reverb) By Beat Badge × Slowedfy",
+    "title": "The Last Letter - Maan Panu (Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
     "duration": "3:16",
     "seconds": 196,
@@ -4133,7 +3650,7 @@
   },
   {
     "id": "bd2YfPSZmbA",
-    "title": "Abhi Mujh Mein Kahin (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Abhi Mujh Mein Kahin (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "6:54",
     "seconds": 414,
@@ -4142,7 +3659,7 @@
   },
   {
     "id": "6PS0cGf2okY",
-    "title": "I'm Done. Ft.Maan Panu (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "I'm Done. Ft.Maan Panu (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "3:04",
     "seconds": 184,
@@ -4151,7 +3668,7 @@
   },
   {
     "id": "AiOa944xajQ",
-    "title": "Emptiness Drill - Arif Khan (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Emptiness Drill - Arif Khan (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "3:51",
     "seconds": 231,
@@ -4160,7 +3677,7 @@
   },
   {
     "id": "RN1NJcqChU8",
-    "title": "Tony Kakkar 90's Kid (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Tony Kakkar 90's Kid (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "2:36",
     "seconds": 156,
@@ -4169,7 +3686,7 @@
   },
   {
     "id": "DKjRwuGMgxQ",
-    "title": "Oh Sanam (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Oh Sanam (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "3:01",
     "seconds": 181,
@@ -4178,7 +3695,7 @@
   },
   {
     "id": "DbrUruNWRao",
-    "title": "Sooraj Dooba Hai (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Sooraj Dooba Hai (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:48",
     "seconds": 288,
@@ -4187,7 +3704,7 @@
   },
   {
     "id": "FADqxZQIQpU",
-    "title": "Rasiya (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Rasiya (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:49",
     "seconds": 289,
@@ -4196,7 +3713,7 @@
   },
   {
     "id": "SIQKofy1_hw",
-    "title": "Daayre (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Daayre (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "5:23",
     "seconds": 323,
@@ -4205,7 +3722,7 @@
   },
   {
     "id": "fcmPhZxgUnA",
-    "title": "Matt Jaao (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Matt Jaao (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:39",
     "seconds": 279,
@@ -4214,7 +3731,7 @@
   },
   {
     "id": "opuoueY-Nk8",
-    "title": "Koi Itna Khoobsurat Kaise Ho Sakta Hai (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Koi Itna Khoobsurat Kaise Ho Sakta Hai (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:28",
     "seconds": 268,
@@ -4223,7 +3740,7 @@
   },
   {
     "id": "T1wU3RANPqI",
-    "title": "Friends Forever Mashup (Memories + Mashup) By Beat Badge × GW IMRAN",
+    "title": "Friends Forever Mashup (Memories + Mashup) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "5:49",
     "seconds": 349,
@@ -4232,7 +3749,7 @@
   },
   {
     "id": "viUC9_5qKro",
-    "title": "Breakup Mashup 2021 (Memories + Mashup) By Beat Badge × GW IMRAN",
+    "title": "Breakup Mashup 2021 (Memories + Mashup) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "3:55",
     "seconds": 235,
@@ -4241,7 +3758,7 @@
   },
   {
     "id": "IH1OlawmkLg",
-    "title": "Tumhare Hi Rahenge Hum (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Tumhare Hi Rahenge Hum (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:16",
     "seconds": 256,
@@ -4250,7 +3767,7 @@
   },
   {
     "id": "sUpzVOUhVSI",
-    "title": "Sahiba (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Sahiba (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "3:40",
     "seconds": 220,
@@ -4259,7 +3776,7 @@
   },
   {
     "id": "3EZCScONDhI",
-    "title": "Chal Diye Tum Kahan (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Chal Diye Tum Kahan (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:50",
     "seconds": 290,
@@ -4268,7 +3785,7 @@
   },
   {
     "id": "07s-UaJzTEI",
-    "title": "Kya Meri Yaad Aati Hai (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Kya Meri Yaad Aati Hai (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:44",
     "seconds": 284,
@@ -4277,7 +3794,7 @@
   },
   {
     "id": "b5rcu_9SsME",
-    "title": "Na Door Hai Na Paas Hai (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Na Door Hai Na Paas Hai (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:36",
     "seconds": 276,
@@ -4286,7 +3803,7 @@
   },
   {
     "id": "Os0iMoI_XA0",
-    "title": "Heer (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Heer (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:45",
     "seconds": 285,
@@ -4295,7 +3812,7 @@
   },
   {
     "id": "Hy6PKofwISw",
-    "title": "Duur Na Karin (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Duur Na Karin (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "2:59",
     "seconds": 179,
@@ -4304,7 +3821,7 @@
   },
   {
     "id": "_9lXVBh0_YU",
-    "title": "Tera Mera Hai Pyaar Amar (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Tera Mera Hai Pyaar Amar (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "3:43",
     "seconds": 223,
@@ -4313,7 +3830,7 @@
   },
   {
     "id": "BONFy4t2NI8",
-    "title": "Dil Diyan Gallan (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Dil Diyan Gallan (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:56",
     "seconds": 296,
@@ -4322,7 +3839,7 @@
   },
   {
     "id": "_Sr826w9dDU",
-    "title": "Saiyaara Title Song (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Saiyaara Title Song (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "7:06",
     "seconds": 426,
@@ -4331,7 +3848,7 @@
   },
   {
     "id": "Dv6Sg13Juno",
-    "title": "Jhol - Maanu × Annural Khalid (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Jhol - Maanu \u00d7 Annural Khalid (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:46",
     "seconds": 286,
@@ -4340,7 +3857,7 @@
   },
   {
     "id": "jV3b97ZXzDA",
-    "title": "Kalank (Bonus Track) (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Kalank (Bonus Track) (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "5:27",
     "seconds": 327,
@@ -4349,7 +3866,7 @@
   },
   {
     "id": "L4GXJURT1VU",
-    "title": "Bhagwan Hai Kahan Re Tu (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Bhagwan Hai Kahan Re Tu (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "5:58",
     "seconds": 358,
@@ -4358,7 +3875,7 @@
   },
   {
     "id": "UudCm021zXo",
-    "title": "Bezubaan - Satyajeet Jena (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Bezubaan - Satyajeet Jena (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "7:04",
     "seconds": 424,
@@ -4367,7 +3884,7 @@
   },
   {
     "id": "o9xZG48bYCA",
-    "title": "Aftab - Tu Bata (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Aftab - Tu Bata (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "3:04",
     "seconds": 184,
@@ -4376,7 +3893,7 @@
   },
   {
     "id": "qPalKSJHIqc",
-    "title": "Main Haara Nahi (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Main Haara Nahi (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "4:17",
     "seconds": 257,
@@ -4385,7 +3902,7 @@
   },
   {
     "id": "Ai7XopAWVqw",
-    "title": "Industry World By Beat Badge × GW IMRAN",
+    "title": "Industry World By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "2:39",
     "seconds": 159,
@@ -4394,7 +3911,7 @@
   },
   {
     "id": "tdEz7dozQ0E",
-    "title": "Aadami Ek Khilona Hai ft Arrjun pandey (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Aadami Ek Khilona Hai ft Arrjun pandey (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "1:41",
     "seconds": 101,
@@ -4403,7 +3920,7 @@
   },
   {
     "id": "0nCnmAztb9M",
-    "title": "Koi Apna Hoga - Tony Kakkar (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Koi Apna Hoga - Tony Kakkar (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "2:39",
     "seconds": 159,
@@ -4412,7 +3929,7 @@
   },
   {
     "id": "A0B_IGQT5ps",
-    "title": "Yuvi - Soo Jao (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Yuvi - Soo Jao (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "3:42",
     "seconds": 222,
@@ -4421,7 +3938,7 @@
   },
   {
     "id": "AUJBWskmPMw",
-    "title": "Nai Lagda (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Nai Lagda (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "5:31",
     "seconds": 331,
@@ -4430,7 +3947,7 @@
   },
   {
     "id": "NFouINJpWNg",
-    "title": "Finding Her (Slowed + Reverb) By Beat Badge × GW IMRAN",
+    "title": "Finding Her (Slowed + Reverb) By Beat Badge \u00d7 GW IMRAN",
     "artist": "GW IMRAN",
     "duration": "3:33",
     "seconds": 213,
@@ -4439,7 +3956,7 @@
   },
   {
     "id": "gZdv6TX6z1Y",
-    "title": "YAARA │SLOWEDFY VIBES #1",
+    "title": "YAARA \u2502SLOWEDFY VIBES #1",
     "artist": "Slowedfy",
     "duration": "5:01",
     "seconds": 301,
@@ -4536,22 +4053,7 @@
       perfStatusBadge: document.getElementById('perf-status-badge'),
       perfBtnAuto: document.getElementById('perf-btn-auto'),
       perfBtnHigh: document.getElementById('perf-btn-high'),
-      perfBtnEco: document.getElementById('perf-btn-eco'),
-      upcomingSpotlightBanner: document.getElementById('upcoming-spotlight-banner'),
-      upcomingBannerTitle: document.getElementById('upcoming-banner-title'),
-      upcomingBannerArtist: document.getElementById('upcoming-banner-artist'),
-      upcomingBannerThumb: document.getElementById('upcoming-banner-thumb'),
-      upcomingBannerYtLink: document.getElementById('upcoming-banner-yt-link'),
-      upcomingCountdownTag: document.getElementById('upcoming-countdown-tag'),
-      upcomingBannerPreviewBtn: document.getElementById('upcoming-banner-preview-btn'),
-      upcomingPremiereModal: document.getElementById('upcoming-premiere-modal'),
-      upcomingModalThumb: document.getElementById('upcoming-modal-thumb'),
-      upcomingModalTitle: document.getElementById('upcoming-modal-title'),
-      upcomingModalArtist: document.getElementById('upcoming-modal-artist'),
-      upcomingModalCountdown: document.getElementById('upcoming-modal-countdown'),
-      upcomingModalYtBtn: document.getElementById('upcoming-modal-yt-btn'),
-      upcomingModalClose: document.getElementById('upcoming-modal-close'),
-      upcomingModalDismissBtn: document.getElementById('upcoming-modal-dismiss-btn')
+      perfBtnEco: document.getElementById('perf-btn-eco')
     };
 
     /* ==========================================================================
@@ -4886,64 +4388,6 @@
     const playlistItemElements = new Map();
     let currentActiveItemRow = null;
 
-    function formatRemainingTime(ms) {
-      if (ms <= 0) return "🔴 LIVE ON YOUTUBE";
-      const secs = Math.floor(ms / 1000) % 60;
-      const mins = Math.floor(ms / (1000 * 60)) % 60;
-      const hours = Math.floor(ms / (1000 * 60 * 60)) % 24;
-      const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-      if (days > 0) return `Premieres in ${days}d ${hours}h`;
-      if (hours > 0) return `Premieres in ${hours}h ${mins}m ${secs}s`;
-      return `Premieres in ${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
-    }
-
-    function updateUpcomingCountdown(track) {
-      if (!track) return;
-      if (!track.startTime) {
-        const fallbackTxt = track.premiereText || "Upcoming";
-        if (DOM.upcomingCountdownTag) DOM.upcomingCountdownTag.textContent = fallbackTxt;
-        if (DOM.upcomingModalCountdown) DOM.upcomingModalCountdown.textContent = fallbackTxt;
-        return;
-      }
-      const diff = track.startTime - Date.now();
-      const txt = formatRemainingTime(diff);
-      if (DOM.upcomingCountdownTag) DOM.upcomingCountdownTag.textContent = txt;
-      if (DOM.upcomingModalCountdown) DOM.upcomingModalCountdown.textContent = txt;
-      if (diff <= 0) {
-        markTrackAsLive(track.id, track.seconds || 240);
-      }
-    }
-
-    function updateUpcomingSpotlightBanner() {
-      const upcoming = state.playlist.find(t => t.isPremiere);
-      if (!upcoming || !DOM.upcomingSpotlightBanner) {
-        if (DOM.upcomingSpotlightBanner) DOM.upcomingSpotlightBanner.style.display = 'none';
-        return;
-      }
-
-      DOM.upcomingSpotlightBanner.style.display = 'block';
-      if (DOM.upcomingBannerTitle) DOM.upcomingBannerTitle.textContent = upcoming.title;
-      if (DOM.upcomingBannerArtist) DOM.upcomingBannerArtist.textContent = upcoming.artist;
-      if (DOM.upcomingBannerThumb) DOM.upcomingBannerThumb.src = `https://i.ytimg.com/vi/${upcoming.id}/mqdefault.jpg`;
-      if (DOM.upcomingBannerYtLink) DOM.upcomingBannerYtLink.href = `https://www.youtube.com/watch?v=${upcoming.id}`;
-
-      updateUpcomingCountdown(upcoming);
-    }
-
-    function showUpcomingPremiereModal(track) {
-      if (!track || !DOM.upcomingPremiereModal) return;
-      if (DOM.upcomingModalTitle) DOM.upcomingModalTitle.textContent = track.title;
-      if (DOM.upcomingModalArtist) DOM.upcomingModalArtist.textContent = track.artist;
-      if (DOM.upcomingModalThumb) DOM.upcomingModalThumb.src = `https://i.ytimg.com/vi/${track.id}/hqdefault.jpg`;
-      if (DOM.upcomingModalYtBtn) DOM.upcomingModalYtBtn.href = `https://www.youtube.com/watch?v=${track.id}`;
-      updateUpcomingCountdown(track);
-      DOM.upcomingPremiereModal.style.display = 'flex';
-    }
-
-    function hideUpcomingPremiereModal() {
-      if (DOM.upcomingPremiereModal) DOM.upcomingPremiereModal.style.display = 'none';
-    }
-
     function buildPlaylistDOM() {
       const fragment = document.createDocumentFragment();
       playlistItemElements.clear();
@@ -4963,12 +4407,6 @@
           <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
           <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
             <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" />
-            ${item.isPremiere ? `
-              <div class="premiere-art-badge">
-                <span class="pulse-live-dot"></span>
-                <span>PREMIERE</span>
-              </div>
-            ` : ''}
             <div class="track-playing-eq">
               <div class="eq-bar"></div>
               <div class="eq-bar"></div>
@@ -4976,10 +4414,10 @@
             </div>
           </div>
           <div class="track-text-details">
-            <div class="track-item-title">${item.isPremiere ? '<span class="upcoming-indicator-tag">UPCOMING</span>' : ''}<span class="track-title-text">${item.title}</span></div>
+            <div class="track-item-title">${item.title}</div>
             <div class="track-item-artist">${item.artist}</div>
           </div>
-          <div class="track-duration ${item.isPremiere ? 'track-premiere-duration' : ''}">${item.isPremiere ? 'PREMIERE' : (item.duration || '04:00')}</div>
+          <div class="track-duration ${item.isPremiere ? 'track-premiere-duration' : ''}">${item.duration || (item.isPremiere ? 'PREMIERE' : '04:00')}</div>
         `;
 
         if (isCurrent) currentActiveItemRow = row;
@@ -4993,8 +4431,6 @@
       const countStr = `${state.playlist.length} Songs`;
       DOM.playlistCountLabel.textContent = countStr;
       DOM.headerSongCount.textContent = `${state.playlist.length} Tracks`;
-
-      updateUpcomingSpotlightBanner();
     }
 
     function updatePlaylistHighlight() {
@@ -5164,17 +4600,6 @@
       const track = state.playlist[state.currentIndex];
       updateActiveTrackUI();
 
-      if (track.isPremiere) {
-        if (ytPlayer && ytApiReady) {
-          try { ytPlayer.pauseVideo(); } catch (e) {}
-        }
-        state.isPlaying = false;
-        updatePlayPauseBtnUI(false);
-        showUpcomingPremiereModal(track);
-        showToast(`Upcoming Premiere: ${track.title}`, "🔴");
-        return;
-      }
-
       if (ytPlayer && ytApiReady) {
         try {
           ytPlayer.loadVideoById({
@@ -5195,13 +4620,6 @@
     }
 
     function togglePlayPause() {
-      const currentTrack = state.playlist[state.currentIndex];
-      if (currentTrack && currentTrack.isPremiere) {
-        showUpcomingPremiereModal(currentTrack);
-        showToast("Premiere scheduled soon! Watch on YouTube.", "🔴");
-        return;
-      }
-
       if (!ytPlayer || !ytApiReady) {
         state.isPlaying = !state.isPlaying;
         updatePlayPauseBtnUI(state.isPlaying);
@@ -5438,11 +4856,6 @@
 
     function onPlayerError(event) {
       console.warn("YouTube player encountered an error code:", event.data);
-      const currentTrack = state.playlist[state.currentIndex];
-      if (currentTrack && currentTrack.isPremiere) {
-        showUpcomingPremiereModal(currentTrack);
-        return;
-      }
       consecutiveErrors++;
       if (consecutiveErrors > 4) {
         showToast("Audio playback fallback mode", "⚠️");
@@ -5457,12 +4870,11 @@
 
     function initYouTubePlayer() {
       if (ytPlayer || !window.YT || !window.YT.Player) return;
-      const firstPlayable = state.playlist.find(t => !t.isPremiere) || state.playlist[0];
       try {
         ytPlayer = new YT.Player('youtube-player', {
           height: '200',
           width: '200',
-          videoId: firstPlayable.id,
+          videoId: state.playlist[0].id,
           playerVars: {
             playsinline: 1,
             controls: 0,
@@ -6237,38 +5649,6 @@
           syncPlaylistFromYouTube(true);
         });
       }
-
-      if (DOM.upcomingModalClose) {
-        DOM.upcomingModalClose.addEventListener('click', hideUpcomingPremiereModal);
-      }
-      if (DOM.upcomingModalDismissBtn) {
-        DOM.upcomingModalDismissBtn.addEventListener('click', hideUpcomingPremiereModal);
-      }
-      if (DOM.upcomingPremiereModal) {
-        DOM.upcomingPremiereModal.addEventListener('click', (e) => {
-          if (e.target === DOM.upcomingPremiereModal) hideUpcomingPremiereModal();
-        });
-      }
-      if (DOM.upcomingBannerPreviewBtn) {
-        DOM.upcomingBannerPreviewBtn.addEventListener('click', () => {
-          const upcoming = state.playlist.find(t => t.isPremiere);
-          if (upcoming) {
-            const idx = state.playlist.findIndex(t => t.id === upcoming.id);
-            if (idx !== -1) {
-              state.currentIndex = idx;
-              updateActiveTrackUI();
-              showUpcomingPremiereModal(upcoming);
-            }
-          }
-        });
-      }
-
-      setInterval(() => {
-        const upcoming = state.playlist.find(t => t.isPremiere);
-        if (upcoming) {
-          updateUpcomingCountdown(upcoming);
-        }
-      }, 1000);
 
       // Initial immediate auto-syncs from YouTube
       setTimeout(() => {

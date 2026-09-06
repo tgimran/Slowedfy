@@ -147,12 +147,7 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
   // 1. Check upcomingEventData
   if (pvr.upcomingEventData) {
     isPremiere = true;
-    const rawTxt = pvr.upcomingEventData.upcomingEventText?.runs?.map((r: any) => r.text).join("") || "";
-    if (rawTxt && !rawTxt.includes("DATE_PLACEHOLDER") && rawTxt.trim() !== "Premieres") {
-      premiereText = rawTxt.trim();
-    } else {
-      premiereText = "Upcoming Premiere";
-    }
+    premiereText = pvr.upcomingEventData.upcomingEventText?.runs?.map((r: any) => r.text).join("") || "Upcoming";
     if (pvr.upcomingEventData.startTime) {
       startTime = parseInt(pvr.upcomingEventData.startTime, 10) * 1000;
     }
@@ -175,10 +170,7 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
           accessibilityLabel.includes("PREMIERE")
         ) {
           isPremiere = true;
-          const label = t.text?.simpleText || t.text?.runs?.[0]?.text;
-          if (label && !label.includes("DATE_PLACEHOLDER")) {
-            premiereText = label;
-          }
+          premiereText = t.text?.simpleText || t.text?.runs?.[0]?.text || premiereText || "Upcoming";
         }
       }
     }
@@ -190,9 +182,7 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
       const label = (b.metadataBadgeRenderer?.label || "").toUpperCase();
       if (label.includes("PREMIERE") || label.includes("UPCOMING") || label.includes("LIVE")) {
         isPremiere = true;
-        if (b.metadataBadgeRenderer?.label) {
-          premiereText = b.metadataBadgeRenderer.label;
-        }
+        premiereText = b.metadataBadgeRenderer?.label || premiereText || "Upcoming";
       }
     }
   }
@@ -203,9 +193,7 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
       const txt = (r.text || "").toUpperCase();
       if (txt.includes("PREMIERE") || txt.includes("UPCOMING") || txt.includes("LIVE IN") || txt.includes("SCHEDULED")) {
         isPremiere = true;
-        if (r.text && !r.text.includes("DATE_PLACEHOLDER")) {
-          premiereText = r.text;
-        }
+        premiereText = r.text || premiereText || "Upcoming";
       }
     }
   }
@@ -215,7 +203,7 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
     const pubTxt = pvr.publishedTimeText.simpleText.toUpperCase();
     if (pubTxt.includes("PREMIERE") || pubTxt.includes("UPCOMING")) {
       isPremiere = true;
-      premiereText = pvr.publishedTimeText.simpleText;
+      premiereText = pvr.publishedTimeText.simpleText || premiereText || "Upcoming";
     }
   }
 
@@ -225,10 +213,9 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
     premiereText = "Upcoming";
   }
 
-  // 7. Check title for explicit premiere tags
-  const upperTitle = title.toUpperCase();
-  if (upperTitle.includes("[PREMIERE]") || upperTitle.includes("(PREMIERE)") || upperTitle.includes("[UPCOMING]")) {
-    isPremiere = true;
+  // 7. If duration exists and none of upcoming markers, regular track
+  if (lengthSec > 0 && !pvr.upcomingEventData && !isPremiere) {
+    isPremiere = false;
   }
 
   let artist = "Slowedfy";
@@ -410,22 +397,12 @@ async function startServer() {
 
   app.get("/api/playlist", async (req, res) => {
     try {
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
 
       const force = req.query.refresh === "true" || (Date.now() - lastFetchTime > CACHE_TTL_MS);
-      let playlist = cachedPlaylist;
-      if (!playlist || playlist.length === 0) {
-        playlist = await getLatestPlaylist(true);
-      } else if (force) {
-        // Trigger fresh sync in background and return existing cache immediately
-        getLatestPlaylist(true).catch(() => {});
-      }
-
+      const playlist = await getLatestPlaylist(force);
       res.json({
         success: true,
         count: playlist.length,
