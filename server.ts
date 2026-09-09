@@ -4,8 +4,16 @@ import https from "https";
 import http from "http";
 import { createServer as createViteServer } from "vite";
 
-const PLAYLIST_ID = "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS";
-const YOUTUBE_URL = `https://www.youtube.com/playlist?list=${PLAYLIST_ID}`;
+const DEFAULT_PLAYLIST_ID = "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS";
+
+export function cleanPlaylistId(input?: string): string {
+  if (!input) return DEFAULT_PLAYLIST_ID;
+  const trimmed = input.trim();
+  const listMatch = trimmed.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+  if (listMatch) return listMatch[1];
+  if (/^[a-zA-Z0-9_-]{10,}$/.test(trimmed)) return trimmed;
+  return DEFAULT_PLAYLIST_ID;
+}
 
 // In-memory cache for fast response and avoiding YouTube rate limits
 interface PlaylistItem {
@@ -20,8 +28,14 @@ interface PlaylistItem {
   startTime?: number;
 }
 
-let cachedPlaylist: PlaylistItem[] | null = null;
-let lastFetchTime = 0;
+interface PlaylistCacheEntry {
+  playlistId: string;
+  title: string;
+  playlist: PlaylistItem[];
+  lastFetchTime: number;
+}
+
+const playlistCache = new Map<string, PlaylistCacheEntry>();
 const CACHE_TTL_MS = 15 * 1000; // 15 seconds cache
 
 function fetchUrl(targetUrl: string): Promise<string> {
@@ -250,7 +264,13 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
   };
 }
 
-async function fetchFullYouTubePlaylist(html: string): Promise<PlaylistItem[]> {
+interface ParsedPlaylistResult {
+  videos: PlaylistItem[];
+  title?: string;
+  author?: string;
+}
+
+async function fetchFullYouTubePlaylist(html: string): Promise<ParsedPlaylistResult> {
   let ytInitialData: any = null;
   const match =
     html.match(/var ytInitialData = ({.*?});<\/script>/) ||
@@ -281,8 +301,24 @@ async function fetchFullYouTubePlaylist(html: string): Promise<PlaylistItem[]> {
   }
 
   if (!ytInitialData) {
-    return [];
+    return { videos: [] };
   }
+
+  // Extract playlist title and author
+  let title = "Slowedfy Playlist";
+  let author = "Slowedfy";
+  try {
+    const rawTitle =
+      ytInitialData?.header?.playlistHeaderRenderer?.title?.simpleText ||
+      ytInitialData?.header?.playlistHeaderRenderer?.title?.runs?.[0]?.text ||
+      ytInitialData?.metadata?.playlistMetadataRenderer?.title;
+    if (rawTitle) title = String(rawTitle).trim();
+
+    const rawAuthor =
+      ytInitialData?.header?.playlistHeaderRenderer?.ownerText?.runs?.[0]?.text ||
+      ytInitialData?.metadata?.playlistMetadataRenderer?.author;
+    if (rawAuthor) author = String(rawAuthor).trim();
+  } catch (e) {}
 
   const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
   const apiKey = apiKeyMatch ? apiKeyMatch[1] : "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
@@ -359,29 +395,65 @@ async function fetchFullYouTubePlaylist(html: string): Promise<PlaylistItem[]> {
     }
   }
 
-  return videos;
+  return { videos, title, author };
 }
 
-async function getLatestPlaylist(forceRefresh = false): Promise<PlaylistItem[]> {
+async function getLatestPlaylist(
+  playlistId: string = DEFAULT_PLAYLIST_ID,
+  forceRefresh = false
+): Promise<{ playlist: PlaylistItem[]; title: string; author: string; lastFetchTime: number }> {
+  const normalizedId = cleanPlaylistId(playlistId);
   const now = Date.now();
-  if (!forceRefresh && cachedPlaylist && cachedPlaylist.length > 0 && now - lastFetchTime < CACHE_TTL_MS) {
-    return cachedPlaylist;
+  const cached = playlistCache.get(normalizedId);
+
+  if (!forceRefresh && cached && cached.playlist.length > 0 && now - cached.lastFetchTime < CACHE_TTL_MS) {
+    return {
+      playlist: cached.playlist,
+      title: cached.title,
+      author: "Slowedfy",
+      lastFetchTime: cached.lastFetchTime,
+    };
   }
 
   try {
-    const html = await fetchUrl(YOUTUBE_URL);
+    const youtubeUrl = `https://www.youtube.com/playlist?list=${normalizedId}`;
+    const html = await fetchUrl(youtubeUrl);
     const parsed = await fetchFullYouTubePlaylist(html);
-    if (parsed && parsed.length > 0) {
-      cachedPlaylist = parsed;
-      lastFetchTime = now;
-      console.log(`[YouTube Sync] Synced ${parsed.length} tracks successfully at ${new Date().toISOString()}`);
-      return parsed;
+    if (parsed && parsed.videos.length > 0) {
+      const entry: PlaylistCacheEntry = {
+        playlistId: normalizedId,
+        title: parsed.title || "Slowedfy Playlist",
+        playlist: parsed.videos,
+        lastFetchTime: now,
+      };
+      playlistCache.set(normalizedId, entry);
+      console.log(`[YouTube Sync] Synced ${parsed.videos.length} tracks for playlist ${normalizedId} ("${entry.title}") successfully at ${new Date().toISOString()}`);
+      return {
+        playlist: parsed.videos,
+        title: entry.title,
+        author: parsed.author || "Slowedfy",
+        lastFetchTime: now,
+      };
     }
   } catch (error) {
-    console.error("[YouTube Sync] Failed to fetch playlist from YouTube:", error);
+    console.error(`[YouTube Sync] Failed to fetch playlist ${normalizedId} from YouTube:`, error);
   }
 
-  return cachedPlaylist || [];
+  if (cached && cached.playlist.length > 0) {
+    return {
+      playlist: cached.playlist,
+      title: cached.title,
+      author: "Slowedfy",
+      lastFetchTime: cached.lastFetchTime,
+    };
+  }
+
+  return {
+    playlist: [],
+    title: "Slowedfy Playlist",
+    author: "Slowedfy",
+    lastFetchTime: now,
+  };
 }
 
 async function startServer() {
@@ -401,13 +473,17 @@ async function startServer() {
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
 
-      const force = req.query.refresh === "true" || (Date.now() - lastFetchTime > CACHE_TTL_MS);
-      const playlist = await getLatestPlaylist(force);
+      const playlistId = cleanPlaylistId(String(req.query.id || req.query.url || req.query.list || ""));
+      const force = req.query.refresh === "true";
+      const result = await getLatestPlaylist(playlistId, force);
       res.json({
         success: true,
-        count: playlist.length,
-        lastSync: lastFetchTime,
-        playlist,
+        playlistId,
+        title: result.title,
+        author: result.author,
+        count: result.playlist.length,
+        lastSync: result.lastFetchTime,
+        playlist: result.playlist,
       });
     } catch (err: any) {
       res.status(500).json({
@@ -417,10 +493,66 @@ async function startServer() {
     }
   });
 
-  // Pre-fetch playlist in background on startup and poll every 15 seconds
-  getLatestPlaylist(true).catch(() => {});
+  app.post("/api/playlist/sync", async (req, res) => {
+    try {
+      const playlistId = cleanPlaylistId(String(req.body?.playlistId || req.body?.url || req.query.id || ""));
+      const force = req.body?.force !== false;
+      const result = await getLatestPlaylist(playlistId, force);
+      res.json({
+        success: true,
+        playlistId,
+        title: result.title,
+        author: result.author,
+        count: result.playlist.length,
+        lastSync: result.lastFetchTime,
+        playlist: result.playlist,
+        syncedAt: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        success: false,
+        error: err.message || "Failed to sync playlist",
+      });
+    }
+  });
+
+  app.get("/api/playlist/presets", (req, res) => {
+    res.json({
+      success: true,
+      presets: [
+        {
+          id: "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS",
+          title: "Slowedfy Official (Beat Badge × Slowedfy)",
+          genre: "Slowed + Reverb Bollywood & Lo-Fi",
+          isDefault: true,
+          badge: "Official",
+        },
+        {
+          id: "PL4fGSI1pDJn6jXS_PEoNEDWnII3799n2X",
+          title: "Top Bollywood Lo-Fi / Slowed",
+          genre: "Indian Lo-Fi & Chill Vibes",
+          badge: "Lo-Fi",
+        },
+        {
+          id: "PLofht4PTcKYnaH8w5gkDC264ozXt1hm6b",
+          title: "Lofi Girl - Synthwave Beats",
+          genre: "Synthwave / Chillwave",
+          badge: "Chill",
+        },
+        {
+          id: "PLozUcUwZkXmKj6Q8qQ22_i-0g5Y4uU_gM",
+          title: "Midnight Dream Lo-Fi",
+          genre: "Midnight Ambient & Study",
+          badge: "Midnight",
+        }
+      ]
+    });
+  });
+
+  // Pre-fetch default official playlist on startup and poll every 15 seconds
+  getLatestPlaylist(DEFAULT_PLAYLIST_ID, true).catch(() => {});
   setInterval(() => {
-    getLatestPlaylist(true).catch(() => {});
+    getLatestPlaylist(DEFAULT_PLAYLIST_ID, true).catch(() => {});
   }, 15000);
 
   // Vite middleware for development

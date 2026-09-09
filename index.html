@@ -2385,6 +2385,144 @@
       text-overflow: ellipsis;
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
     }
+
+    /* ==========================================================================
+       YOUTUBE PLAYLIST SYNC MODAL STYLES
+       ========================================================================== */
+    #sync-modal .modal-dialog {
+      width: min(520px, 94vw);
+      padding: 1.35rem 1.45rem;
+      max-height: 88vh;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      box-sizing: border-box;
+    }
+
+    .sync-modal-icon-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 9px;
+      background: rgba(78, 226, 236, 0.15);
+      border: 1px solid rgba(78, 226, 236, 0.35);
+      color: var(--accent-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 0 12px rgba(78, 226, 236, 0.25);
+    }
+
+    .sync-active-card {
+      padding: 1rem 1.15rem;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(135deg, rgba(78, 226, 236, 0.08) 0%, rgba(20, 26, 42, 0.6) 100%);
+      border: 1px solid rgba(78, 226, 236, 0.25);
+      box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.45);
+      position: relative;
+    }
+
+    .sync-pill-tag {
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      background: rgba(78, 226, 236, 0.16);
+      padding: 2px 7px;
+      border-radius: 9999px;
+      border: 1px solid rgba(78, 226, 236, 0.3);
+      display: inline-block;
+    }
+
+    .sync-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 9999px;
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+
+    .sync-status-badge.syncing {
+      background: rgba(78, 226, 236, 0.15);
+      color: var(--accent-cyan);
+      border-color: rgba(78, 226, 236, 0.35);
+    }
+
+    .sync-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    @media (max-width: 480px) {
+      .sync-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .sync-stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .sync-stat-label {
+      font-size: 0.64rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .sync-stat-value {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #fff;
+      font-family: var(--font-mono);
+    }
+
+    .sync-input-card {
+      padding: 1rem 1.15rem;
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.035);
+      border: 1px solid var(--glass-border-subtle);
+    }
+
+    .sync-preset-chip {
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.3, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sync-preset-chip:hover, .sync-preset-chip.active {
+      background: rgba(78, 226, 236, 0.16);
+      border-color: var(--accent-cyan);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .sync-settings-card {
+      padding: 0.9rem 1.15rem;
+      border-radius: var(--radius-lg);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--glass-border-subtle);
+    }
   </style>
 </head>
 <body>
@@ -2459,10 +2597,10 @@
           </svg>
         </button>
 
-        <!-- Active Playlist Count -->
-        <div class="glass-btn pill-counter" id="playlist-badge-top">
+        <!-- Active Playlist Count & Sync Launcher -->
+        <div class="glass-btn pill-counter" id="playlist-badge-top" role="button" tabindex="0" title="Click to view YouTube Playlist Sync" style="cursor: pointer;">
           <div class="pulse-dot"></div>
-          <span id="header-song-count">100 Tracks</span>
+          <span id="header-song-count">105 Tracks</span>
         </div>
       </div>
     </header>
@@ -2503,17 +2641,22 @@
         <div class="liquid-glass playlist-card">
           <div class="playlist-card-header">
             <div class="playlist-title-wrap">
-              <span class="playlist-title">Slowedfy Playlist</span>
-              <span class="playlist-count-badge" id="playlist-count-label">100 Songs</span>
+              <span class="playlist-title" id="playlist-display-title">Slowedfy Playlist</span>
+              <span class="playlist-count-badge" id="playlist-count-label">105 Songs</span>
             </div>
-            <div class="sync-actions-wrap" style="display: flex; align-items: center; gap: 8px;">
-              <button class="sync-refresh-btn" id="sync-refresh-btn" title="Auto-Sync with YouTube Playlist (Click to check updates)" aria-label="Auto Sync Playlist">
+            <div class="sync-actions-wrap" style="display: flex; align-items: center; gap: 6px;">
+              <button class="sync-refresh-btn" id="sync-refresh-btn" title="Sync YouTube Playlist (Click to check updates)" aria-label="Auto Sync Playlist">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
                 </svg>
-                <span>Live Sync</span>
+                <span id="sync-btn-label">Live Sync</span>
               </button>
-              <a href="https://youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS&si=TFXs9xxb1dmMAj3" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Open Official YouTube Playlist">
+              <button class="glass-btn header-btn" id="sync-modal-btn" style="width: 28px; height: 28px; border-radius: var(--radius-full); padding: 0;" title="YouTube Playlist Sync Settings" aria-label="Playlist Sync Settings">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20v-6M6 20V10M18 20V4"/>
+                </svg>
+              </button>
+              <a href="https://youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS&si=TFXs9xxb1dmMAj3" id="active-yt-playlist-link" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Open Official YouTube Playlist">
                 <span>YouTube</span>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
@@ -3022,6 +3165,138 @@
   </div>
 
   <!-- ==========================================================================
+       YOUTUBE PLAYLIST SYNC MODAL
+       ========================================================================== -->
+  <div class="modal-backdrop" id="sync-modal" role="dialog" aria-modal="true" aria-labelledby="sync-modal-title">
+    <div class="modal-dialog liquid-glass-elevated sync-modal-dialog">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <div class="sync-modal-icon-badge">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+          </div>
+          <div>
+            <h3 id="sync-modal-title" style="font-size: 1.12rem; font-weight: 700; line-height: 1.2;">Sync YouTube Playlist</h3>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Real-time Innertube YouTube Playlist Engine</span>
+          </div>
+        </div>
+        <button class="glass-btn header-btn" id="close-sync-btn" aria-label="Close sync modal">✕</button>
+      </div>
+
+      <div class="sync-modal-body" style="display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.75rem;">
+        
+        <!-- Active Synced Playlist Card -->
+        <div class="sync-active-card">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.6rem; gap: 8px;">
+            <div>
+              <span class="sync-pill-tag">ACTIVE PLAYLIST</span>
+              <h4 id="sync-modal-playlist-name" style="font-size: 0.98rem; font-weight: 700; color: #fff; margin-top: 4px;">Slowedfy Official (Beat Badge × Slowedfy)</h4>
+              <span id="sync-modal-playlist-id" style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-muted); word-break: break-all;">PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS</span>
+            </div>
+            <div id="sync-status-pill" class="sync-status-badge">
+              <span class="pulse-live-dot"></span>
+              <span id="sync-status-text">Live Synced</span>
+            </div>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="sync-stats-grid">
+            <div class="sync-stat-item">
+              <span class="sync-stat-label">Tracks</span>
+              <span id="sync-stat-count" class="sync-stat-value">105</span>
+            </div>
+            <div class="sync-stat-item">
+              <span class="sync-stat-label">Duration</span>
+              <span id="sync-stat-duration" class="sync-stat-value">~7h 48m</span>
+            </div>
+            <div class="sync-stat-item">
+              <span class="sync-stat-label">Last Sync</span>
+              <span id="sync-stat-time" class="sync-stat-value">Just now</span>
+            </div>
+            <div class="sync-stat-item">
+              <span class="sync-stat-label">Premieres</span>
+              <span id="sync-stat-premieres" class="sync-stat-value">0 Upcoming</span>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div style="display: flex; gap: 8px; margin-top: 0.85rem;">
+            <button type="button" class="glass-btn" id="modal-sync-now-btn" style="flex: 1; height: 38px; font-weight: 700; font-size: 0.82rem; display: flex; align-items: center; justify-content: center; gap: 6px; background: rgba(78, 226, 236, 0.2); border-color: var(--accent-cyan); color: #fff;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+              <span id="modal-sync-now-label">Sync Playlist Now</span>
+            </button>
+            <a href="https://youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS" id="modal-view-yt-btn" target="_blank" rel="noopener noreferrer" class="glass-btn" style="padding: 0 12px; height: 38px; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 5px; color: var(--text-secondary); text-decoration: none;">
+              <span>YouTube</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/>
+                <line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+
+        <!-- Sync Any YouTube Playlist Card -->
+        <div class="sync-input-card">
+          <div style="font-size: 0.86rem; font-weight: 700; color: #fff; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 6px;">
+            <span>🔗</span> Sync Any YouTube Playlist
+          </div>
+          <p style="font-size: 0.74rem; color: var(--text-secondary); margin-bottom: 0.75rem;">
+            Paste any YouTube playlist link or ID to load, sync, and play with slowed + reverb effects:
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="custom-playlist-input" class="search-input" placeholder="Paste YouTube playlist URL or ID..." style="flex: 1; height: 38px;" />
+            <button type="button" class="glass-btn" id="custom-playlist-submit-btn" style="height: 38px; padding: 0 14px; font-weight: 700; font-size: 0.8rem; background: rgba(78, 226, 236, 0.2); border-color: var(--accent-cyan); color: #fff; white-space: nowrap;">
+              Load & Sync
+            </button>
+          </div>
+
+          <!-- Featured Presets -->
+          <div style="margin-top: 0.85rem;">
+            <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.45rem;">
+              Featured Presets:
+            </span>
+            <div id="sync-presets-container" style="display: flex; flex-wrap: wrap; gap: 6px;">
+              <button type="button" class="sync-preset-chip active" data-id="PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS">
+                <span>✨ Official (105 Tracks)</span>
+              </button>
+              <button type="button" class="sync-preset-chip" data-id="PL4fGSI1pDJn6jXS_PEoNEDWnII3799n2X">
+                <span>🎶 Bollywood Lo-Fi</span>
+              </button>
+              <button type="button" class="sync-preset-chip" data-id="PLofht4PTcKYnaH8w5gkDC264ozXt1hm6b">
+                <span>🎧 Lofi Girl Synthwave</span>
+              </button>
+              <button type="button" class="sync-preset-chip" data-id="PLozUcUwZkXmKj6Q8qQ22_i-0g5Y4uU_gM">
+                <span>🌌 Midnight Dream</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Auto Sync Interval Settings -->
+        <div class="sync-settings-card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.55rem;">
+            <span style="font-size: 0.8rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px;">
+              <span>⚡</span> Auto-Sync Interval
+            </span>
+            <span id="sync-interval-label" style="font-size: 0.72rem; color: var(--accent-cyan); font-family: var(--font-mono); font-weight: 600;">15 Seconds</span>
+          </div>
+          <div id="sync-freq-buttons" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
+            <button type="button" class="perf-mode-btn active" data-freq="15000">15s (Live)</button>
+            <button type="button" class="perf-mode-btn" data-freq="30000">30s</button>
+            <button type="button" class="perf-mode-btn" data-freq="60000">1 min</button>
+            <button type="button" class="perf-mode-btn" data-freq="0">Manual</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
        JAVASCRIPT APPLICATION ENGINE (Clean, Modular, 60fps, No Memory Leaks)
        ========================================================================== -->
   <script>
@@ -3036,6 +3311,24 @@
     
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
+  {
+    "id": "_5aquKDMN5A",
+    "title": "HAR KISI KO│Arijit Singh│NEETI MOHAN│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "5:58",
+    "seconds": 358,
+    "thumb": "https://i.ytimg.com/vi/_5aquKDMN5A/hqdefault.jpg",
+    "isPremiere": false
+  },
+  {
+    "id": "KeqMouF_d38",
+    "title": "Mohabbat Ne Mohabbat Ko│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "5:18",
+    "seconds": 318,
+    "thumb": "https://i.ytimg.com/vi/KeqMouF_d38/hqdefault.jpg",
+    "isPremiere": false
+  },
   {
     "id": "DBDOXlXqJSc",
     "title": "Sammi Meri Waar\u2502Lashari_Waves\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
@@ -3982,7 +4275,11 @@
       currentTheme: 'dynamic-art',
       dynamicBlur: 31,
       dynamicDarkness: 0,
-      activeBgLayer: 1
+      activeBgLayer: 1,
+      activePlaylistId: 'PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS',
+      activePlaylistTitle: 'Slowedfy Official Playlist',
+      lastSyncTimestamp: Date.now(),
+      autoSyncIntervalMs: 15000
     };
 
     // YouTube Player Instance
@@ -4000,6 +4297,7 @@
       heroPremiereBadge: document.getElementById('hero-premiere-badge'),
       heroPremiereText: document.getElementById('hero-premiere-text'),
       syncRefreshBtn: document.getElementById('sync-refresh-btn'),
+      syncBtnLabel: document.getElementById('sync-btn-label'),
       heroTagline: document.querySelector('.hero-tagline'),
       toastIcon: document.getElementById('toast-icon'),
       heroTitle: document.getElementById('hero-title'),
@@ -4012,6 +4310,9 @@
       playlistContainer: document.getElementById('playlist-items-container'),
       playlistSearchInput: document.getElementById('playlist-search-input'),
       playlistCountLabel: document.getElementById('playlist-count-label'),
+      playlistDisplayTitle: document.getElementById('playlist-display-title'),
+      activeYtPlaylistLink: document.getElementById('active-yt-playlist-link'),
+      playlistBadgeTop: document.getElementById('playlist-badge-top'),
       headerSongCount: document.getElementById('header-song-count'),
       currentTimeLabel: document.getElementById('current-time-label'),
       durationTimeLabel: document.getElementById('duration-time-label'),
@@ -4053,7 +4354,26 @@
       perfStatusBadge: document.getElementById('perf-status-badge'),
       perfBtnAuto: document.getElementById('perf-btn-auto'),
       perfBtnHigh: document.getElementById('perf-btn-high'),
-      perfBtnEco: document.getElementById('perf-btn-eco')
+      perfBtnEco: document.getElementById('perf-btn-eco'),
+      syncModalBtn: document.getElementById('sync-modal-btn'),
+      syncModal: document.getElementById('sync-modal'),
+      closeSyncBtn: document.getElementById('close-sync-btn'),
+      modalSyncNowBtn: document.getElementById('modal-sync-now-btn'),
+      modalSyncNowLabel: document.getElementById('modal-sync-now-label'),
+      modalViewYtBtn: document.getElementById('modal-view-yt-btn'),
+      syncModalPlaylistName: document.getElementById('sync-modal-playlist-name'),
+      syncModalPlaylistId: document.getElementById('sync-modal-playlist-id'),
+      syncStatusPill: document.getElementById('sync-status-pill'),
+      syncStatusText: document.getElementById('sync-status-text'),
+      syncStatCount: document.getElementById('sync-stat-count'),
+      syncStatDuration: document.getElementById('sync-stat-duration'),
+      syncStatTime: document.getElementById('sync-stat-time'),
+      syncStatPremieres: document.getElementById('sync-stat-premieres'),
+      customPlaylistInput: document.getElementById('custom-playlist-input'),
+      customPlaylistSubmitBtn: document.getElementById('custom-playlist-submit-btn'),
+      syncPresetsContainer: document.getElementById('sync-presets-container'),
+      syncFreqButtons: document.getElementById('sync-freq-buttons'),
+      syncIntervalLabel: document.getElementById('sync-interval-label')
     };
 
     /* ==========================================================================
@@ -5367,6 +5687,7 @@
         DOM.shortcutsModal.classList.remove('open');
         DOM.themeModal.classList.remove('open');
         if (DOM.aboutModal) DOM.aboutModal.classList.remove('open');
+        if (DOM.syncModal) DOM.syncModal.classList.remove('open');
       }
     });
 
@@ -5377,12 +5698,85 @@
     let isSyncingPlaylist = false;
     let autoSyncTimer = null;
 
-    async function fetchLatestPlaylistFromSource() {
-      // Strategy 1: Fast server-side proxy API with AbortController timeout
+    function cleanPlaylistInput(raw) {
+      if (!raw) return null;
+      let str = raw.trim();
+      try {
+        if (str.includes("list=")) {
+          const match = str.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+          if (match && match[1]) return match[1];
+        }
+        if (str.includes("youtu.be/") || str.includes("youtube.com/")) {
+          const match = str.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+          if (match && match[1]) return match[1];
+        }
+      } catch (e) {}
+      // Strip potential query parameters
+      str = str.replace(/[?&].*$/, "");
+      return str.trim() || null;
+    }
+
+    function updateSyncModalUI() {
+      if (!DOM.syncModalPlaylistName) return;
+      DOM.syncModalPlaylistName.textContent = state.activePlaylistTitle || 'YouTube Playlist';
+      DOM.syncModalPlaylistId.textContent = state.activePlaylistId || 'PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS';
+      if (DOM.playlistDisplayTitle) {
+        DOM.playlistDisplayTitle.textContent = (state.activePlaylistTitle || 'Slowedfy Playlist').replace(' (Beat Badge × Slowedfy)', '');
+      }
+
+      if (DOM.syncStatCount) {
+        DOM.syncStatCount.textContent = state.playlist.length;
+      }
+
+      if (DOM.syncStatDuration) {
+        const totalSecs = state.playlist.reduce((acc, t) => acc + (t.seconds || 240), 0);
+        const hrs = Math.floor(totalSecs / 3600);
+        const mins = Math.floor((totalSecs % 3600) / 60);
+        DOM.syncStatDuration.textContent = hrs > 0 ? `~${hrs}h ${mins}m` : `~${mins}m`;
+      }
+
+      if (DOM.syncStatPremieres) {
+        const premiereCount = state.playlist.filter(t => t.isPremiere).length;
+        DOM.syncStatPremieres.textContent = premiereCount > 0 ? `${premiereCount} Upcoming` : '0 Upcoming';
+      }
+
+      if (DOM.syncStatTime) {
+        const diffMs = Date.now() - (state.lastSyncTimestamp || Date.now());
+        const diffSecs = Math.floor(diffMs / 1000);
+        if (diffSecs < 10) {
+          DOM.syncStatTime.textContent = 'Just now';
+        } else if (diffSecs < 60) {
+          DOM.syncStatTime.textContent = `${diffSecs}s ago`;
+        } else {
+          DOM.syncStatTime.textContent = `${Math.floor(diffSecs / 60)}m ago`;
+        }
+      }
+
+      const ytUrl = `https://youtube.com/playlist?list=${state.activePlaylistId}`;
+      if (DOM.modalViewYtBtn) DOM.modalViewYtBtn.href = ytUrl;
+      if (DOM.activeYtPlaylistLink) DOM.activeYtPlaylistLink.href = ytUrl;
+
+      // Update preset chips active state
+      if (DOM.syncPresetsContainer) {
+        const chips = DOM.syncPresetsContainer.querySelectorAll('.sync-preset-chip');
+        chips.forEach(chip => {
+          if (chip.dataset.id === state.activePlaylistId) {
+            chip.classList.add('active');
+          } else {
+            chip.classList.remove('active');
+          }
+        });
+      }
+    }
+
+    async function fetchLatestPlaylistFromSource(targetPlaylistId = null) {
+      const pid = targetPlaylistId || state.activePlaylistId || "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS";
+
+      // Strategy 1: Fast server-side proxy API with AbortController timeout & dynamic playlist support
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
-        const res = await fetch(`/api/playlist?refresh=true&_t=${Date.now()}`, {
+        const timeoutId = setTimeout(() => controller.abort(), 7000);
+        const res = await fetch(`/api/playlist?id=${encodeURIComponent(pid)}&refresh=true&_t=${Date.now()}`, {
           signal: controller.signal,
           cache: 'no-store',
           headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
@@ -5391,7 +5785,11 @@
         if (res.ok) {
           const data = await res.json();
           if (data && data.success && Array.isArray(data.playlist) && data.playlist.length > 0) {
-            return data.playlist;
+            return {
+              videos: data.playlist,
+              title: data.title || (pid === PLAYLIST_ID ? 'Slowedfy Official Playlist' : 'YouTube Playlist'),
+              playlistId: pid
+            };
           }
         }
       } catch (e) {
@@ -5400,8 +5798,8 @@
 
       // Strategy 2: Direct public mirrors with fast 3500ms timeouts
       const mirrors = [
-        'https://invidious.nerdvpn.de/api/v1/playlists/PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS',
-        'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS')
+        `https://invidious.nerdvpn.de/api/v1/playlists/${pid}`,
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(`https://www.youtube.com/playlist?list=${pid}`)
       ];
 
       for (const endpoint of mirrors) {
@@ -5414,7 +5812,7 @@
             if (endpoint.includes('/api/v1/playlists/')) {
               const data = await res.json();
               if (data && Array.isArray(data.videos) && data.videos.length > 0) {
-                return data.videos.map(v => {
+                const videos = data.videos.map(v => {
                   const isPrem = !!v.isUpcoming || (v.lengthSeconds === 0 && !v.liveNow && !v.length);
                   return {
                     id: v.videoId,
@@ -5427,6 +5825,7 @@
                     premiereText: isPrem ? 'Upcoming' : undefined
                   };
                 });
+                return { videos, title: data.title || 'YouTube Playlist', playlistId: pid };
               }
             } else {
               const html = await res.text();
@@ -5541,7 +5940,9 @@
                   }
                 }
                 extract(ytData);
-                if (videos.length > 0) return videos;
+                if (videos.length > 0) {
+                  return { videos, title: 'YouTube Playlist', playlistId: pid };
+                }
               }
             }
           }
@@ -5551,24 +5952,37 @@
       return null;
     }
 
-    async function syncPlaylistFromYouTube(isManual = false) {
+    async function syncPlaylistFromYouTube(isManual = false, targetPlaylistId = null) {
       if (isSyncingPlaylist) return;
       isSyncingPlaylist = true;
 
+      const requestedPid = targetPlaylistId || state.activePlaylistId || PLAYLIST_ID;
+      const isSwitchingPlaylist = targetPlaylistId && targetPlaylistId !== state.activePlaylistId;
+
       const syncBtn = DOM.syncRefreshBtn || document.getElementById('sync-refresh-btn');
       if (syncBtn) syncBtn.classList.add('syncing');
+      if (DOM.syncStatusPill) {
+        DOM.syncStatusPill.classList.add('syncing');
+        if (DOM.syncStatusText) DOM.syncStatusText.textContent = 'Syncing...';
+      }
+      if (DOM.modalSyncNowLabel) DOM.modalSyncNowLabel.textContent = 'Syncing...';
 
-      if (isManual) {
-        showToast("Checking YouTube playlist for new tracks...", "🔄");
+      if (isManual || isSwitchingPlaylist) {
+        showToast(isSwitchingPlaylist ? "Loading playlist from YouTube..." : "Syncing YouTube playlist...", "🔄");
       }
 
       try {
-        const latest = await fetchLatestPlaylistFromSource();
-        if (latest && Array.isArray(latest) && latest.length > 0) {
+        const result = await fetchLatestPlaylistFromSource(requestedPid);
+        if (result && Array.isArray(result.videos) && result.videos.length > 0) {
+          const latest = result.videos;
+          if (result.title) state.activePlaylistTitle = result.title;
+          if (result.playlistId) state.activePlaylistId = result.playlistId;
+          state.lastSyncTimestamp = Date.now();
+
           const currentIds = new Set(state.playlist.map(t => t.id));
           const newTracks = latest.filter(t => !currentIds.has(t.id));
           
-          let changed = latest.length !== state.playlist.length || newTracks.length > 0;
+          let changed = isSwitchingPlaylist || latest.length !== state.playlist.length || newTracks.length > 0;
           if (!changed) {
             changed = latest.some((lat, i) => {
               const cur = state.playlist[i];
@@ -5580,11 +5994,15 @@
             const currentActiveTrackId = state.playlist[state.currentIndex]?.id;
 
             state.playlist = latest;
-            try {
-              localStorage.setItem('slowedfy_synced_playlist_v5', JSON.stringify(latest));
-            } catch (e) {}
+            if (state.activePlaylistId === PLAYLIST_ID) {
+              try {
+                localStorage.setItem('slowedfy_synced_playlist_v5', JSON.stringify(latest));
+              } catch (e) {}
+            }
 
-            if (currentActiveTrackId) {
+            if (isSwitchingPlaylist) {
+              state.currentIndex = 0;
+            } else if (currentActiveTrackId) {
               const newIndex = state.playlist.findIndex(t => t.id === currentActiveTrackId);
               if (newIndex !== -1) {
                 state.currentIndex = newIndex;
@@ -5593,8 +6011,12 @@
 
             buildPlaylistDOM();
             updateActiveTrackUI();
+            updateSyncModalUI();
 
-            if (newTracks.length > 0) {
+            if (isSwitchingPlaylist) {
+              showToast(`✨ Loaded ${latest.length} tracks: ${state.activePlaylistTitle}`, "🎵");
+              playTrackAtIndex(0);
+            } else if (newTracks.length > 0) {
               const pTrack = newTracks.find(t => t.isPremiere);
               if (pTrack) {
                 showToast(`✨ Upcoming Premiere Detected: ${pTrack.title}`, "🔴");
@@ -5604,15 +6026,85 @@
             } else {
               showToast(`✨ Playlist Synced • ${latest.length} Tracks`, "🎵");
             }
-          } else if (isManual) {
-            showToast(`Playlist is up to date (${latest.length} Tracks)`, "✓");
+          } else {
+            updateSyncModalUI();
+            if (isManual) {
+              showToast(`Playlist is up to date (${latest.length} Tracks)`, "✓");
+            }
           }
+        } else if (isManual || isSwitchingPlaylist) {
+          showToast("Could not sync playlist. Please check ID or URL.", "⚠️");
         }
       } catch (err) {
         console.error("Auto sync error:", err);
+        if (isManual) {
+          showToast("Sync encountered an error. Retrying...", "⚠️");
+        }
       } finally {
         isSyncingPlaylist = false;
         if (syncBtn) syncBtn.classList.remove('syncing');
+        if (DOM.syncStatusPill) {
+          DOM.syncStatusPill.classList.remove('syncing');
+          if (DOM.syncStatusText) DOM.syncStatusText.textContent = 'Live Synced';
+        }
+        if (DOM.modalSyncNowLabel) DOM.modalSyncNowLabel.textContent = 'Sync Playlist Now';
+      }
+    }
+
+    function setAutoSyncInterval(ms) {
+      state.autoSyncIntervalMs = ms;
+      if (autoSyncTimer) {
+        clearInterval(autoSyncTimer);
+        autoSyncTimer = null;
+      }
+      if (ms > 0) {
+        autoSyncTimer = setInterval(() => {
+          syncPlaylistFromYouTube(false);
+        }, ms);
+      }
+
+      if (DOM.syncIntervalLabel) {
+        if (ms === 0) DOM.syncIntervalLabel.textContent = 'Manual Only';
+        else if (ms < 60000) DOM.syncIntervalLabel.textContent = `${ms / 1000} Seconds`;
+        else DOM.syncIntervalLabel.textContent = `${ms / 60000} Minute(s)`;
+      }
+
+      if (DOM.syncFreqButtons) {
+        const btns = DOM.syncFreqButtons.querySelectorAll('.perf-mode-btn');
+        btns.forEach(btn => {
+          if (parseInt(btn.dataset.freq, 10) === ms) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
+      }
+    }
+
+    async function loadPresetsFromAPI() {
+      try {
+        const res = await fetch('/api/playlist/presets');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.success && Array.isArray(data.presets) && data.presets.length > 0) {
+            if (DOM.syncPresetsContainer) {
+              DOM.syncPresetsContainer.innerHTML = '';
+              data.presets.forEach(p => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `sync-preset-chip ${p.id === state.activePlaylistId ? 'active' : ''}`;
+                btn.dataset.id = p.id;
+                btn.innerHTML = `<span>${p.name}</span>`;
+                btn.addEventListener('click', () => {
+                  syncPlaylistFromYouTube(true, p.id);
+                });
+                DOM.syncPresetsContainer.appendChild(btn);
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load presets list:', e);
       }
     }
 
@@ -5642,11 +6134,100 @@
         DOM.bgLayer1.style.backgroundImage = `url('https://i.ytimg.com/vi/${firstTrack.id}/mqdefault.jpg')`;
       }
       updateActiveTrackUI();
+      updateSyncModalUI();
 
-      // Hook manual sync button
+      // Hook manual sync button on playlist header
       if (DOM.syncRefreshBtn) {
         DOM.syncRefreshBtn.addEventListener('click', () => {
           syncPlaylistFromYouTube(true);
+        });
+      }
+
+      // Hook Sync Modal Triggers
+      if (DOM.syncModalBtn) {
+        DOM.syncModalBtn.addEventListener('click', () => {
+          updateSyncModalUI();
+          DOM.syncModal.classList.add('open');
+        });
+      }
+
+      if (DOM.playlistBadgeTop) {
+        DOM.playlistBadgeTop.addEventListener('click', () => {
+          updateSyncModalUI();
+          DOM.syncModal.classList.add('open');
+        });
+      }
+
+      if (DOM.closeSyncBtn) {
+        DOM.closeSyncBtn.addEventListener('click', () => {
+          DOM.syncModal.classList.remove('open');
+        });
+      }
+
+      if (DOM.syncModal) {
+        DOM.syncModal.addEventListener('click', (e) => {
+          if (e.target === DOM.syncModal) {
+            DOM.syncModal.classList.remove('open');
+          }
+        });
+      }
+
+      if (DOM.modalSyncNowBtn) {
+        DOM.modalSyncNowBtn.addEventListener('click', () => {
+          syncPlaylistFromYouTube(true);
+        });
+      }
+
+      // Hook Custom Playlist Input
+      function handleCustomPlaylistSubmit() {
+        if (!DOM.customPlaylistInput) return;
+        const val = DOM.customPlaylistInput.value.trim();
+        if (!val) {
+          showToast("Please enter a YouTube playlist URL or ID", "⚠️");
+          return;
+        }
+        const cleaned = cleanPlaylistInput(val);
+        if (!cleaned) {
+          showToast("Invalid YouTube playlist link or ID", "⚠️");
+          return;
+        }
+        DOM.customPlaylistInput.value = '';
+        syncPlaylistFromYouTube(true, cleaned);
+      }
+
+      if (DOM.customPlaylistSubmitBtn) {
+        DOM.customPlaylistSubmitBtn.addEventListener('click', handleCustomPlaylistSubmit);
+      }
+
+      if (DOM.customPlaylistInput) {
+        DOM.customPlaylistInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleCustomPlaylistSubmit();
+          }
+        });
+      }
+
+      // Hook initial Preset chips
+      if (DOM.syncPresetsContainer) {
+        const chips = DOM.syncPresetsContainer.querySelectorAll('.sync-preset-chip');
+        chips.forEach(chip => {
+          chip.addEventListener('click', () => {
+            const pid = chip.dataset.id;
+            if (pid) syncPlaylistFromYouTube(true, pid);
+          });
+        });
+      }
+      loadPresetsFromAPI();
+
+      // Hook Auto-Sync Frequency buttons
+      if (DOM.syncFreqButtons) {
+        DOM.syncFreqButtons.addEventListener('click', (e) => {
+          const btn = e.target.closest('.perf-mode-btn');
+          if (!btn) return;
+          const freq = parseInt(btn.dataset.freq, 10);
+          setAutoSyncInterval(freq);
+          showToast(freq === 0 ? "Auto-sync disabled (Manual only)" : `Auto-sync set to ${freq / 1000}s`, "⚡");
         });
       }
 
@@ -5670,12 +6251,8 @@
         syncPlaylistFromYouTube(false);
       });
 
-      // Periodic background auto-sync every 15 seconds for real-time upcoming detection
-      if (!autoSyncTimer) {
-        autoSyncTimer = setInterval(() => {
-          syncPlaylistFromYouTube(false);
-        }, 15000);
-      }
+      // Start periodic auto-sync
+      setAutoSyncInterval(15000);
 
       showToast("Welcome to Slowedfy • Press Space to Play", "🎧");
     }
