@@ -3312,6 +3312,15 @@
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
   {
+    "id": "ojqx-vOEJR0",
+    "title": "TERE NAAM│UDIT NARAYAN│ALKA YAGNIK│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "7:00",
+    "seconds": 420,
+    "thumb": "https://i.ytimg.com/vi/ojqx-vOEJR0/hqdefault.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "_5aquKDMN5A",
     "title": "HAR KISI KO│Arijit Singh│NEETI MOHAN│(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Slowedfy",
@@ -5772,182 +5781,153 @@
     async function fetchLatestPlaylistFromSource(targetPlaylistId = null) {
       const pid = targetPlaylistId || state.activePlaylistId || "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS";
 
-      // Strategy 1: Fast server-side proxy API with AbortController timeout & dynamic playlist support
+      // Strategy 1: Server-side API (/api/playlist) with timeout & no-cache
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 7000);
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
         const res = await fetch(`/api/playlist?id=${encodeURIComponent(pid)}&refresh=true&_t=${Date.now()}`, {
           signal: controller.signal,
           cache: 'no-store',
           headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
         });
         clearTimeout(timeoutId);
-        if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
           const data = await res.json();
           if (data && data.success && Array.isArray(data.playlist) && data.playlist.length > 0) {
             return {
               videos: data.playlist,
               title: data.title || (pid === PLAYLIST_ID ? 'Slowedfy Official Playlist' : 'YouTube Playlist'),
-              playlistId: pid
+              playlistId: pid,
+              isPartial: false
             };
           }
         }
       } catch (e) {
-        console.warn('Backend playlist API error, trying public mirrors:', e);
+        console.warn('Backend playlist API error, trying client-side sources:', e);
       }
 
-      // Strategy 2: Direct public mirrors with fast 3500ms timeouts
-      const mirrors = [
-        `https://invidious.nerdvpn.de/api/v1/playlists/${pid}`,
-        'https://api.allorigins.win/raw?url=' + encodeURIComponent(`https://www.youtube.com/playlist?list=${pid}`)
-      ];
-
-      for (const endpoint of mirrors) {
-        try {
-          const ctrl = new AbortController();
-          const tId = setTimeout(() => ctrl.abort(), 3500);
-          const res = await fetch(endpoint, { signal: ctrl.signal, cache: 'no-store' });
-          clearTimeout(tId);
-          if (res.ok) {
-            if (endpoint.includes('/api/v1/playlists/')) {
-              const data = await res.json();
-              if (data && Array.isArray(data.videos) && data.videos.length > 0) {
-                const videos = data.videos.map(v => {
-                  const isPrem = !!v.isUpcoming || (v.lengthSeconds === 0 && !v.liveNow && !v.length);
-                  return {
-                    id: v.videoId,
-                    title: v.title,
-                    artist: (v.title.includes('GW IMRAN') || v.author?.includes('GW IMRAN')) ? 'GW IMRAN' : 'Slowedfy',
-                    duration: isPrem ? 'PREMIERE' : (v.lengthSeconds ? formatTime(v.lengthSeconds) : '03:30'),
-                    seconds: v.lengthSeconds || 240,
-                    thumb: `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`,
-                    isPremiere: isPrem,
-                    premiereText: isPrem ? 'Upcoming' : undefined
-                  };
-                });
-                return { videos, title: data.title || 'YouTube Playlist', playlistId: pid };
+      // Strategy 2: Instant YouTube Playlist RSS Feed via rss2json (updates within seconds of YouTube playlist edits!)
+      try {
+        const rssController = new AbortController();
+        const rssTimeout = setTimeout(() => rssController.abort(), 4500);
+        const rssFeedUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(pid)}`;
+        const rssApiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssFeedUrl)}&_t=${Date.now()}`;
+        const rssRes = await fetch(rssApiUrl, { signal: rssController.signal, cache: 'no-store' });
+        clearTimeout(rssTimeout);
+        if (rssRes.ok) {
+          const rssData = await rssRes.json();
+          if (rssData && rssData.status === 'ok' && Array.isArray(rssData.items) && rssData.items.length > 0) {
+            const rssVideos = rssData.items.map(item => {
+              let vid = '';
+              if (item.guid && item.guid.includes('yt:video:')) {
+                vid = item.guid.split('yt:video:')[1];
+              } else if (item.link) {
+                const m = item.link.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+                if (m) vid = m[1];
               }
-            } else {
-              const html = await res.text();
-              let ytData = null;
-              const match = html.match(/var ytInitialData = ({.*?});<\x2Fscript>/) ||
-                            html.match(/window\["ytInitialData"\] = ({.*?});/) ||
-                            html.match(/ytInitialData\s*=\s*({.+?});/s);
-              if (match) {
-                try { ytData = JSON.parse(match[1]); } catch (e) {}
+              const rawTitle = (item.title || 'Slowed Track')
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/&quot;/g, '"')
+                .trim();
+              let artist = 'Slowedfy';
+              if (rawTitle.includes('By Beat Badge × GW IMRAN') || rawTitle.includes('GW IMRAN')) {
+                artist = 'GW IMRAN';
               }
-              if (!ytData) {
-                const idx = html.indexOf("ytInitialData = ");
-                if (idx !== -1) {
-                  const rest = html.slice(idx + "ytInitialData = ".length);
-                  const endScript = rest.indexOf(";<\x2Fscript>");
-                  if (endScript !== -1) {
-                    try { ytData = JSON.parse(rest.slice(0, endScript)); } catch (e) {}
-                  }
-                }
-              }
+              return {
+                id: vid,
+                title: rawTitle,
+                artist,
+                duration: '04:00',
+                seconds: 240,
+                thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+                isPremiere: false
+              };
+            }).filter(v => !!v.id);
 
-              if (ytData) {
-                const videos = [];
-                const seen = new Set();
-                function extract(obj) {
-                  if (!obj) return;
-                  if (typeof obj === 'object') {
-                    if (obj.playlistVideoRenderer) {
-                      const pvr = obj.playlistVideoRenderer;
-                      const vid = pvr.videoId;
-                      if (vid && !seen.has(vid)) {
-                        seen.add(vid);
-                        const title = pvr.title?.runs?.[0]?.text || pvr.title?.simpleText || 'Slowed Track';
-                        const lengthText = pvr.lengthText?.simpleText || '';
-                        const lengthSec = pvr.lengthSeconds ? parseInt(pvr.lengthSeconds, 10) : 0;
-                        let isPrem = false;
-                        let premText = 'Upcoming';
-                        let startTime = 0;
-
-                        if (pvr.upcomingEventData) {
-                          isPrem = true;
-                          premText = pvr.upcomingEventData.upcomingEventText?.runs?.map(r => r.text).join('') || 'Upcoming';
-                          if (pvr.upcomingEventData.startTime) {
-                            startTime = parseInt(pvr.upcomingEventData.startTime, 10) * 1000;
-                          }
-                        }
-                        if (Array.isArray(pvr.thumbnailOverlays)) {
-                          for (const ov of pvr.thumbnailOverlays) {
-                            const t = ov.thumbnailOverlayTimeStatusRenderer;
-                            if (t) {
-                              const style = (t.style || '').toUpperCase();
-                              const txt = (t.text?.simpleText || (t.text?.runs?.[0]?.text) || '').toUpperCase();
-                              const aLabel = (t.text?.accessibility?.accessibilityData?.label || '').toUpperCase();
-                              if (style.includes('UPCOMING') || style.includes('PREMIERE') || txt.includes('UPCOMING') || txt.includes('PREMIERE') || aLabel.includes('UPCOMING') || aLabel.includes('PREMIERE')) {
-                                isPrem = true;
-                                premText = t.text?.simpleText || t.text?.runs?.[0]?.text || premText || 'Upcoming';
-                              }
-                            }
-                          }
-                        }
-                        if (Array.isArray(pvr.badges)) {
-                          for (const b of pvr.badges) {
-                            const lbl = (b.metadataBadgeRenderer?.label || '').toUpperCase();
-                            if (lbl.includes('PREMIERE') || lbl.includes('UPCOMING') || lbl.includes('LIVE')) {
-                              isPrem = true;
-                              premText = b.metadataBadgeRenderer?.label || premText || 'Upcoming';
-                            }
-                          }
-                        }
-                        if (Array.isArray(pvr.videoInfo?.runs)) {
-                          for (const r of pvr.videoInfo.runs) {
-                            const txt = (r.text || '').toUpperCase();
-                            if (txt.includes('PREMIERE') || txt.includes('UPCOMING') || txt.includes('LIVE IN') || txt.includes('SCHEDULED')) {
-                              isPrem = true;
-                              premText = r.text || premText || 'Upcoming';
-                            }
-                          }
-                        }
-                        if (lengthSec === 0 && !lengthText && !isPrem) {
-                          isPrem = true;
-                          premText = 'Upcoming';
-                        }
-                        if (lengthSec > 0 && !pvr.upcomingEventData && !isPrem) {
-                          isPrem = false;
-                        }
-
-                        let sec = lengthSec;
-                        if (!sec && lengthText && lengthText.includes(':')) {
-                          const parts = lengthText.split(':').map(p => parseInt(p, 10));
-                          if (parts.length === 2) sec = parts[0] * 60 + parts[1];
-                          else if (parts.length === 3) sec = parts[0] * 3600 + parts[1] * 60 + parts[2];
-                        }
-
-                        const finalDuration = isPrem ? 'PREMIERE' : (lengthText || (sec ? formatTime(sec) : '03:30'));
-
-                        videos.push({
-                          id: vid,
-                          title,
-                          artist: (title.includes('GW IMRAN') || title.includes('By Beat Badge × GW IMRAN')) ? 'GW IMRAN' : 'Slowedfy',
-                          duration: finalDuration,
-                          seconds: sec || 240,
-                          thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
-                          isPremiere: isPrem,
-                          premiereText: isPrem ? (premText || 'Upcoming') : undefined,
-                          startTime: startTime || undefined
-                        });
-                      }
-                    }
-                    for (const k of Object.keys(obj)) extract(obj[k]);
-                  } else if (Array.isArray(obj)) {
-                    for (const item of obj) extract(item);
-                  }
-                }
-                extract(ytData);
-                if (videos.length > 0) {
-                  return { videos, title: 'YouTube Playlist', playlistId: pid };
-                }
-              }
+            if (rssVideos.length > 0) {
+              return {
+                videos: rssVideos,
+                title: rssData.feed?.title || 'Slowedfy Playlist',
+                playlistId: pid,
+                isPartial: true // Partial top-feed: new songs will be merged smoothly at the top
+              };
             }
           }
-        } catch (err) {}
+        }
+      } catch (e) {
+        console.warn('Client-side RSS feed error:', e);
       }
+
+      // Strategy 3: Fast Invidious API instance
+      const invidiousInstances = [
+        `https://inv.nadeko.net/api/v1/playlists/${pid}`,
+        `https://invidious.jing.rocks/api/v1/playlists/${pid}`
+      ];
+      for (const instance of invidiousInstances) {
+        try {
+          const ctrl = new AbortController();
+          const tId = setTimeout(() => ctrl.abort(), 4000);
+          const res = await fetch(instance, { signal: ctrl.signal, cache: 'no-store' });
+          clearTimeout(tId);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.videos) && data.videos.length > 0) {
+              const videos = data.videos.map(v => {
+                const isPrem = !!v.isUpcoming || (v.lengthSeconds === 0 && !v.liveNow && !v.length);
+                return {
+                  id: v.videoId,
+                  title: v.title,
+                  artist: (v.title.includes('GW IMRAN') || v.author?.includes('GW IMRAN')) ? 'GW IMRAN' : 'Slowedfy',
+                  duration: isPrem ? 'PREMIERE' : (v.lengthSeconds ? formatTime(v.lengthSeconds) : '03:30'),
+                  seconds: v.lengthSeconds || 240,
+                  thumb: `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`,
+                  isPremiere: isPrem,
+                  premiereText: isPrem ? 'Upcoming' : undefined
+                };
+              });
+              return { videos, title: data.title || 'YouTube Playlist', playlistId: pid, isPartial: false };
+            }
+          }
+        } catch (e) {}
+      }
+
+      // Strategy 4: Direct XML RSS feed mirror through proxy
+      try {
+        const proxyCtrl = new AbortController();
+        const pId = setTimeout(() => proxyCtrl.abort(), 4000);
+        const proxyUrl = `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://www.youtube.com/feeds/videos.xml?playlist_id=${pid}`)}`;
+        const pRes = await fetch(proxyUrl, { signal: proxyCtrl.signal, cache: 'no-store' });
+        clearTimeout(pId);
+        if (pRes.ok) {
+          const xml = await pRes.text();
+          const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
+          const videos = [];
+          for (const e of entries) {
+            const vidMatch = e.match(/<yt:videoId>([^<]+)<\/yt:videoId>/);
+            const vid = vidMatch ? vidMatch[1].trim() : '';
+            if (!vid) continue;
+            const titleMatch = e.match(/<media:title>([^<]+)<\/media:title>/) || e.match(/<title>([^<]+)<\/title>/);
+            const title = titleMatch ? titleMatch[1].replace(/&amp;/g, '&').trim() : 'Slowed Track';
+            let artist = 'Slowedfy';
+            if (title.includes('GW IMRAN')) artist = 'GW IMRAN';
+            videos.push({
+              id: vid,
+              title,
+              artist,
+              duration: '04:00',
+              seconds: 240,
+              thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+              isPremiere: false
+            });
+          }
+          if (videos.length > 0) {
+            return { videos, title: 'Slowedfy Playlist', playlistId: pid, isPartial: true };
+          }
+        }
+      } catch (e) {}
 
       return null;
     }
@@ -5981,22 +5961,41 @@
 
           const currentIds = new Set(state.playlist.map(t => t.id));
           const newTracks = latest.filter(t => !currentIds.has(t.id));
-          
-          let changed = isSwitchingPlaylist || latest.length !== state.playlist.length || newTracks.length > 0;
-          if (!changed) {
-            changed = latest.some((lat, i) => {
-              const cur = state.playlist[i];
-              return !cur || cur.id !== lat.id || !!cur.isPremiere !== !!lat.isPremiere || cur.duration !== lat.duration || cur.title !== lat.title;
-            });
+
+          let mergedPlaylist = state.playlist;
+          let changed = false;
+
+          if (result.isPartial) {
+            // Partial list from RSS feed (e.g. latest 10-15 videos)
+            if (newTracks.length > 0) {
+              // Prepend newly detected tracks to the top of the playlist!
+              mergedPlaylist = [...newTracks, ...state.playlist];
+              changed = true;
+            }
+          } else {
+            // Full list from backend API or Invidious
+            if (isSwitchingPlaylist || latest.length !== state.playlist.length || newTracks.length > 0) {
+              mergedPlaylist = latest;
+              changed = true;
+            } else {
+              const diff = latest.some((lat, i) => {
+                const cur = state.playlist[i];
+                return !cur || cur.id !== lat.id || !!cur.isPremiere !== !!lat.isPremiere || cur.duration !== lat.duration || cur.title !== lat.title;
+              });
+              if (diff) {
+                mergedPlaylist = latest;
+                changed = true;
+              }
+            }
           }
 
           if (changed) {
             const currentActiveTrackId = state.playlist[state.currentIndex]?.id;
 
-            state.playlist = latest;
+            state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_synced_playlist_v5', JSON.stringify(latest));
+                localStorage.setItem('slowedfy_synced_playlist_v6', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -6014,22 +6013,22 @@
             updateSyncModalUI();
 
             if (isSwitchingPlaylist) {
-              showToast(`✨ Loaded ${latest.length} tracks: ${state.activePlaylistTitle}`, "🎵");
+              showToast(`✨ Loaded ${mergedPlaylist.length} tracks: ${state.activePlaylistTitle}`, "🎵");
               playTrackAtIndex(0);
             } else if (newTracks.length > 0) {
               const pTrack = newTracks.find(t => t.isPremiere);
               if (pTrack) {
                 showToast(`✨ Upcoming Premiere Detected: ${pTrack.title}`, "🔴");
               } else {
-                showToast(`✨ ${newTracks.length} New Track(s) Added from YouTube!`, "🎵");
+                showToast(`✨ New Song Detected from YouTube: ${newTracks[0].title.slice(0, 32)}...`, "🎵");
               }
             } else {
-              showToast(`✨ Playlist Synced • ${latest.length} Tracks`, "🎵");
+              showToast(`✨ Playlist Synced • ${mergedPlaylist.length} Tracks`, "🎵");
             }
           } else {
             updateSyncModalUI();
             if (isManual) {
-              showToast(`Playlist is up to date (${latest.length} Tracks)`, "✓");
+              showToast(`Playlist is up to date (${state.playlist.length} Tracks)`, "✓");
             }
           }
         } else if (isManual || isSwitchingPlaylist) {
@@ -6114,12 +6113,15 @@
     function init() {
       // Load saved playlist from storage if available and valid
       try {
-        const saved = localStorage.getItem('slowedfy_synced_playlist_v5');
+        const saved = localStorage.getItem('slowedfy_synced_playlist_v6') || localStorage.getItem('slowedfy_synced_playlist_v5');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
-            const hasFirstOfficial = parsed.some(p => p.id === OFFICIAL_PLAYLIST[0].id);
-            if (hasFirstOfficial) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const savedIds = new Set(parsed.map(p => p.id));
+            const missingOfficial = OFFICIAL_PLAYLIST.filter(p => !savedIds.has(p.id));
+            if (missingOfficial.length > 0) {
+              state.playlist = [...missingOfficial, ...parsed];
+            } else {
               state.playlist = parsed;
             }
           }

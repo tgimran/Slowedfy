@@ -398,6 +398,49 @@ async function fetchFullYouTubePlaylist(html: string): Promise<ParsedPlaylistRes
   return { videos, title, author };
 }
 
+async function fetchYouTubeRssVideos(playlistId: string): Promise<PlaylistItem[]> {
+  try {
+    const rssUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(playlistId)}&_t=${Date.now()}`;
+    const xml = await fetchUrl(rssUrl);
+    const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
+    const videos: PlaylistItem[] = [];
+    for (const e of entries) {
+      const vidMatch = e.match(/<yt:videoId>([^<]+)<\/yt:videoId>/);
+      const vid = vidMatch ? vidMatch[1].trim() : null;
+      if (!vid) continue;
+
+      const titleMatch = e.match(/<media:title>([^<]+)<\/media:title>/) || e.match(/<title>([^<]+)<\/title>/);
+      let title = titleMatch
+        ? titleMatch[1]
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"')
+            .trim()
+        : "Slowed Track";
+
+      let artist = "Slowedfy";
+      if (title.includes("By Beat Badge × GW IMRAN") || title.includes("GW IMRAN")) {
+        artist = "GW IMRAN";
+      }
+
+      videos.push({
+        id: vid,
+        title,
+        artist,
+        duration: "03:30",
+        seconds: 210,
+        thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
+        isPremiere: false,
+      });
+    }
+    return videos;
+  } catch (err) {
+    console.warn(`[YouTube RSS] Failed to fetch RSS for ${playlistId}:`, err);
+    return [];
+  }
+}
+
 async function getLatestPlaylist(
   playlistId: string = DEFAULT_PLAYLIST_ID,
   forceRefresh = false
@@ -406,7 +449,7 @@ async function getLatestPlaylist(
   const now = Date.now();
   const cached = playlistCache.get(normalizedId);
 
-  if (!forceRefresh && cached && cached.playlist.length > 0 && now - cached.lastFetchTime < CACHE_TTL_MS) {
+  if (!forceRefresh && cached && cached.playlist.length > 0 && now - cached.lastFetchTime < 10000) {
     return {
       playlist: cached.playlist,
       title: cached.title,
@@ -417,21 +460,47 @@ async function getLatestPlaylist(
 
   try {
     const youtubeUrl = `https://www.youtube.com/playlist?list=${normalizedId}`;
-    const html = await fetchUrl(youtubeUrl);
-    const parsed = await fetchFullYouTubePlaylist(html);
-    if (parsed && parsed.videos.length > 0) {
+    
+    // Fetch HTML scrape and RSS feed concurrently for zero-latency detection of new songs
+    const [htmlResult, rssVideos] = await Promise.allSettled([
+      fetchUrl(youtubeUrl).then(html => fetchFullYouTubePlaylist(html)),
+      fetchYouTubeRssVideos(normalizedId)
+    ]);
+
+    const parsed = htmlResult.status === "fulfilled" ? htmlResult.value : null;
+    const rss = rssVideos.status === "fulfilled" ? rssVideos.value : [];
+
+    let combinedVideos: PlaylistItem[] = parsed?.videos ? [...parsed.videos] : [];
+
+    // Check if RSS feed has any brand new videos that YouTube HTML edge cache hasn't indexed yet
+    if (rss.length > 0) {
+      const existingIds = new Set(combinedVideos.map(v => v.id));
+      const brandNewFromRss: PlaylistItem[] = [];
+      for (const rv of rss) {
+        if (!existingIds.has(rv.id)) {
+          brandNewFromRss.push(rv);
+          existingIds.add(rv.id);
+        }
+      }
+      if (brandNewFromRss.length > 0) {
+        console.log(`[YouTube Sync] Detected ${brandNewFromRss.length} brand new track(s) from YouTube RSS feed:`, brandNewFromRss.map(t => t.title));
+        combinedVideos = [...brandNewFromRss, ...combinedVideos];
+      }
+    }
+
+    if (combinedVideos.length > 0) {
       const entry: PlaylistCacheEntry = {
         playlistId: normalizedId,
-        title: parsed.title || "Slowedfy Playlist",
-        playlist: parsed.videos,
+        title: parsed?.title || (rss.length > 0 ? "Slowedfy Playlist" : "Slowedfy"),
+        playlist: combinedVideos,
         lastFetchTime: now,
       };
       playlistCache.set(normalizedId, entry);
-      console.log(`[YouTube Sync] Synced ${parsed.videos.length} tracks for playlist ${normalizedId} ("${entry.title}") successfully at ${new Date().toISOString()}`);
+      console.log(`[YouTube Sync] Synced ${combinedVideos.length} tracks for playlist ${normalizedId} ("${entry.title}") successfully at ${new Date().toISOString()}`);
       return {
-        playlist: parsed.videos,
+        playlist: combinedVideos,
         title: entry.title,
-        author: parsed.author || "Slowedfy",
+        author: parsed?.author || "Slowedfy",
         lastFetchTime: now,
       };
     }
@@ -461,6 +530,17 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Global CORS Middleware for public website & iframe access
+  app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Pragma, Cache-Control");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+    next();
+  });
 
   // API Routes
   app.get("/api/health", (req, res) => {
