@@ -4875,7 +4875,7 @@
 
         // Persist update so it stays live across sessions
         try {
-          localStorage.setItem('slowedfy_synced_playlist_v5', JSON.stringify(state.playlist));
+          localStorage.setItem('slowedfy_synced_playlist_v7', JSON.stringify(state.playlist));
         } catch (e) {}
       }
     }
@@ -5864,11 +5864,12 @@
         if (res.ok && contentType.includes('application/json')) {
           const data = await res.json();
           if (data && data.success && Array.isArray(data.playlist) && data.playlist.length > 0) {
+            const isPartial = pid === PLAYLIST_ID && data.playlist.length < OFFICIAL_PLAYLIST.length;
             return {
               videos: data.playlist,
               title: data.title || (pid === PLAYLIST_ID ? 'Slowedfy Official Playlist' : 'YouTube Playlist'),
               playlistId: pid,
-              isPartial: false
+              isPartial: isPartial
             };
           }
         }
@@ -6058,13 +6059,23 @@
             }
           }
 
+          // CRITICAL: Guarantee that the official Slowedfy playlist never drops below the 106 official songs
+          if (requestedPid === PLAYLIST_ID && mergedPlaylist.length < OFFICIAL_PLAYLIST.length) {
+            const currentIds = new Set(mergedPlaylist.map(t => t.id));
+            const missingOfficial = OFFICIAL_PLAYLIST.filter(t => !currentIds.has(t.id));
+            if (missingOfficial.length > 0) {
+              mergedPlaylist = [...mergedPlaylist, ...missingOfficial];
+              changed = true;
+            }
+          }
+
           if (changed) {
             const currentActiveTrackId = state.playlist[state.currentIndex]?.id;
 
             state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_synced_playlist_v6', JSON.stringify(mergedPlaylist));
+                localStorage.setItem('slowedfy_synced_playlist_v7', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -6182,20 +6193,22 @@
     function init() {
       // Load saved playlist from storage if available and valid
       try {
-        const saved = localStorage.getItem('slowedfy_synced_playlist_v6') || localStorage.getItem('slowedfy_synced_playlist_v5');
+        const saved = localStorage.getItem('slowedfy_synced_playlist_v7');
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const savedIds = new Set(parsed.map(p => p.id));
-            const missingOfficial = OFFICIAL_PLAYLIST.filter(p => !savedIds.has(p.id));
-            if (missingOfficial.length > 0) {
-              state.playlist = [...missingOfficial, ...parsed];
-            } else {
-              state.playlist = parsed;
-            }
+          if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
+            state.playlist = parsed;
           }
         }
       } catch (e) {}
+
+      // Absolute guarantee: Ensure state.playlist always contains all 106 official songs
+      if (!state.playlist || state.playlist.length < OFFICIAL_PLAYLIST.length) {
+        const currentIds = new Set((state.playlist || []).map(p => p.id));
+        const missing = OFFICIAL_PLAYLIST.filter(p => !currentIds.has(p.id));
+        state.playlist = [...(state.playlist || []), ...missing];
+      }
+      state.originalPlaylist = [...state.playlist];
 
       initTheme();
       PerfEngine.init();

@@ -3,8 +3,9 @@ import path from "path";
 import https from "https";
 import http from "http";
 import { createServer as createViteServer } from "vite";
+import { OFFICIAL_PLAYLIST, DEFAULT_PLAYLIST_ID as FALLBACK_ID, PlaylistItem as BasePlaylistItem } from "./src/defaultPlaylist";
 
-const DEFAULT_PLAYLIST_ID = "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS";
+const DEFAULT_PLAYLIST_ID = FALLBACK_ID;
 
 export function cleanPlaylistId(input?: string): string {
   if (!input) return DEFAULT_PLAYLIST_ID;
@@ -488,6 +489,15 @@ async function getLatestPlaylist(
       }
     }
 
+    // If syncing the default official playlist, guarantee all 106 official tracks are present
+    if (normalizedId === DEFAULT_PLAYLIST_ID) {
+      const currentIds = new Set(combinedVideos.map(v => v.id));
+      const missingFromOfficial = OFFICIAL_PLAYLIST.filter(v => !currentIds.has(v.id));
+      if (missingFromOfficial.length > 0) {
+        combinedVideos = [...combinedVideos, ...(missingFromOfficial as PlaylistItem[])];
+      }
+    }
+
     if (combinedVideos.length > 0) {
       const entry: PlaylistCacheEntry = {
         playlistId: normalizedId,
@@ -514,6 +524,15 @@ async function getLatestPlaylist(
       title: cached.title,
       author: "Slowedfy",
       lastFetchTime: cached.lastFetchTime,
+    };
+  }
+
+  if (normalizedId === DEFAULT_PLAYLIST_ID) {
+    return {
+      playlist: OFFICIAL_PLAYLIST as PlaylistItem[],
+      title: "Slowedfy Official Playlist",
+      author: "Slowedfy",
+      lastFetchTime: now,
     };
   }
 
