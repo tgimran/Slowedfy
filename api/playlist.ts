@@ -163,17 +163,38 @@ async function fetchFromYouTube(playlistId: string): Promise<{ videos: PlaylistI
   }
 }
 
+const KNOWN_SHORTS_IDS = new Set([
+  "AxIiQDuYnNY", "pnfhU5M0NxE", "dACfofdKdfY", "AiyVQGn6DT8",
+  "MrBpcs3_qJE", "EfOeSZVnCyc", "z6I4vznbokI"
+]);
+
+function isShortTrack(id: string, title: string = "", xmlEntry: string = ""): boolean {
+  if (KNOWN_SHORTS_IDS.has(id)) return true;
+  if (xmlEntry && xmlEntry.includes("/shorts/")) return true;
+  const lower = title.toLowerCase();
+  if (lower.includes("#shorts") || lower.includes("#short") || lower.includes("shorts")) return true;
+  return false;
+}
+
 async function fetchRssVideos(playlistId: string): Promise<PlaylistItem[]> {
   try {
-    const rssXml = await fetchUrl(`https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(playlistId)}&_t=${Date.now()}`);
+    const rssUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(playlistId)}&_t=${Date.now()}`;
+    const rssXml = await fetchUrl(rssUrl);
     const entries = rssXml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
     const videos: PlaylistItem[] = [];
+    const seen = new Set<string>();
+
     for (const e of entries) {
       const vidMatch = e.match(/<yt:videoId>([^<]+)<\/yt:videoId>/);
       const vid = vidMatch ? vidMatch[1].trim() : "";
-      if (!vid) continue;
+      if (!vid || seen.has(vid)) continue;
+
       const titleMatch = e.match(/<media:title>([^<]+)<\/media:title>/) || e.match(/<title>([^<]+)<\/title>/);
       const title = titleMatch ? titleMatch[1].replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').trim() : "Slowed Track";
+
+      if (isShortTrack(vid, title, e)) continue;
+      seen.add(vid);
+
       let artist = "Slowedfy";
       if (title.includes("By Beat Badge × GW IMRAN") || title.includes("GW IMRAN")) {
         artist = "GW IMRAN";

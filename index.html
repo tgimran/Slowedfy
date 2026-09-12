@@ -339,9 +339,9 @@
       right: 0;
       width: 200px;
       height: 200px;
-      opacity: 0.001;
+      opacity: 0.01;
       pointer-events: none;
-      z-index: -9999;
+      z-index: -10;
     }
 
     #yt-player-container iframe,
@@ -2612,7 +2612,7 @@
         <!-- Active Playlist Count & Sync Launcher -->
         <div class="glass-btn pill-counter" id="playlist-badge-top" role="button" tabindex="0" title="Click to view YouTube Playlist Sync" style="cursor: pointer;">
           <div class="pulse-dot"></div>
-          <span id="header-song-count">105 Tracks</span>
+          <span id="header-song-count">106 Tracks</span>
         </div>
       </div>
     </header>
@@ -2654,7 +2654,7 @@
           <div class="playlist-card-header">
             <div class="playlist-title-wrap">
               <span class="playlist-title" id="playlist-display-title">Slowedfy Playlist</span>
-              <span class="playlist-count-badge" id="playlist-count-label">105 Songs</span>
+              <span class="playlist-count-badge" id="playlist-count-label">106 Songs</span>
             </div>
             <div class="sync-actions-wrap" style="display: flex; align-items: center; gap: 6px;">
               <button class="sync-refresh-btn" id="sync-refresh-btn" title="Sync YouTube Playlist (Click to check updates)" aria-label="Auto Sync Playlist">
@@ -2866,8 +2866,13 @@
           </button>
         </div>
 
-        <!-- Right: Volume Slider -->
+        <!-- Right: Volume Slider & Direct YouTube Watch Link -->
         <div class="dock-right-controls">
+          <a href="https://www.youtube.com/watch?v=ojqx-vOEJR0" id="dock-yt-link" target="_blank" rel="noopener noreferrer" class="glass-btn ctrl-btn" style="width:34px;height:34px;text-decoration:none;color:#ff0033;display:inline-flex;align-items:center;justify-content:center;" title="Open active song on YouTube" aria-label="Open on YouTube">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+          </a>
           <div class="volume-wrap">
             <button class="glass-btn ctrl-btn" id="mute-btn" style="width:34px;height:34px;" title="Mute/Unmute (M)" aria-label="Mute">
               <svg id="vol-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -4328,6 +4333,7 @@
       dockThumbImg: document.getElementById('dock-thumb-img'),
       dockSongTitle: document.getElementById('dock-song-title'),
       dockSongArtist: document.getElementById('dock-song-artist'),
+      dockYtLink: document.getElementById('dock-yt-link'),
       playlistContainer: document.getElementById('playlist-items-container'),
       playlistSearchInput: document.getElementById('playlist-search-input'),
       playlistCountLabel: document.getElementById('playlist-count-label'),
@@ -4890,9 +4896,12 @@
       // Update hero text
       DOM.heroTitle.textContent = track.title;
       
-      // Update dock text
+      // Update dock text & YouTube direct watch link
       DOM.dockSongTitle.textContent = track.title;
       DOM.dockSongArtist.textContent = track.artist;
+      if (DOM.dockYtLink) {
+        DOM.dockYtLink.href = `https://www.youtube.com/watch?v=${track.id}`;
+      }
 
       // Handle Premiere / Upcoming Badge on Main Hero Artwork
       if (DOM.heroPremiereBadge) {
@@ -5241,12 +5250,13 @@
       console.warn("YouTube player encountered an error code:", event.data);
       consecutiveErrors++;
       if (consecutiveErrors > 3) {
-        showToast("Player audio fallback mode", "⚠️");
-        simulatePlayback();
+        showToast("Playback paused. Click any song to play", "⚠️");
+        state.isPlaying = false;
+        updatePlayPauseBtnUI(false);
         return;
       }
       const isEmbedRestricted = event.data === 101 || event.data === 150;
-      showToast(isEmbedRestricted ? "Embed restricted by YouTube, playing next..." : "Skipping unavailable track...", "⚠️");
+      showToast(isEmbedRestricted ? "Song restricted on external embed, trying next..." : "Loading next song...", "⚠️");
       setTimeout(() => {
         nextTrack();
       }, 1000);
@@ -6060,11 +6070,22 @@
           }
 
           // CRITICAL: Guarantee that the official Slowedfy playlist never drops below the 106 official songs
-          if (requestedPid === PLAYLIST_ID && mergedPlaylist.length < OFFICIAL_PLAYLIST.length) {
-            const currentIds = new Set(mergedPlaylist.map(t => t.id));
-            const missingOfficial = OFFICIAL_PLAYLIST.filter(t => !currentIds.has(t.id));
-            if (missingOfficial.length > 0) {
-              mergedPlaylist = [...mergedPlaylist, ...missingOfficial];
+          if (requestedPid === PLAYLIST_ID) {
+            if (mergedPlaylist.length < OFFICIAL_PLAYLIST.length) {
+              const currentIds = new Set(mergedPlaylist.map(t => t.id));
+              const missingOfficial = OFFICIAL_PLAYLIST.filter(t => !currentIds.has(t.id));
+              if (missingOfficial.length > 0) {
+                mergedPlaylist = [...mergedPlaylist, ...missingOfficial];
+                changed = true;
+              }
+            }
+
+            // GUARANTEE: Newest song 1 uper se rahe (Newest song always at index 0 / Track 01)
+            const newestId = OFFICIAL_PLAYLIST[0].id;
+            const topIdx = mergedPlaylist.findIndex(t => t.id === newestId);
+            if (topIdx > 0 && newTracks.length === 0) {
+              const [newestTrack] = mergedPlaylist.splice(topIdx, 1);
+              mergedPlaylist.unshift(newestTrack);
               changed = true;
             }
           }
@@ -6075,7 +6096,7 @@
             state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_synced_playlist_v7', JSON.stringify(mergedPlaylist));
+                localStorage.setItem('slowedfy_synced_playlist_v8', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -6193,7 +6214,7 @@
     function init() {
       // Load saved playlist from storage if available and valid
       try {
-        const saved = localStorage.getItem('slowedfy_synced_playlist_v7');
+        const saved = localStorage.getItem('slowedfy_synced_playlist_v8');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
@@ -6208,6 +6229,17 @@
         const missing = OFFICIAL_PLAYLIST.filter(p => !currentIds.has(p.id));
         state.playlist = [...(state.playlist || []), ...missing];
       }
+
+      // GUARANTEE: Newest song 1 uper se rahe (Newest song always at index 0 / Track 01)
+      if (state.playlist && state.playlist.length > 0 && OFFICIAL_PLAYLIST.length > 0) {
+        const newestOfficialId = OFFICIAL_PLAYLIST[0].id;
+        const topIdx = state.playlist.findIndex(t => t.id === newestOfficialId);
+        if (topIdx > 0) {
+          const [topTrack] = state.playlist.splice(topIdx, 1);
+          state.playlist.unshift(topTrack);
+        }
+      }
+
       state.originalPlaylist = [...state.playlist];
 
       initTheme();

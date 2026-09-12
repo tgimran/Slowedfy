@@ -399,16 +399,32 @@ async function fetchFullYouTubePlaylist(html: string): Promise<ParsedPlaylistRes
   return { videos, title, author };
 }
 
+const KNOWN_SHORTS_IDS = new Set([
+  "AxIiQDuYnNY", "pnfhU5M0NxE", "dACfofdKdfY", "AiyVQGn6DT8",
+  "MrBpcs3_qJE", "EfOeSZVnCyc", "z6I4vznbokI"
+]);
+
+function isShortTrack(id: string, title: string = "", xmlEntry: string = ""): boolean {
+  if (KNOWN_SHORTS_IDS.has(id)) return true;
+  if (xmlEntry && xmlEntry.includes("/shorts/")) return true;
+  const lower = title.toLowerCase();
+  if (lower.includes("#shorts") || lower.includes("#short") || lower.includes("shorts")) return true;
+  return false;
+}
+
 async function fetchYouTubeRssVideos(playlistId: string): Promise<PlaylistItem[]> {
   try {
+    // Only fetch the official YouTube Playlist RSS feed (never channel feed to avoid Shorts)
     const rssUrl = `https://www.youtube.com/feeds/videos.xml?playlist_id=${encodeURIComponent(playlistId)}&_t=${Date.now()}`;
     const xml = await fetchUrl(rssUrl);
     const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
     const videos: PlaylistItem[] = [];
+    const seen = new Set<string>();
+
     for (const e of entries) {
       const vidMatch = e.match(/<yt:videoId>([^<]+)<\/yt:videoId>/);
       const vid = vidMatch ? vidMatch[1].trim() : null;
-      if (!vid) continue;
+      if (!vid || seen.has(vid)) continue;
 
       const titleMatch = e.match(/<media:title>([^<]+)<\/media:title>/) || e.match(/<title>([^<]+)<\/title>/);
       let title = titleMatch
@@ -419,6 +435,11 @@ async function fetchYouTubeRssVideos(playlistId: string): Promise<PlaylistItem[]
             .replace(/&quot;/g, '"')
             .trim()
         : "Slowed Track";
+
+      // Reject all YouTube Shorts
+      if (isShortTrack(vid, title, e)) continue;
+
+      seen.add(vid);
 
       let artist = "Slowedfy";
       if (title.includes("By Beat Badge × GW IMRAN") || title.includes("GW IMRAN")) {
@@ -489,12 +510,22 @@ async function getLatestPlaylist(
       }
     }
 
+    // Strictly filter out any shorts - only full playlist songs allowed
+    combinedVideos = combinedVideos.filter(v => !isShortTrack(v.id, v.title));
+
     // If syncing the default official playlist, guarantee all 106 official tracks are present
     if (normalizedId === DEFAULT_PLAYLIST_ID) {
       const currentIds = new Set(combinedVideos.map(v => v.id));
       const missingFromOfficial = OFFICIAL_PLAYLIST.filter(v => !currentIds.has(v.id));
       if (missingFromOfficial.length > 0) {
         combinedVideos = [...combinedVideos, ...(missingFromOfficial as PlaylistItem[])];
+      }
+
+      // Ensure Track 01 is strictly the newest official release
+      const topIdx = combinedVideos.findIndex(v => v.id === OFFICIAL_PLAYLIST[0].id);
+      if (topIdx > 0 && combinedVideos.length === OFFICIAL_PLAYLIST.length) {
+        const [topTrack] = combinedVideos.splice(topIdx, 1);
+        combinedVideos.unshift(topTrack);
       }
     }
 
