@@ -2612,7 +2612,7 @@
         <!-- Active Playlist Count & Sync Launcher -->
         <div class="glass-btn pill-counter" id="playlist-badge-top" role="button" tabindex="0" title="Click to view YouTube Playlist Sync" style="cursor: pointer;">
           <div class="pulse-dot"></div>
-          <span id="header-song-count">106 Tracks</span>
+          <span id="header-song-count">107 Tracks</span>
         </div>
       </div>
     </header>
@@ -2654,7 +2654,7 @@
           <div class="playlist-card-header">
             <div class="playlist-title-wrap">
               <span class="playlist-title" id="playlist-display-title">Slowedfy Playlist</span>
-              <span class="playlist-count-badge" id="playlist-count-label">106 Songs</span>
+              <span class="playlist-count-badge" id="playlist-count-label">107 Songs</span>
             </div>
             <div class="sync-actions-wrap" style="display: flex; align-items: center; gap: 6px;">
               <button class="sync-refresh-btn" id="sync-refresh-btn" title="Sync YouTube Playlist (Click to check updates)" aria-label="Auto Sync Playlist">
@@ -3326,8 +3326,31 @@
     const PLAYLIST_ID = "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS";
     const PLAYLIST_URL = "https://youtube.com/playlist?list=PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS&si=TFXs9xxb1dmMAj3";
     
+    // Blocklist for YouTube Shorts to ensure strictly full playlist tracks are played
+    const KNOWN_SHORTS_IDS = new Set([
+      "AxIiQDuYnNY", "pnfhU5M0NxE", "dACfofdKdfY", "AiyVQGn6DT8",
+      "MrBpcs3_qJE", "EfOeSZVnCyc", "z6I4vznbokI", "n3-MB-f5SJg"
+    ]);
+
+    function isShortTrack(id, title = "", link = "") {
+      if (KNOWN_SHORTS_IDS.has(id)) return true;
+      if (link && link.includes('/shorts/')) return true;
+      const lower = (title || "").toLowerCase();
+      if (lower.includes('#shorts') || lower.includes('#short') || lower.includes('shorts')) return true;
+      return false;
+    }
+    
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
+  {
+    "id": "saa5rE45ezM",
+    "title": "Ishq de Fanniyar - Female│Jyotica Tangri│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "5:15",
+    "seconds": 315,
+    "thumb": "https://i.ytimg.com/vi/saa5rE45ezM/hqdefault.jpg",
+    "isPremiere": false
+  },
   {
     "id": "ojqx-vOEJR0",
     "title": "TERE NAAM│UDIT NARAYAN│ALKA YAGNIK│(Slowed + Reverb) By Beat Badge × Slowedfy",
@@ -5925,7 +5948,7 @@
                 thumb: `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`,
                 isPremiere: false
               };
-            }).filter(v => !!v.id);
+            }).filter(v => !!v.id && !isShortTrack(v.id, v.title));
 
             if (rssVideos.length > 0) {
               return {
@@ -6069,7 +6092,10 @@
             }
           }
 
-          // CRITICAL: Guarantee that the official Slowedfy playlist never drops below the 106 official songs
+          // Filter out any accidental shorts - only full songs allowed
+          mergedPlaylist = mergedPlaylist.filter(t => !isShortTrack(t.id, t.title));
+
+          // CRITICAL: Guarantee that the official Slowedfy playlist never drops below the 107 official songs
           if (requestedPid === PLAYLIST_ID) {
             if (mergedPlaylist.length < OFFICIAL_PLAYLIST.length) {
               const currentIds = new Set(mergedPlaylist.map(t => t.id));
@@ -6096,7 +6122,7 @@
             state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_synced_playlist_v8', JSON.stringify(mergedPlaylist));
+                localStorage.setItem('slowedfy_synced_playlist_v9', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -6214,7 +6240,7 @@
     function init() {
       // Load saved playlist from storage if available and valid
       try {
-        const saved = localStorage.getItem('slowedfy_synced_playlist_v8');
+        const saved = localStorage.getItem('slowedfy_synced_playlist_v9');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
@@ -6223,12 +6249,15 @@
         }
       } catch (e) {}
 
-      // Absolute guarantee: Ensure state.playlist always contains all 106 official songs
+      // Absolute guarantee: Ensure state.playlist always contains all 107 official songs
       if (!state.playlist || state.playlist.length < OFFICIAL_PLAYLIST.length) {
         const currentIds = new Set((state.playlist || []).map(p => p.id));
         const missing = OFFICIAL_PLAYLIST.filter(p => !currentIds.has(p.id));
         state.playlist = [...(state.playlist || []), ...missing];
       }
+
+      // Filter out any accidental shorts - strictly full songs only
+      state.playlist = state.playlist.filter(t => !isShortTrack(t.id, t.title));
 
       // GUARANTEE: Newest song 1 uper se rahe (Newest song always at index 0 / Track 01)
       if (state.playlist && state.playlist.length > 0 && OFFICIAL_PLAYLIST.length > 0) {

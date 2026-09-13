@@ -523,7 +523,7 @@ async function getLatestPlaylist(
 
       // Ensure Track 01 is strictly the newest official release
       const topIdx = combinedVideos.findIndex(v => v.id === OFFICIAL_PLAYLIST[0].id);
-      if (topIdx > 0 && combinedVideos.length === OFFICIAL_PLAYLIST.length) {
+      if (topIdx > 0) {
         const [topTrack] = combinedVideos.splice(topIdx, 1);
         combinedVideos.unshift(topTrack);
       }

@@ -14,6 +14,15 @@ export const DEFAULT_PLAYLIST_ID = "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS";
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "saa5rE45ezM",
+    "title": "Ishq de Fanniyar - Female│Jyotica Tangri│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "5:15",
+    "seconds": 315,
+    "thumb": "https://i.ytimg.com/vi/saa5rE45ezM/hqdefault.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "ojqx-vOEJR0",
     "title": "TERE NAAM│UDIT NARAYAN│ALKA YAGNIK│(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Slowedfy",
