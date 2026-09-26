@@ -493,6 +493,7 @@ async function getLatestPlaylist(
     const rss = rssVideos.status === "fulfilled" ? rssVideos.value : [];
 
     let combinedVideos: PlaylistItem[] = parsed?.videos ? [...parsed.videos] : [];
+    let brandNewFromRssCount = 0;
 
     // Check if RSS feed has any brand new videos that YouTube HTML edge cache hasn't indexed yet
     if (rss.length > 0) {
@@ -505,6 +506,7 @@ async function getLatestPlaylist(
         }
       }
       if (brandNewFromRss.length > 0) {
+        brandNewFromRssCount = brandNewFromRss.length;
         console.log(`[YouTube Sync] Detected ${brandNewFromRss.length} brand new track(s) from YouTube RSS feed:`, brandNewFromRss.map(t => t.title));
         combinedVideos = [...brandNewFromRss, ...combinedVideos];
       }
@@ -513,7 +515,7 @@ async function getLatestPlaylist(
     // Strictly filter out any shorts - only full playlist songs allowed
     combinedVideos = combinedVideos.filter(v => !isShortTrack(v.id, v.title));
 
-    // If syncing the default official playlist, guarantee all 106 official tracks are present
+    // If syncing the default official playlist, guarantee all 110 official tracks are present
     if (normalizedId === DEFAULT_PLAYLIST_ID) {
       const currentIds = new Set(combinedVideos.map(v => v.id));
       const missingFromOfficial = OFFICIAL_PLAYLIST.filter(v => !currentIds.has(v.id));
@@ -523,7 +525,7 @@ async function getLatestPlaylist(
 
       // Ensure Track 01 is strictly the newest official release
       const topIdx = combinedVideos.findIndex(v => v.id === OFFICIAL_PLAYLIST[0].id);
-      if (topIdx > 0) {
+      if (topIdx > 0 && brandNewFromRssCount === 0) {
         const [topTrack] = combinedVideos.splice(topIdx, 1);
         combinedVideos.unshift(topTrack);
       }

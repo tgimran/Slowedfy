@@ -240,12 +240,14 @@ export default async function handler(req: IncomingMessage & { query?: Record<st
     const rss = rssVideos.status === "fulfilled" ? rssVideos.value : [];
 
     let combinedVideos: PlaylistItem[] = parsed.videos && parsed.videos.length > 0 ? [...parsed.videos] : [];
+    let brandNewCount = 0;
 
     // Prepend any new tracks from RSS
     if (rss.length > 0) {
       const existingIds = new Set(combinedVideos.map((v) => v.id));
       const brandNew = rss.filter((rv) => !existingIds.has(rv.id));
       if (brandNew.length > 0) {
+        brandNewCount = brandNew.length;
         combinedVideos = [...brandNew, ...combinedVideos];
       }
     }
@@ -253,7 +255,7 @@ export default async function handler(req: IncomingMessage & { query?: Record<st
     // Filter out any shorts - strictly full songs only
     combinedVideos = combinedVideos.filter((v) => !isShortTrack(v.id, v.title));
 
-    // If official playlist, guarantee all 107 official songs are included
+    // If official playlist, guarantee all 110 official songs are included
     if (playlistId === DEFAULT_PLAYLIST_ID) {
       const currentIds = new Set(combinedVideos.map((v) => v.id));
       const missing = OFFICIAL_PLAYLIST.filter((v) => !currentIds.has(v.id));
@@ -263,7 +265,7 @@ export default async function handler(req: IncomingMessage & { query?: Record<st
 
       // Ensure Track 01 is strictly the newest official release
       const topIdx = combinedVideos.findIndex((v) => v.id === OFFICIAL_PLAYLIST[0].id);
-      if (topIdx > 0) {
+      if (topIdx > 0 && brandNewCount === 0) {
         const [topTrack] = combinedVideos.splice(topIdx, 1);
         combinedVideos.unshift(topTrack);
       }

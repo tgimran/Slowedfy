@@ -14,11 +14,40 @@ export const DEFAULT_PLAYLIST_ID = "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS";
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "kd11akx8zp4",
+    "title": "Dil Mein Ho Tum│Armaan Malik│Rochak Kohli│Bappi Lahiri│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "5:51",
+    "seconds": 351,
+    "thumb": "https://i.ytimg.com/vi/kd11akx8zp4/hqdefault.jpg",
+    "isPremiere": true,
+    "premiereText": "PREMIERE",
+    "startTime": 1790421960000
+  },
+  {
+    "id": "MJyXc97UF3U",
+    "title": "Thodi Der│Farhan Saeed│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "5:18",
+    "seconds": 318,
+    "thumb": "https://i.ytimg.com/vi/MJyXc97UF3U/hqdefault.jpg",
+    "isPremiere": false
+  },
+  {
+    "id": "3UUpPr0tVAg",
+    "title": "Kachha Ghada│Rahgir│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "4:22",
+    "seconds": 262,
+    "thumb": "https://i.ytimg.com/vi/3UUpPr0tVAg/hqdefault.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "saa5rE45ezM",
     "title": "Ishq de Fanniyar - Female│Jyotica Tangri│(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Slowedfy",
-    "duration": "5:15",
-    "seconds": 315,
+    "duration": "3:12",
+    "seconds": 192,
     "thumb": "https://i.ytimg.com/vi/saa5rE45ezM/hqdefault.jpg",
     "isPremiere": false
   },
