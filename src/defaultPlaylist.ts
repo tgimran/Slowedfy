@@ -14,15 +14,22 @@ export const DEFAULT_PLAYLIST_ID = "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS";
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "CLnBx-V5lS4",
+    "title": "Jab Koi Baat Recreated│Atif Aslam│Shirley Setia│DJ Chetas│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Slowedfy",
+    "duration": "3:27",
+    "seconds": 207,
+    "thumb": "https://i.ytimg.com/vi/CLnBx-V5lS4/hqdefault.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "kd11akx8zp4",
     "title": "Dil Mein Ho Tum│Armaan Malik│Rochak Kohli│Bappi Lahiri│(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Slowedfy",
     "duration": "5:51",
     "seconds": 351,
     "thumb": "https://i.ytimg.com/vi/kd11akx8zp4/hqdefault.jpg",
-    "isPremiere": true,
-    "premiereText": "PREMIERE",
-    "startTime": 1790421960000
+    "isPremiere": false
   },
   {
     "id": "MJyXc97UF3U",

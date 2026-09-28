@@ -255,19 +255,13 @@ export default async function handler(req: IncomingMessage & { query?: Record<st
     // Filter out any shorts - strictly full songs only
     combinedVideos = combinedVideos.filter((v) => !isShortTrack(v.id, v.title));
 
-    // If official playlist, guarantee all 110 official songs are included
+    // If official playlist, guarantee all official baseline songs are included
     if (playlistId === DEFAULT_PLAYLIST_ID) {
       const currentIds = new Set(combinedVideos.map((v) => v.id));
       const missing = OFFICIAL_PLAYLIST.filter((v) => !currentIds.has(v.id));
       if (missing.length > 0) {
+        // Append missing historical tracks to tail so newly added tracks stay at the top (Track 01)
         combinedVideos = [...combinedVideos, ...missing];
-      }
-
-      // Ensure Track 01 is strictly the newest official release
-      const topIdx = combinedVideos.findIndex((v) => v.id === OFFICIAL_PLAYLIST[0].id);
-      if (topIdx > 0 && brandNewCount === 0) {
-        const [topTrack] = combinedVideos.splice(topIdx, 1);
-        combinedVideos.unshift(topTrack);
       }
     }
 

@@ -515,19 +515,13 @@ async function getLatestPlaylist(
     // Strictly filter out any shorts - only full playlist songs allowed
     combinedVideos = combinedVideos.filter(v => !isShortTrack(v.id, v.title));
 
-    // If syncing the default official playlist, guarantee all 110 official tracks are present
+    // If syncing the default official playlist, guarantee all official baseline tracks are present
     if (normalizedId === DEFAULT_PLAYLIST_ID) {
       const currentIds = new Set(combinedVideos.map(v => v.id));
       const missingFromOfficial = OFFICIAL_PLAYLIST.filter(v => !currentIds.has(v.id));
       if (missingFromOfficial.length > 0) {
+        // Append missing historical tracks to the tail so newly added tracks always stay at the top (Track 01)
         combinedVideos = [...combinedVideos, ...(missingFromOfficial as PlaylistItem[])];
-      }
-
-      // Ensure Track 01 is strictly the newest official release
-      const topIdx = combinedVideos.findIndex(v => v.id === OFFICIAL_PLAYLIST[0].id);
-      if (topIdx > 0 && brandNewFromRssCount === 0) {
-        const [topTrack] = combinedVideos.splice(topIdx, 1);
-        combinedVideos.unshift(topTrack);
       }
     }
 
