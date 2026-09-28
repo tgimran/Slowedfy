@@ -261,19 +261,18 @@
 
     .bg-layer {
       position: absolute;
-      top: -15%;
-      left: -15%;
-      width: 130%;
-      height: 130%;
+      top: -10%;
+      left: -10%;
+      width: 120%;
+      height: 120%;
       background-size: cover;
       background-position: center center;
       background-repeat: no-repeat;
-      filter: blur(var(--dynamic-bg-blur, 31px)) saturate(1.25);
-      transform: translate3d(0, 0, 0) scale(1.05);
-      transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 12s ease-out, filter 0.15s ease;
+      filter: blur(var(--dynamic-bg-blur, 24px)) saturate(1.2);
+      transform: translate3d(0, 0, 0);
+      transition: opacity 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
       opacity: 0;
       display: none;
-      will-change: opacity, transform;
       pointer-events: none;
       backface-visibility: hidden;
     }
@@ -285,7 +284,7 @@
 
     html[data-theme="dynamic-art"] .bg-layer.active {
       opacity: var(--dynamic-bg-opacity, 1);
-      transform: translate3d(0, 0, 0) scale(1.0);
+      transform: translate3d(0, 0, 0);
     }
 
     .bg-vignette {
@@ -890,7 +889,6 @@
       content-visibility: auto;
       contain-intrinsic-size: 54px;
       touch-action: manipulation;
-      will-change: transform;
     }
 
     .playlist-item.search-hidden {
@@ -966,6 +964,8 @@
       background: var(--accent-cyan);
       border-radius: 3px;
       animation: eq-bounce 0.8s ease-in-out infinite alternate;
+      transform-origin: bottom center;
+      will-change: transform;
     }
     .eq-bar:nth-child(1) { height: 10px; animation-delay: 0.1s; }
     .eq-bar:nth-child(2) { height: 16px; animation-delay: 0.3s; }
@@ -1224,12 +1224,14 @@
       content: '';
       position: absolute;
       top: 0;
-      left: -100%;
+      left: 0;
       width: 100%;
       height: 100%;
       background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
       animation: shimmer-light 3.5s infinite;
       pointer-events: none;
+      transform: translate3d(-100%, 0, 0);
+      will-change: transform;
     }
 
     .support-btn:hover {
@@ -1258,8 +1260,8 @@
     }
 
     @keyframes shimmer-light {
-      0% { left: -100%; }
-      30%, 100% { left: 150%; }
+      0% { transform: translate3d(-100%, 0, 0); }
+      30%, 100% { transform: translate3d(200%, 0, 0); }
     }
 
     .support-heart {
@@ -1478,9 +1480,11 @@
       height: 100%;
       background: rgba(255, 255, 255, 0.22);
       border-radius: 6px;
-      width: 0%;
-      transition: width 0.2s ease;
-      transform: translateZ(0);
+      width: 100%;
+      transform-origin: left center;
+      transform: scaleX(0);
+      transition: transform 0.2s ease;
+      will-change: transform;
     }
 
     .progress-current-fill {
@@ -1490,9 +1494,11 @@
       height: 100%;
       background: var(--accent-gradient);
       border-radius: 6px;
-      width: 0%;
+      width: 100%;
+      transform-origin: left center;
+      transform: scaleX(0);
       box-shadow: 0 0 14px var(--accent-glow), 0 0 4px rgba(255, 255, 255, 0.4);
-      transform: translateZ(0);
+      will-change: transform;
     }
 
     .progress-handle {
@@ -1699,7 +1705,7 @@
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), 0 0 6px rgba(255, 255, 255, 0.8);
     }
 
-    /* Responsive Dock behavior */
+    /* Responsive Dock & Mobile Performance Optimization */
     @media (max-width: 768px) {
       #app {
         padding: 1rem 1rem 8rem 1rem;
@@ -1715,10 +1721,41 @@
       }
       .player-dock {
         padding: 0.85rem 1.15rem;
+        backdrop-filter: blur(14px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
       }
       .dock-center-controls {
         flex: 1;
         justify-content: space-around;
+      }
+      .bg-layer {
+        filter: blur(14px) saturate(1.15) !important;
+      }
+      .liquid-glass {
+        backdrop-filter: blur(12px) saturate(135%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(135%) !important;
+      }
+      .liquid-glass-elevated,
+      footer {
+        backdrop-filter: blur(14px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(14px) saturate(140%) !important;
+      }
+      .artwork-ambient-rays {
+        filter: blur(12px) !important;
+        animation: none !important;
+        opacity: 0.55 !important;
+        transform: none !important;
+      }
+      .hero-headphone-tip {
+        animation: none !important;
+      }
+      .playlist-scroll {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        scroll-behavior: smooth;
+      }
+      .playlist-item {
+        contain: layout style paint;
       }
     }
 
@@ -1727,14 +1764,14 @@
        ========================================================================== */
     footer {
       margin-top: 0.75rem;
-      padding: 1.6rem 1.75rem;
-      border-radius: var(--radius-xl);
+      padding: 1rem 1.75rem;
+      border-radius: 42px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       text-align: center;
-      gap: 1.1rem;
+      gap: 0.75rem;
       background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(20, 26, 42, 0.58) 40%, rgba(10, 14, 24, 0.75) 100%);
       backdrop-filter: blur(36px) saturate(210%) contrast(106%);
       -webkit-backdrop-filter: blur(36px) saturate(210%) contrast(106%);
@@ -1856,7 +1893,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 0.25rem;
+      margin-bottom: 0;
     }
 
     .footer-about-btn {
@@ -4494,7 +4531,8 @@
       const deviceMemory = (navigator).deviceMemory || 4;
       const isTouch = (typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches) || ('ontouchstart' in window);
       const isSaveData = navigator.connection && navigator.connection.saveData;
-      const isLowEndDevice = hardwareConcurrency <= 2 || deviceMemory <= 2 || isSaveData;
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isLowEndDevice = hardwareConcurrency <= 4 || deviceMemory <= 4 || isMobileDevice || isSaveData;
 
       function init() {
         try {
@@ -4721,7 +4759,10 @@
       const tester = new Image();
       tester.decoding = "async";
       tester.onload = () => {
-        if (tester.naturalWidth && tester.naturalWidth > 120) {
+        const isHd = tester.naturalWidth && tester.naturalWidth > 120;
+        tester.onload = null;
+        tester.onerror = null;
+        if (isHd) {
           artworkCache.set(trackId, maxResUrl);
           callback(maxResUrl);
         } else {
@@ -4729,10 +4770,14 @@
           sdTester.decoding = "async";
           sdTester.onload = () => {
             const finalUrl = (sdTester.naturalWidth && sdTester.naturalWidth > 120) ? sdUrl : hqUrl;
+            sdTester.onload = null;
+            sdTester.onerror = null;
             artworkCache.set(trackId, finalUrl);
             callback(finalUrl);
           };
           sdTester.onerror = () => {
+            sdTester.onload = null;
+            sdTester.onerror = null;
             artworkCache.set(trackId, hqUrl);
             callback(hqUrl);
           };
@@ -4740,6 +4785,8 @@
         }
       };
       tester.onerror = () => {
+        tester.onload = null;
+        tester.onerror = null;
         artworkCache.set(trackId, hqUrl);
         callback(hqUrl);
       };
@@ -4761,20 +4808,17 @@
 
       const img = new Image();
       img.decoding = "async";
-      img.onload = () => {
+      const onDone = () => {
+        img.onload = null;
+        img.onerror = null;
         if (state.currentTheme !== 'dynamic-art') return;
         targetLayer.style.backgroundImage = `url('${imgUrl}')`;
         targetLayer.classList.add('active');
         currentLayer.classList.remove('active');
         state.activeBgLayer = state.activeBgLayer === 1 ? 2 : 1;
       };
-      img.onerror = () => {
-        if (state.currentTheme !== 'dynamic-art') return;
-        targetLayer.style.backgroundImage = `url('${imgUrl}')`;
-        targetLayer.classList.add('active');
-        currentLayer.classList.remove('active');
-        state.activeBgLayer = state.activeBgLayer === 1 ? 2 : 1;
-      };
+      img.onload = onDone;
+      img.onerror = onDone;
       img.src = imgUrl;
     }
 
@@ -5004,39 +5048,52 @@
        PLAYBACK LOGIC & YOUTUBE API INTEGRATION
        ========================================================================== */
     let pendingPlayOnReady = false;
+    let trackTransitionDebounceTimer = null;
 
-    function playTrackAtIndex(index) {
+    function playTrackAtIndex(index, forceReload = false) {
+      if (!state.playlist || state.playlist.length === 0) return;
       if (index < 0) index = state.playlist.length - 1;
       if (index >= state.playlist.length) index = 0;
+
+      // Avoid redundant re-rendering and re-triggering if already playing the requested track
+      if (!forceReload && state.currentIndex === index && state.isPlaying && ytPlayer && ytApiReady) {
+        return;
+      }
 
       state.currentIndex = index;
       const track = state.playlist[state.currentIndex];
       updateActiveTrackUI();
 
-      if (ytPlayer && ytApiReady && typeof ytPlayer.loadVideoById === 'function') {
-        try {
-          ytPlayer.loadVideoById({
-            videoId: track.id,
-            startSeconds: 0
-          });
-          ytPlayer.playVideo();
-          state.isPlaying = true;
-          consecutiveErrors = 0;
-          updatePlayPauseBtnUI(true);
-        } catch (err) {
-          console.warn("YouTube player load error:", err);
-          simulatePlayback();
-        }
-      } else {
-        pendingPlayOnReady = true;
-        state.isPlaying = true;
-        updatePlayPauseBtnUI(true);
-        if (!ytPlayer && window.YT && window.YT.Player) {
-          initYouTubePlayer();
-        } else {
-          simulatePlayback();
-        }
+      if (trackTransitionDebounceTimer) {
+        clearTimeout(trackTransitionDebounceTimer);
       }
+
+      trackTransitionDebounceTimer = setTimeout(() => {
+        if (ytPlayer && ytApiReady && typeof ytPlayer.loadVideoById === 'function') {
+          try {
+            ytPlayer.loadVideoById({
+              videoId: track.id,
+              startSeconds: 0
+            });
+            ytPlayer.playVideo();
+            state.isPlaying = true;
+            consecutiveErrors = 0;
+            updatePlayPauseBtnUI(true);
+          } catch (err) {
+            console.warn("YouTube player load error:", err);
+            simulatePlayback();
+          }
+        } else {
+          pendingPlayOnReady = true;
+          state.isPlaying = true;
+          updatePlayPauseBtnUI(true);
+          if (!ytPlayer && window.YT && window.YT.Player) {
+            initYouTubePlayer();
+          } else {
+            simulatePlayback();
+          }
+        }
+      }, 35);
 
       showToast(`Playing: ${track.title}`, "♬");
     }
@@ -5130,11 +5187,13 @@
     }
 
     /* ==========================================================================
-       THROTTLED 60FPS PROGRESS & TIME UI UPDATE CONTROLLER
+       THROTTLED 60FPS PROGRESS & TIME UI UPDATE CONTROLLER (rAF driven, 0 layout reflows)
        ========================================================================== */
     let lastRenderedCurrentSecs = -1;
     let lastRenderedDurationSecs = -1;
     let lastRenderedPct = -1;
+    let progressRafId = null;
+    let lastProgressPollTime = 0;
 
     function updateProgressUI(force = false) {
       const current = state.currentTime || 0;
@@ -5157,7 +5216,8 @@
       const roundedPct = Math.round(pct * 10) / 10;
 
       if (force || Math.abs(roundedPct - lastRenderedPct) >= 0.1) {
-        DOM.progressFill.style.width = `${pct}%`;
+        const scale = Math.max(0, Math.min(1, pct / 100));
+        DOM.progressFill.style.transform = `scaleX(${scale})`;
         DOM.progressHandle.style.left = `${pct}%`;
         DOM.progressContainer.setAttribute('aria-valuenow', Math.round(pct));
         lastRenderedPct = roundedPct;
@@ -5166,10 +5226,16 @@
 
     let isTabVisible = !document.hidden;
 
-    function startProgressTracking() {
-      if (progressTimer) clearInterval(progressTimer);
-      progressTimer = setInterval(() => {
-        if (!state.isPlaying || isSeeking || !isTabVisible) return;
+    function progressLoop(timestamp) {
+      if (!state.isPlaying || isSeeking || !isTabVisible) {
+        progressRafId = null;
+        return;
+      }
+
+      // Poll YouTube player API at throttled rate (every 200ms) to avoid iframe IPC overhead,
+      // while requestAnimationFrame handles composite transforms at native 60fps
+      if (timestamp - lastProgressPollTime >= 200) {
+        lastProgressPollTime = timestamp;
 
         if (ytPlayer && ytApiReady) {
           try {
@@ -5190,25 +5256,33 @@
             const bufferedPct = Math.round(loaded * 100);
             if (bufferedPct !== state.buffered) {
               state.buffered = bufferedPct;
-              DOM.progressBuffer.style.width = `${bufferedPct}%`;
+              DOM.progressBuffer.style.transform = `scaleX(${bufferedPct / 100})`;
             }
 
             updateProgressUI();
           } catch (e) {}
         } else {
-          state.currentTime += 0.25;
+          state.currentTime += 0.2;
           if (state.currentTime >= state.duration) {
             nextTrack();
           }
           updateProgressUI();
         }
-      }, 250);
+      }
+
+      progressRafId = requestAnimationFrame(progressLoop);
+    }
+
+    function startProgressTracking() {
+      if (progressRafId) cancelAnimationFrame(progressRafId);
+      lastProgressPollTime = 0;
+      progressRafId = requestAnimationFrame(progressLoop);
     }
 
     function stopProgressTracking() {
-      if (progressTimer) {
-        clearInterval(progressTimer);
-        progressTimer = null;
+      if (progressRafId) {
+        cancelAnimationFrame(progressRafId);
+        progressRafId = null;
       }
     }
 
@@ -5577,7 +5651,8 @@
     function updateScrubVisual(pct) {
       const total = state.duration || 1;
       const targetTime = (pct / 100) * total;
-      DOM.progressFill.style.width = `${pct}%`;
+      const scale = Math.max(0, Math.min(1, pct / 100));
+      DOM.progressFill.style.transform = `scaleX(${scale})`;
       DOM.progressHandle.style.left = `${pct}%`;
       DOM.currentTimeLabel.textContent = formatTime(targetTime);
     }
@@ -5641,26 +5716,46 @@
 
     // Debounced Search Filter (Show/Hide rows using CSS class instead of rebuilding DOM)
     let searchDebounceTimer = null;
+    let searchRafId = null;
     DOM.playlistSearchInput.addEventListener('input', (e) => {
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+      if (searchRafId) cancelAnimationFrame(searchRafId);
+
       searchDebounceTimer = setTimeout(() => {
         const query = e.target.value.toLowerCase().trim();
-        let matchCount = 0;
 
-        state.playlist.forEach((song) => {
-          const row = playlistItemElements.get(song.id);
-          if (!row) return;
-          const matches = !query || song.title.toLowerCase().includes(query) || song.artist.toLowerCase().includes(query);
-          if (matches) {
-            row.classList.remove('search-hidden');
-            matchCount++;
-          } else {
-            row.classList.add('search-hidden');
-          }
+        searchRafId = requestAnimationFrame(() => {
+          let matchCount = 0;
+          const isQueryEmpty = query.length === 0;
+
+          state.playlist.forEach((song) => {
+            const row = playlistItemElements.get(song.id);
+            if (!row) return;
+
+            if (isQueryEmpty) {
+              if (row.classList.contains('search-hidden')) {
+                row.classList.remove('search-hidden');
+              }
+              matchCount++;
+            } else {
+              const matches = song.title.toLowerCase().includes(query) || song.artist.toLowerCase().includes(query);
+              if (matches) {
+                if (row.classList.contains('search-hidden')) {
+                  row.classList.remove('search-hidden');
+                }
+                matchCount++;
+              } else {
+                if (!row.classList.contains('search-hidden')) {
+                  row.classList.add('search-hidden');
+                }
+              }
+            }
+          });
+
+          DOM.playlistCountLabel.textContent = isQueryEmpty ? `${state.playlist.length} Songs` : `${matchCount} Results`;
+          searchRafId = null;
         });
-
-        DOM.playlistCountLabel.textContent = query ? `${matchCount} Results` : `${state.playlist.length} Songs`;
-      }, 60);
+      }, 160);
     });
 
     // Header buttons
@@ -6402,14 +6497,12 @@
         });
       }
 
-      // Initial immediate auto-syncs from YouTube
+      // Initial single auto-sync from YouTube after UI initializes smoothly
       setTimeout(() => {
-        syncPlaylistFromYouTube(false);
-      }, 50);
-
-      setTimeout(() => {
-        syncPlaylistFromYouTube(false);
-      }, 1500);
+        if (!document.hidden) {
+          syncPlaylistFromYouTube(false);
+        }
+      }, 500);
 
       // Trigger sync when tab becomes visible again or regains focus
       document.addEventListener('visibilitychange', () => {
@@ -6426,8 +6519,8 @@
         syncPlaylistFromYouTube(false);
       });
 
-      // Start periodic auto-sync
-      setAutoSyncInterval(15000);
+      // Start periodic auto-sync (60s interval to prevent main-thread spikes during playback)
+      setAutoSyncInterval(60000);
 
       showToast("Welcome to Slowedfy • Press Space to Play", "🎧");
     }

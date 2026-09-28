@@ -619,7 +619,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/playlist/sync", async (req, res) => {
+  app.all("/api/playlist/sync", async (req, res) => {
     try {
       const playlistId = cleanPlaylistId(String(req.body?.playlistId || req.body?.url || req.query.id || ""));
       const force = req.body?.force !== false;
@@ -680,6 +680,23 @@ async function startServer() {
   setInterval(() => {
     getLatestPlaylist(DEFAULT_PLAYLIST_ID, true).catch(() => {});
   }, 15000);
+
+  // Serve static public assets (manifest, sw, icons, logo)
+  app.use(express.static(path.join(process.cwd(), "public")));
+
+  // Manifest route with correct content-type
+  app.get(["/manifest.json", "/manifest.webmanifest"], (_req, res) => {
+    res.setHeader("Content-Type", "application/manifest+json");
+    res.sendFile(path.join(process.cwd(), "public", "manifest.json"));
+  });
+
+  // Service Worker explicit route with proper headers
+  app.get("/sw.js", (_req, res) => {
+    res.setHeader("Service-Worker-Allowed", "/");
+    res.setHeader("Content-Type", "application/javascript");
+    const swPath = path.join(process.cwd(), "public", "sw.js");
+    res.sendFile(swPath);
+  });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
