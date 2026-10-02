@@ -358,7 +358,7 @@
       background: radial-gradient(circle at 50% 25%, rgba(255, 30, 86, 0.20) 0%, rgba(225, 29, 72, 0.14) 45%, rgba(159, 18, 57, 0.07) 75%, #0d0407 95%), #0d0407;
     }
 
-    /* YouTube Player Layer - In-viewport, full 16:9 geometry, zero-throttling cross-browser playback */
+    /* YouTube Player Layer - In-viewport, strictly 16:9 responsive aspect ratio, GPU-friendly isolated layer */
     #yt-player-container {
       position: absolute;
       inset: 0;
@@ -373,6 +373,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      contain: strict;
+      will-change: auto;
     }
 
     #yt-player-container iframe,
@@ -383,21 +387,33 @@
       pointer-events: none;
       border-radius: inherit;
       display: block;
-      transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+      transform: translateZ(0);
+      backface-visibility: hidden;
     }
 
     /* Video Fill Mode: edge-to-edge full bleed without black letterbox bars */
     #yt-player-container.fill-mode iframe,
     #yt-player-container.fill-mode #youtube-player {
-      transform: scale(1.12);
+      transform: scale(1.12) translateZ(0);
       transform-origin: center center;
     }
 
     /* Video Fit Mode: exact native aspect ratio */
     #yt-player-container.fit-mode iframe,
     #yt-player-container.fit-mode #youtube-player {
-      transform: scale(1.0);
+      transform: scale(1.0) translateZ(0);
       transform-origin: center center;
+    }
+
+    /* Suppress YouTube captions & subtitles overlays by default */
+    .caption-window,
+    .ytp-caption-window-bottom,
+    .ytp-caption-window-rollup,
+    .ytp-caption-segment {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
     }
 
     /* ==========================================================================
@@ -647,18 +663,21 @@
       border-radius: var(--radius-xl);
       overflow: hidden;
       z-index: 2;
-      box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.16);
+      box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.14);
       background: #090c14;
-      transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s ease;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
+      transform: translateZ(0);
+      backface-visibility: hidden;
+      contain: layout paint;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
 
-    .artwork-glass-card:hover {
-      transform: translateY(-4px) scale(1.02);
-      box-shadow: 0 28px 65px -10px rgba(0, 0, 0, 0.95), 0 0 25px rgba(78, 226, 236, 0.25);
+    .artwork-glass-card:not(.video-mode-active):hover {
+      transform: translateY(-2px) translateZ(0);
+      box-shadow: 0 22px 50px -8px rgba(0, 0, 0, 0.9), 0 0 20px rgba(78, 226, 236, 0.2);
     }
 
     .artwork-img {
@@ -788,23 +807,17 @@
       transform: scale(0.9);
     }
 
-    /* Ambient Radiant Light Rays behind the Thumbnail */
+    /* Ambient Radiant Light Glow behind the Artwork/Player (GPU-friendly, no heavy continuous pulse) */
     .artwork-ambient-rays {
       position: absolute;
-      inset: -16px;
+      inset: -12px;
       border-radius: calc(var(--radius-xl) + 12px);
-      background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.22) 0%, rgba(78, 226, 236, 0.18) 35%, rgba(139, 92, 246, 0.1) 65%, transparent 80%);
-      filter: blur(24px);
-      opacity: 0.8;
+      background: radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.14) 0%, rgba(78, 226, 236, 0.10) 35%, rgba(139, 92, 246, 0.06) 65%, transparent 80%);
+      opacity: 0.65;
       z-index: 0;
       pointer-events: none;
-      transition: opacity 0.5s ease, transform 0.5s ease;
-      animation: ambient-rays-pulse 6s ease-in-out infinite alternate;
-    }
-
-    @keyframes ambient-rays-pulse {
-      0% { transform: scale(0.96); opacity: 0.65; }
-      100% { transform: scale(1.04); opacity: 0.92; }
+      transform: translateZ(0);
+      backface-visibility: hidden;
     }
 
     /* Track Metadata Info */
@@ -4804,6 +4817,8 @@
             const avgFps = Math.round(fpsHistory.reduce((a, b) => a + b, 0) / fpsHistory.length);
             lastReportedFps = Math.min(60, Math.max(15, avgFps));
             evaluateAdaptiveQuality(lastReportedFps);
+            stopMonitoring();
+            return;
           }
         }
 
@@ -5263,6 +5278,7 @@
       state.currentTime = 0;
       state.duration = track.seconds || 240;
       state.userInitiatedPause = false;
+      wasPlayingBeforeViewportExit = false;
       lastRenderedCurrentSecs = -1;
       lastRenderedDurationSecs = -1;
       lastRenderedPct = -1;
@@ -5279,8 +5295,10 @@
           try {
             ytPlayer.loadVideoById({
               videoId: track.id,
-              startSeconds: 0
+              startSeconds: 0,
+              suggestedQuality: 'hd720'
             });
+            lastQualitySetTrackId = null;
             // Official YouTube IFrame API: loadVideoById automatically requests playback.
             // Do NOT call ytPlayer.playVideo() immediately after: calling playVideo() in the same tick
             // before the media buffers triggers unhandled Promise rejections and pauses in Safari, Firefox, and Brave.
@@ -5291,7 +5309,11 @@
             console.warn("[Slowedfy] loadVideoById error:", err);
             try {
               if (typeof ytPlayer.cueVideoById === 'function') {
-                ytPlayer.cueVideoById(track.id);
+                ytPlayer.cueVideoById({
+                  videoId: track.id,
+                  startSeconds: 0,
+                  suggestedQuality: 'hd720'
+                });
                 ytPlayer.playVideo();
                 state.isPlaying = true;
                 updatePlayPauseBtnUI(true);
@@ -5336,12 +5358,14 @@
         // YT Player States: 1 = PLAYING, 3 = BUFFERING
         if (playerState === 1 || playerState === 3 || state.isPlaying) {
           state.userInitiatedPause = true;
+          wasPlayingBeforeViewportExit = false;
           ytPlayer.pauseVideo();
           state.isPlaying = false;
           updatePlayPauseBtnUI(false);
           showToast("Paused", "‣");
         } else {
           state.userInitiatedPause = false;
+          wasPlayingBeforeViewportExit = false;
           ytPlayer.playVideo();
           state.isPlaying = true;
           consecutiveErrors = 0;
@@ -5449,58 +5473,50 @@
     }
 
     let isTabVisible = !document.hidden;
+    let progressTimerId = null;
 
-    function progressLoop(timestamp) {
+    function pollPlayerProgress() {
       if (!state.isPlaying || isSeeking || !isTabVisible) {
-        progressRafId = null;
         return;
       }
 
-      // Poll YouTube player API at throttled rate (every 200ms) to avoid iframe IPC overhead,
-      // while requestAnimationFrame handles composite transforms at native 60fps
-      if (timestamp - lastProgressPollTime >= 200) {
-        lastProgressPollTime = timestamp;
+      if (ytPlayer && ytApiReady) {
+        try {
+          const current = ytPlayer.getCurrentTime() || 0;
+          const duration = ytPlayer.getDuration() || 0;
+          const loaded = ytPlayer.getVideoLoadedFraction() || 0;
 
-        if (ytPlayer && ytApiReady) {
-          try {
-            const current = ytPlayer.getCurrentTime() || 0;
-            const duration = ytPlayer.getDuration() || 0;
-            const loaded = ytPlayer.getVideoLoadedFraction() || 0;
+          state.currentTime = current;
+          if (duration > 0 && Math.abs(state.duration - duration) > 0.5) {
+            state.duration = duration;
+          }
 
-            state.currentTime = current;
-            if (duration > 0 && Math.abs(state.duration - duration) > 0.5) {
-              state.duration = duration;
-            }
+          const currentTrack = state.playlist[state.currentIndex];
+          if (currentTrack && currentTrack.isPremiere && current > 0) {
+            markTrackAsLive(currentTrack.id, duration || currentTrack.seconds);
+          }
 
-            const currentTrack = state.playlist[state.currentIndex];
-            if (currentTrack && currentTrack.isPremiere && current > 0) {
-              markTrackAsLive(currentTrack.id, duration || currentTrack.seconds);
-            }
+          const bufferedPct = Math.round(loaded * 100);
+          if (bufferedPct !== state.buffered) {
+            state.buffered = bufferedPct;
+            DOM.progressBuffer.style.transform = `scaleX(${bufferedPct / 100})`;
+          }
 
-            const bufferedPct = Math.round(loaded * 100);
-            if (bufferedPct !== state.buffered) {
-              state.buffered = bufferedPct;
-              DOM.progressBuffer.style.transform = `scaleX(${bufferedPct / 100})`;
-            }
-
-            updateProgressUI();
-          } catch (e) {}
-        }
+          updateProgressUI();
+        } catch (e) {}
       }
-
-      progressRafId = requestAnimationFrame(progressLoop);
     }
 
     function startProgressTracking() {
-      if (progressRafId) cancelAnimationFrame(progressRafId);
-      lastProgressPollTime = 0;
-      progressRafId = requestAnimationFrame(progressLoop);
+      if (progressTimerId) clearInterval(progressTimerId);
+      pollPlayerProgress();
+      progressTimerId = setInterval(pollPlayerProgress, 250);
     }
 
     function stopProgressTracking() {
-      if (progressRafId) {
-        cancelAnimationFrame(progressRafId);
-        progressRafId = null;
+      if (progressTimerId) {
+        clearInterval(progressTimerId);
+        progressTimerId = null;
       }
     }
 
@@ -5531,7 +5547,80 @@
        ========================================================================== */
     let consecutiveErrors = 0;
 
+    let isPlayerInitializing = false;
+    let isPlayerInViewport = false;
+    let wasPlayingBeforeViewportExit = false;
+    let playerObserver = null;
+    let lastQualitySetTrackId = null;
+
+    function applyPreferredQuality() {
+      if (!ytPlayer || !ytApiReady) return;
+
+      const currentTrackId = state.playlist[state.currentIndex]?.id;
+      // Do not continuously change playback quality while the video is playing (Requirement)
+      if (lastQualitySetTrackId === currentTrackId) return;
+
+      try {
+        if (typeof ytPlayer.getAvailableQualityLevels === 'function') {
+          const available = ytPlayer.getAvailableQualityLevels() || [];
+          if (available.length > 0) {
+            // Target video quality: 720p HD (supports native 60 FPS when source video supports 720p60)
+            if (available.includes('hd720')) {
+              ytPlayer.setPlaybackQuality('hd720');
+            } else {
+              // If YouTube video does not provide 720p, gracefully use highest appropriate quality available
+              const nonAuto = available.filter(q => q !== 'auto');
+              if (nonAuto.length > 0) {
+                const best = nonAuto.includes('hd1080') ? 'hd1080' : nonAuto[0];
+                ytPlayer.setPlaybackQuality(best);
+              } else {
+                ytPlayer.setPlaybackQuality('default');
+              }
+            }
+            lastQualitySetTrackId = currentTrackId;
+            return;
+          }
+        }
+        if (typeof ytPlayer.setPlaybackQuality === 'function') {
+          ytPlayer.setPlaybackQuality('hd720');
+          lastQualitySetTrackId = currentTrackId;
+        }
+      } catch (e) {
+        try {
+          if (typeof ytPlayer.setPlaybackQuality === 'function') {
+            ytPlayer.setPlaybackQuality('hd720');
+            lastQualitySetTrackId = currentTrackId;
+          }
+        } catch (err) {}
+      }
+    }
+
+    function onPlayerQualityChange(event) {
+      state.currentQuality = event.data;
+    }
+
+    // Automatically disable captions / subtitles by default across all playback states
+    function disableCaptions() {
+      if (!ytPlayer) return;
+      try {
+        if (typeof ytPlayer.unloadModule === 'function') {
+          ytPlayer.unloadModule('captions');
+          ytPlayer.unloadModule('cc');
+        }
+      } catch (e) {}
+
+      try {
+        if (typeof ytPlayer.setOption === 'function') {
+          ytPlayer.setOption('captions', 'track', {});
+          ytPlayer.setOption('cc', 'track', {});
+          ytPlayer.setOption('captions', 'fontSize', 0);
+          ytPlayer.setOption('captions', 'reload', false);
+        }
+      } catch (e) {}
+    }
+
     function onPlayerReady(event) {
+      isPlayerInitializing = false;
       ytApiReady = true;
       consecutiveErrors = 0;
 
@@ -5571,7 +5660,8 @@
           try {
             ytPlayer.loadVideoById({
               videoId: trackToPlay.id,
-              startSeconds: state.currentTime || 0
+              startSeconds: state.currentTime || 0,
+              suggestedQuality: 'hd720'
             });
             state.isPlaying = true;
             updatePlayPauseBtnUI(true);
@@ -5581,6 +5671,8 @@
         }
         pendingPlayOnReady = false;
       }
+      disableCaptions();
+      applyPreferredQuality();
       updateProgressUI(true);
     }
 
@@ -5590,6 +5682,7 @@
       if (stateCode === 1) { // PLAYING
         state.isPlaying = true;
         state.userInitiatedPause = false;
+        wasPlayingBeforeViewportExit = false;
         consecutiveErrors = 0;
         let dur = 0;
         try {
@@ -5600,8 +5693,14 @@
         if (currentTrack) {
           markTrackAsLive(currentTrack.id, dur || currentTrack.seconds || 240);
         }
+        applyPreferredQuality();
+        disableCaptions();
         updatePlayPauseBtnUI(true);
       } else if (stateCode === 2) { // PAUSED
+        if (wasPlayingBeforeViewportExit || !isPlayerInViewport) {
+          // Intentionally paused because player is outside viewport
+          return;
+        }
         if (!state.userInitiatedPause && state.isPlaying) {
           // Unintended pause triggered by browser buffer check, mobile occlusion, or transient policy
           // Auto-resume to eliminate 3-second stops on non-Chrome and mobile browsers
@@ -5627,6 +5726,8 @@
           state.isPlaying = true;
           updatePlayPauseBtnUI(true);
         }
+        applyPreferredQuality();
+        disableCaptions();
       } else if (stateCode === 5) { // CUED
         // Video cued; if user intended playback but browser blocked autoplay, prompt cleanly
         if (pendingPlayOnReady || state.isPlaying) {
@@ -5672,14 +5773,20 @@
     }
 
     function initYouTubePlayer() {
-      if (ytPlayer || !window.YT || typeof window.YT.Player !== 'function') return;
-      try {
-        const playerMount = document.getElementById('youtube-player');
-        if (!playerMount) {
-          console.warn("[Slowedfy] youtube-player element missing in DOM");
-          return;
-        }
+      // Prevent multiple YouTube player instances from loading simultaneously (Requirement 8)
+      // Initialize only once and reuse the same instance (Requirement 4)
+      if (ytPlayer || isPlayerInitializing) return;
+      if (!window.YT || typeof window.YT.Player !== 'function') return;
 
+      const playerMount = document.getElementById('youtube-player');
+      if (!playerMount) {
+        console.warn("[Slowedfy] youtube-player element missing in DOM");
+        return;
+      }
+
+      isPlayerInitializing = true;
+
+      try {
         const validOrigin = (typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null' && window.location.protocol.startsWith('http'))
           ? window.location.origin
           : undefined;
@@ -5693,6 +5800,7 @@
           rel: 0,
           modestbranding: 1,
           iv_load_policy: 3,
+          cc_load_policy: 0,
           fs: 0
         };
         if (validOrigin) {
@@ -5713,37 +5821,91 @@
           events: {
             onReady: onPlayerReady,
             onStateChange: onPlayerStateChange,
+            onPlaybackQualityChange: onPlayerQualityChange,
             onError: onPlayerError
           }
         });
       } catch (err) {
+        isPlayerInitializing = false;
         console.warn("[Slowedfy] YouTube API Player initialization error:", err);
       }
     }
 
-    // Connect early hook to player initializer
-    window.__slowedfyInitYT = function() {
-      initYouTubePlayer();
-    };
+    // Viewport IntersectionObserver: Lazy load and pause/resume without recreating iframe (Requirements 2, 9, 10, 11)
+    function setupPlayerViewportObserver() {
+      const target = DOM.mainArtworkCard || document.getElementById('main-artwork-card');
+      if (!target) return;
 
-    // Register with YouTube API or initialize immediately if ready
-    if (window.__slowedfyYTReady || (window.YT && typeof window.YT.Player === 'function')) {
-      initYouTubePlayer();
-    } else if (window.YT && typeof window.YT.ready === 'function') {
-      window.YT.ready(initYouTubePlayer);
+      if (!('IntersectionObserver' in window)) {
+        isPlayerInViewport = true;
+        initYouTubePlayer();
+        return;
+      }
+
+      playerObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          isPlayerInViewport = entry.isIntersecting;
+
+          if (entry.isIntersecting) {
+            // Lazy-load when entering or close to entering viewport (Requirement 9)
+            if (!ytPlayer && !isPlayerInitializing) {
+              if (window.YT && typeof window.YT.Player === 'function') {
+                initYouTubePlayer();
+              }
+            }
+
+            // Return to viewport: resume playback smoothly without reloading video (Requirement 11)
+            if (wasPlayingBeforeViewportExit && !state.userInitiatedPause && ytPlayer && ytApiReady) {
+              wasPlayingBeforeViewportExit = false;
+              try {
+                disableCaptions();
+                ytPlayer.playVideo();
+                state.isPlaying = true;
+                updatePlayPauseBtnUI(true);
+                startProgressTracking();
+              } catch (e) {}
+            }
+          } else {
+            // Left viewport: pause video rather than destroying/recreating player (Requirement 10)
+            if (state.isPlaying && ytPlayer && ytApiReady) {
+              wasPlayingBeforeViewportExit = true;
+              try {
+                ytPlayer.pauseVideo();
+                state.isPlaying = false;
+                updatePlayPauseBtnUI(false);
+              } catch (e) {}
+              stopProgressTracking();
+            }
+          }
+        }
+      }, {
+        root: null,
+        rootMargin: '150px 0px 150px 0px',
+        threshold: [0, 0.15]
+      });
+
+      playerObserver.observe(target);
     }
 
-    // Resilient fallback check for variable script/cache timings across Safari/Firefox/mobile
-    let ytInitPollTimer = setInterval(() => {
-      if (window.YT && typeof window.YT.Player === 'function') {
-        clearInterval(ytInitPollTimer);
+    // Connect early hook to player initializer
+    window.__slowedfyInitYT = function() {
+      if (isPlayerInViewport || pendingPlayOnReady) {
         initYouTubePlayer();
       }
-    }, 100);
+    };
 
-    setTimeout(() => {
-      if (ytInitPollTimer) clearInterval(ytInitPollTimer);
-    }, 12000);
+    // Register with YouTube API or initialize if ready and in viewport
+    if (window.__slowedfyYTReady || (window.YT && typeof window.YT.Player === 'function')) {
+      if (isPlayerInViewport || pendingPlayOnReady) {
+        initYouTubePlayer();
+      }
+    } else if (window.YT && typeof window.YT.ready === 'function') {
+      window.YT.ready(() => {
+        if (isPlayerInViewport || pendingPlayOnReady) {
+          initYouTubePlayer();
+        }
+      });
+    }
 
     /* ==========================================================================
        DYNAMIC THEME ATMOSPHERE CONTROLLER
@@ -6783,6 +6945,7 @@
       initTheme();
       PerfEngine.init();
       buildPlaylistDOM();
+      setupPlayerViewportObserver();
       const firstTrack = state.playlist[0];
       if (firstTrack && DOM.bgLayer1 && state.currentTheme === 'dynamic-art') {
         DOM.bgLayer1.style.backgroundImage = `url('https://i.ytimg.com/vi/${firstTrack.id}/mqdefault.jpg')`;
@@ -6892,20 +7055,19 @@
         }
       }, 500);
 
-      // Trigger sync when tab becomes visible again or regains focus
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) {
-          syncPlaylistFromYouTube(false);
-        }
-      });
-
-      window.addEventListener('focus', () => {
+      // Debounced background sync: does not fire if sync ran recently or while actively playing
+      let lastAutoSyncEventTime = 0;
+      function debouncedVisibilitySync() {
+        if (document.hidden) return;
+        const now = Date.now();
+        if (now - lastAutoSyncEventTime < 45000 || state.isPlaying) return;
+        lastAutoSyncEventTime = now;
         syncPlaylistFromYouTube(false);
-      });
+      }
 
-      window.addEventListener('online', () => {
-        syncPlaylistFromYouTube(false);
-      });
+      document.addEventListener('visibilitychange', debouncedVisibilitySync);
+      window.addEventListener('focus', debouncedVisibilitySync);
+      window.addEventListener('online', debouncedVisibilitySync);
 
       // Start periodic auto-sync (60s interval to prevent main-thread spikes during playback)
       setAutoSyncInterval(60000);
