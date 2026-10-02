@@ -577,11 +577,12 @@ async function startServer() {
 
   app.use(express.json());
 
-  // Global CORS Middleware for public website & iframe access
+  // Global CORS & Referrer Policy Middleware for cross-browser YouTube iframe streaming
   app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Pragma, Cache-Control");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     if (req.method === "OPTIONS") {
       return res.sendStatus(204);
     }

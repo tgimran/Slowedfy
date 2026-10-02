@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>Slowedfy</title>
   <meta name="description" content="A liquid glass music player and nostalgic slowed + reverb experience with official YouTube playlist streaming and dynamic artwork atmosphere." />
   <meta property="og:title" content="Slowedfy" />
@@ -238,6 +239,21 @@
       animation: none !important;
     }
 
+    html[data-perf="lite"] .playlist-scroll {
+      scroll-behavior: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    html[data-perf="lite"] .track-playing-eq .eq-bar {
+      animation-duration: 1.2s !important;
+    }
+
+    .playlist-scroll {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+      transform: translateZ(0);
+    }
+
     body {
       font-family: var(--font-display);
       background-color: var(--bg-base);
@@ -342,26 +358,46 @@
       background: radial-gradient(circle at 50% 25%, rgba(255, 30, 86, 0.20) 0%, rgba(225, 29, 72, 0.14) 45%, rgba(159, 18, 57, 0.07) 75%, #0d0407 95%), #0d0407;
     }
 
-    /* Hidden YouTube Player Iframe - Browser-compatible: in-viewport, non-zero geometry, non-occluded */
+    /* YouTube Player Layer - In-viewport, full 16:9 geometry, zero-throttling cross-browser playback */
     #yt-player-container {
-      position: fixed;
-      bottom: 0;
-      right: 0;
-      width: 200px;
-      height: 200px;
-      opacity: 0.005;
-      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
       z-index: 1;
       overflow: hidden;
-      contain: strict;
+      border-radius: inherit;
+      pointer-events: none;
+      background: #000;
+      opacity: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     #yt-player-container iframe,
     #youtube-player {
-      width: 200px;
-      height: 200px;
+      width: 100%;
+      height: 100%;
       border: none;
       pointer-events: none;
+      border-radius: inherit;
+      display: block;
+      transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    /* Video Fill Mode: edge-to-edge full bleed without black letterbox bars */
+    #yt-player-container.fill-mode iframe,
+    #yt-player-container.fill-mode #youtube-player {
+      transform: scale(1.12);
+      transform-origin: center center;
+    }
+
+    /* Video Fit Mode: exact native aspect ratio */
+    #yt-player-container.fit-mode iframe,
+    #yt-player-container.fit-mode #youtube-player {
+      transform: scale(1.0);
+      transform-origin: center center;
     }
 
     /* ==========================================================================
@@ -626,19 +662,130 @@
     }
 
     .artwork-img {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       object-fit: cover;
       object-position: center;
       display: block;
       border-radius: inherit;
+      z-index: 2;
       transform: scale(1.005);
-      transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.6s ease;
+      transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease, filter 0.6s ease;
       image-rendering: -webkit-optimize-contrast;
+      pointer-events: none;
+    }
+
+    .artwork-glass-card.video-mode-active .artwork-img {
+      opacity: 0;
+      pointer-events: none;
     }
 
     .artwork-glass-card:hover .artwork-img {
       transform: scale(1.04);
+    }
+
+    .artwork-top-bar {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    /* Minimal Compact Media Mode Toggle UI Component (64px × 28px) */
+    .media-mode-toggle {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 64px;
+      height: 28px;
+      background: rgba(14, 18, 28, 0.76);
+      backdrop-filter: blur(14px) saturate(180%);
+      -webkit-backdrop-filter: blur(14px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      padding: 2px;
+      box-sizing: border-box;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      transition: border-color 200ms ease, box-shadow 200ms ease, background 200ms ease;
+    }
+
+    .media-mode-toggle:hover {
+      border-color: rgba(255, 255, 255, 0.28);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+      background: rgba(18, 24, 38, 0.85);
+    }
+
+    .toggle-slider {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 28px;
+      height: 22px;
+      background: rgba(255, 255, 255, 0.18);
+      border-radius: 11px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+      transition: transform 200ms ease, background 200ms ease;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Video active state: highlight slides smoothly to the right */
+    .media-mode-toggle.video-active .toggle-slider {
+      transform: translateX(30px);
+    }
+
+    .toggle-option {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      width: 50%;
+      height: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      color: rgba(255, 255, 255, 0.52);
+      outline: none;
+      border-radius: 11px;
+      transition: color 200ms ease, opacity 200ms ease, transform 150ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .toggle-option:focus-visible {
+      outline: 2px solid var(--accent-cyan, #4ee2ec);
+      outline-offset: -1px;
+    }
+
+    .toggle-option:hover {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .toggle-option.active {
+      color: #ffffff;
+    }
+
+    .toggle-icon {
+      width: 15px;
+      height: 15px;
+      display: block;
+      transition: transform 200ms ease, stroke 200ms ease;
+      flex-shrink: 0;
+    }
+
+    .toggle-option:active .toggle-icon {
+      transform: scale(0.9);
     }
 
     /* Ambient Radiant Light Rays behind the Thumbnail */
@@ -2598,11 +2745,6 @@
     <div class="bg-vignette"></div>
   </div>
 
-  <!-- Offscreen YouTube Iframe -->
-  <div id="yt-player-container">
-    <div id="youtube-player"></div>
-  </div>
-
   <!-- Toast Notification (iOS Dynamic Island Liquid Glass) -->
   <div id="toast" class="toast-pill" role="status" aria-live="polite">
     <span id="toast-icon" class="toast-icon-badge">✨</span>
@@ -2677,11 +2819,49 @@
           <div class="artwork-ambient-rays"></div>
           
           <div class="artwork-glass-card" id="main-artwork-card" title="Click to toggle playback">
+            <!-- Active YouTube Player (Full 16:9 viewable in active viewport, Fill Mode default) -->
+            <div id="yt-player-container" class="fill-mode">
+              <div id="youtube-player"></div>
+            </div>
+
             <div class="hero-premiere-badge" id="hero-premiere-badge" style="display: none;">
               <span class="pulse-live-dot"></span>
               <span id="hero-premiere-text">PREMIERE</span>
             </div>
             <img id="main-artwork-img" class="artwork-img" src="https://i.ytimg.com/vi/CLnBx-V5lS4/hqdefault.jpg" alt="Jab Koi Baat Recreated│Atif Aslam│Shirley Setia│DJ Chetas│(Slowed + Reverb) By Beat Badge × Slowedfy" />
+            
+            <!-- Minimal Compact Media Mode Toggle (Audio / Video) -->
+            <div class="artwork-top-bar" id="artwork-top-bar">
+              <div class="media-mode-toggle" id="media-mode-toggle" role="radiogroup" aria-label="Media Mode Switcher" title="Switch Audio / Video Mode">
+                <div class="toggle-slider" id="toggle-slider" aria-hidden="true"></div>
+                <button type="button" 
+                        class="toggle-option active" 
+                        id="toggle-audio-btn" 
+                        role="radio" 
+                        aria-checked="true" 
+                        tabindex="0"
+                        title="Audio Mode" 
+                        aria-label="Audio Mode">
+                  <svg class="toggle-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                    <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+                  </svg>
+                </button>
+                <button type="button" 
+                        class="toggle-option" 
+                        id="toggle-video-btn" 
+                        role="radio" 
+                        aria-checked="false" 
+                        tabindex="0"
+                        title="Video Mode" 
+                        aria-label="Video Mode">
+                  <svg class="toggle-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="3.5"></rect>
+                    <polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3783,8 +3963,8 @@
     "id": "zX861h8JRI8",
     "title": "O Khuda\u2502Amaal Mallik\u2502Palak Muchhal\u2502(Slowed + Reverb) By Beat Badge \u00d7 Slowedfy",
     "artist": "Slowedfy",
-    "duration": "5:44",
-    "seconds": 344,
+    "duration": "5:45",
+    "seconds": 345,
     "thumb": "https://i.ytimg.com/vi/zX861h8JRI8/hqdefault.jpg",
     "isPremiere": false
   },
@@ -4407,6 +4587,8 @@
       currentTime: 0,
       duration: 0,
       buffered: 0,
+      userInitiatedPause: false,
+      isVideoMode: false,
       currentTheme: 'sunset',
       dynamicBlur: 31,
       dynamicDarkness: 0,
@@ -4438,6 +4620,9 @@
       heroTitle: document.getElementById('hero-title'),
       mainArtworkCard: document.getElementById('main-artwork-card'),
       mainArtworkImg: document.getElementById('main-artwork-img'),
+      mediaModeToggle: document.getElementById('media-mode-toggle'),
+      toggleAudioBtn: document.getElementById('toggle-audio-btn'),
+      toggleVideoBtn: document.getElementById('toggle-video-btn'),
       artworkStageElem: document.getElementById('artwork-stage-elem'),
       dockThumbImg: document.getElementById('dock-thumb-img'),
       dockSongTitle: document.getElementById('dock-song-title'),
@@ -5075,7 +5260,14 @@
 
       state.currentIndex = index;
       const track = state.playlist[state.currentIndex];
+      state.currentTime = 0;
+      state.duration = track.seconds || 240;
+      state.userInitiatedPause = false;
+      lastRenderedCurrentSecs = -1;
+      lastRenderedDurationSecs = -1;
+      lastRenderedPct = -1;
       updateActiveTrackUI();
+      updateProgressUI(true);
 
       if (trackTransitionDebounceTimer) {
         clearTimeout(trackTransitionDebounceTimer);
@@ -5127,6 +5319,7 @@
     function togglePlayPause() {
       if (!ytPlayer || !ytApiReady || typeof ytPlayer.playVideo !== 'function') {
         state.isPlaying = !state.isPlaying;
+        state.userInitiatedPause = !state.isPlaying;
         if (state.isPlaying) {
           pendingPlayOnReady = true;
           if (window.YT && typeof window.YT.Player === 'function') {
@@ -5142,11 +5335,13 @@
         const playerState = typeof ytPlayer.getPlayerState === 'function' ? ytPlayer.getPlayerState() : -1;
         // YT Player States: 1 = PLAYING, 3 = BUFFERING
         if (playerState === 1 || playerState === 3 || state.isPlaying) {
+          state.userInitiatedPause = true;
           ytPlayer.pauseVideo();
           state.isPlaying = false;
           updatePlayPauseBtnUI(false);
           showToast("Paused", "‣");
         } else {
+          state.userInitiatedPause = false;
           ytPlayer.playVideo();
           state.isPlaying = true;
           consecutiveErrors = 0;
@@ -5156,6 +5351,7 @@
       } catch (e) {
         console.warn("[Slowedfy] Play/Pause toggle error:", e);
         state.isPlaying = !state.isPlaying;
+        state.userInitiatedPause = !state.isPlaying;
         updatePlayPauseBtnUI(state.isPlaying);
         showToast(state.isPlaying ? "Playing" : "Paused", state.isPlaying ? "▐▐" : "‣");
       }
@@ -5289,14 +5485,6 @@
 
             updateProgressUI();
           } catch (e) {}
-        } else if (!ytApiReady && pendingPlayOnReady) {
-          // Waiting for player to become ready; do not advance time artificially
-        } else {
-          state.currentTime += 0.2;
-          if (state.currentTime >= state.duration) {
-            nextTrack();
-          }
-          updateProgressUI();
         }
       }
 
@@ -5352,6 +5540,7 @@
         const iframe = ytPlayer.getIframe ? ytPlayer.getIframe() : document.getElementById('youtube-player');
         if (iframe) {
           iframe.setAttribute('allow', 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share');
+          iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
           iframe.setAttribute('title', 'Slowedfy Audio Player');
           iframe.setAttribute('tabindex', '-1');
           iframe.setAttribute('aria-hidden', 'true');
@@ -5400,6 +5589,7 @@
       // YT.PlayerState: -1 (UNSTARTED), 0 (ENDED), 1 (PLAYING), 2 (PAUSED), 3 (BUFFERING), 5 (CUED)
       if (stateCode === 1) { // PLAYING
         state.isPlaying = true;
+        state.userInitiatedPause = false;
         consecutiveErrors = 0;
         let dur = 0;
         try {
@@ -5412,17 +5602,28 @@
         }
         updatePlayPauseBtnUI(true);
       } else if (stateCode === 2) { // PAUSED
+        if (!state.userInitiatedPause && state.isPlaying) {
+          // Unintended pause triggered by browser buffer check, mobile occlusion, or transient policy
+          // Auto-resume to eliminate 3-second stops on non-Chrome and mobile browsers
+          try {
+            ytPlayer.playVideo();
+            return;
+          } catch (e) {}
+        }
         state.isPlaying = false;
         updatePlayPauseBtnUI(false);
       } else if (stateCode === 0) { // ENDED
         if (state.isLooping) {
           seekTo(0);
           try { ytPlayer.playVideo(); } catch (e) {}
+        } else if (state.duration > 10 && state.currentTime < (state.duration - 5)) {
+          // Guard against premature stream disconnects
+          try { ytPlayer.playVideo(); return; } catch (e) { nextTrack(); }
         } else {
           nextTrack();
         }
       } else if (stateCode === 3) { // BUFFERING
-        if (!state.isPlaying) {
+        if (!state.isPlaying && !state.userInitiatedPause) {
           state.isPlaying = true;
           updatePlayPauseBtnUI(true);
         }
@@ -5497,12 +5698,15 @@
         if (validOrigin) {
           playerVars.origin = validOrigin;
         }
+        if (typeof window !== 'undefined' && window.location.href) {
+          playerVars.widget_referrer = window.location.href;
+        }
 
         const initialTrackId = state.playlist[state.currentIndex]?.id || state.playlist[0]?.id || (OFFICIAL_PLAYLIST[0] ? OFFICIAL_PLAYLIST[0].id : 'CLnBx-V5lS4');
 
         ytPlayer = new YT.Player('youtube-player', {
-          height: '200',
-          width: '200',
+          height: '100%',
+          width: '100%',
           videoId: initialTrackId,
           host: 'https://www.youtube.com',
           playerVars: playerVars,
@@ -5693,7 +5897,67 @@
        ========================================================================== */
     // Main Controls
     DOM.playPauseBtn.addEventListener('click', togglePlayPause);
-    DOM.mainArtworkCard.addEventListener('click', togglePlayPause);
+    DOM.mainArtworkCard.addEventListener('click', (e) => {
+      if (e.target.closest('#media-mode-toggle') || e.target.closest('.artwork-top-bar')) return;
+      togglePlayPause();
+    });
+
+    function setVideoMode(enableVideo) {
+      state.isVideoMode = !!enableVideo;
+      DOM.mainArtworkCard.classList.toggle('video-mode-active', state.isVideoMode);
+      
+      const toggle = document.getElementById('media-mode-toggle');
+      const audioBtn = document.getElementById('toggle-audio-btn');
+      const videoBtn = document.getElementById('toggle-video-btn');
+      
+      if (toggle) toggle.classList.toggle('video-active', state.isVideoMode);
+      if (audioBtn) {
+        audioBtn.classList.toggle('active', !state.isVideoMode);
+        audioBtn.setAttribute('aria-checked', (!state.isVideoMode).toString());
+      }
+      if (videoBtn) {
+        videoBtn.classList.toggle('active', state.isVideoMode);
+        videoBtn.setAttribute('aria-checked', state.isVideoMode.toString());
+      }
+      
+      showToast(state.isVideoMode ? "Video Mode Enabled" : "Audio Mode Enabled", state.isVideoMode ? "🎬" : "🎧");
+    }
+
+    if (DOM.toggleAudioBtn) {
+      DOM.toggleAudioBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setVideoMode(false);
+      });
+      DOM.toggleAudioBtn.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ') {
+          e.preventDefault();
+          DOM.toggleVideoBtn?.focus();
+          setVideoMode(true);
+        }
+      });
+    }
+
+    if (DOM.toggleVideoBtn) {
+      DOM.toggleVideoBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        setVideoMode(true);
+      });
+      DOM.toggleVideoBtn.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === ' ') {
+          e.preventDefault();
+          DOM.toggleAudioBtn?.focus();
+          setVideoMode(false);
+        }
+      });
+    }
+
+    if (DOM.mediaModeToggle) {
+      DOM.mediaModeToggle.addEventListener('click', (e) => {
+        if (e.target.closest('.toggle-option')) return;
+        e.stopPropagation();
+        setVideoMode(!state.isVideoMode);
+      });
+    }
     DOM.nextBtn.addEventListener('click', nextTrack);
     DOM.prevBtn.addEventListener('click', prevTrack);
     DOM.rewind5sBtn.addEventListener('click', () => seekRelative(-5));
@@ -6307,26 +6571,42 @@
           let mergedPlaylist = state.playlist;
           let changed = false;
 
+          let structureChanged = false;
+
           if (result.isPartial) {
             // Partial list from RSS feed (e.g. latest 10-15 videos)
             if (newTracks.length > 0) {
               // Prepend newly detected tracks to the top of the playlist!
               mergedPlaylist = [...newTracks, ...state.playlist];
               changed = true;
+              structureChanged = true;
             }
           } else {
             // Full list from backend API or Invidious
             if (isSwitchingPlaylist || latest.length !== state.playlist.length || newTracks.length > 0) {
               mergedPlaylist = latest;
               changed = true;
+              structureChanged = true;
             } else {
-              const diff = latest.some((lat, i) => {
-                const cur = state.playlist[i];
-                return !cur || cur.id !== lat.id || !!cur.isPremiere !== !!lat.isPremiere || cur.duration !== lat.duration || cur.title !== lat.title;
-              });
-              if (diff) {
+              // Same length and same songs: check if track IDs or ordering changed
+              const idsChanged = latest.some((lat, i) => !state.playlist[i] || state.playlist[i].id !== lat.id);
+              if (idsChanged) {
                 mergedPlaylist = latest;
                 changed = true;
+                structureChanged = true;
+              } else {
+                // In-place metadata refresh without tearing down 111 DOM nodes (silky 60fps on Android)
+                latest.forEach((lat, i) => {
+                  const cur = state.playlist[i];
+                  if (cur) {
+                    if (lat.duration) cur.duration = lat.duration;
+                    if (lat.seconds) cur.seconds = lat.seconds;
+                    if (lat.title) cur.title = lat.title;
+                    cur.isPremiere = !!lat.isPremiere;
+                  }
+                });
+                changed = false;
+                structureChanged = false;
               }
             }
           }
@@ -6343,6 +6623,7 @@
                 // Append missing historical tracks to the tail so newly added tracks stay at the top (Track 01)
                 mergedPlaylist = [...mergedPlaylist, ...missingOfficial];
                 changed = true;
+                structureChanged = true;
               }
             }
           }
@@ -6368,7 +6649,11 @@
               state.currentIndex = 0;
             }
 
-            buildPlaylistDOM();
+            if (structureChanged) {
+              const prevScroll = DOM.playlistContainer ? DOM.playlistContainer.scrollTop : 0;
+              buildPlaylistDOM();
+              if (DOM.playlistContainer) DOM.playlistContainer.scrollTop = prevScroll;
+            }
             updateActiveTrackUI();
             updateSyncModalUI();
 

@@ -404,8 +404,8 @@ export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
     "id": "zX861h8JRI8",
     "title": "O Khuda│Amaal Mallik│Palak Muchhal│(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Slowedfy",
-    "duration": "5:44",
-    "seconds": 344,
+    "duration": "5:45",
+    "seconds": 345,
     "thumb": "https://i.ytimg.com/vi/zX861h8JRI8/hqdefault.jpg",
     "isPremiere": false
   },
