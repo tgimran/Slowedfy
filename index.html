@@ -1572,14 +1572,15 @@
     .player-dock {
       padding: 0.95rem 1.5rem;
       border-radius: var(--radius-xl);
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(20, 26, 42, 0.58) 40%, rgba(10, 14, 24, 0.72) 100%);
-      backdrop-filter: blur(36px) saturate(210%) contrast(106%);
-      -webkit-backdrop-filter: blur(36px) saturate(210%) contrast(106%);
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      box-shadow: 0 24px 64px -10px rgba(0, 0, 0, 0.65), 
-                  0 0 1px 1px rgba(255, 255, 255, 0.18), 
-                  inset 0 1px 2px rgba(255, 255, 255, 0.38), 
-                  inset 0 -1px 2px rgba(0, 0, 0, 0.4);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.05) 26%, rgba(16, 23, 38, 0.6) 62%, rgba(10, 15, 27, 0.74) 100%);
+      backdrop-filter: blur(40px) saturate(200%) contrast(105%) brightness(103%);
+      -webkit-backdrop-filter: blur(40px) saturate(200%) contrast(105%) brightness(103%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.65), 
+                  0 12px 24px -6px rgba(0, 0, 0, 0.45), 
+                  0 0 0 1px rgba(255, 255, 255, 0.08), 
+                  inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.42), 
+                  inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.35);
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
@@ -1590,6 +1591,7 @@
                   border-color 0.25s ease;
     }
 
+    /* Specular Light Refraction & Sheen */
     .player-dock::before {
       content: '';
       position: absolute;
@@ -1597,16 +1599,28 @@
       left: 0;
       right: 0;
       height: 1.5px;
-      background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%);
+      background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 15%, rgba(255, 255, 255, 0.75) 50%, rgba(255, 255, 255, 0.2) 85%, transparent 100%);
       pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Ambient Depth Glow & Soft Light Refraction */
+    .player-dock::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-xl);
+      background: radial-gradient(120% 80% at 50% -20%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0.03) 45%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
     }
 
     .player-dock:hover {
-      border-color: rgba(255, 255, 255, 0.3);
-      box-shadow: 0 28px 70px -8px rgba(0, 0, 0, 0.75), 
-                  0 0 20px rgba(78, 226, 236, 0.2), 
-                  0 0 1px 1px rgba(255, 255, 255, 0.25), 
-                  inset 0 1px 2.5px rgba(255, 255, 255, 0.45);
+      border-color: rgba(255, 255, 255, 0.28);
+      box-shadow: 0 28px 70px -10px rgba(0, 0, 0, 0.72), 
+                  0 0 24px rgba(78, 226, 236, 0.18), 
+                  0 0 0 1px rgba(255, 255, 255, 0.14), 
+                  inset 0 1.5px 2.5px rgba(255, 255, 255, 0.5);
     }
 
     /* Progress Bar Row */
@@ -1615,6 +1629,8 @@
       grid-template-columns: 48px 1fr 48px;
       align-items: center;
       gap: 0.85rem;
+      position: relative;
+      z-index: 2;
     }
 
     .time-label {
@@ -1708,6 +1724,8 @@
       align-items: center;
       justify-content: space-between;
       gap: 1rem;
+      position: relative;
+      z-index: 2;
     }
 
     /* Left: Mini track preview */
@@ -1851,15 +1869,15 @@
       box-shadow: 0 0 16px rgba(78, 226, 236, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.3);
     }
 
-    /* Right: Audio options & YouTube channel trigger */
-    .dock-yt-btn {
-      color: #ff0033 !important;
+    /* Right: Audio options & 1-Click Download trigger */
+    .dock-download-btn {
+      color: var(--accent-cyan, #4ee2ec) !important;
       transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.18s ease, box-shadow 0.18s ease, color 0.18s ease !important;
     }
-    .dock-yt-btn:hover {
-      color: #ff3b4e !important;
-      background: rgba(255, 0, 51, 0.22) !important;
-      box-shadow: 0 0 14px rgba(255, 0, 51, 0.45) !important;
+    .dock-download-btn:hover {
+      color: #ffffff !important;
+      background: rgba(78, 226, 236, 0.22) !important;
+      box-shadow: 0 0 14px rgba(78, 226, 236, 0.5) !important;
       transform: translateY(-2px) scale(1.08) !important;
     }
 
@@ -2994,13 +3012,15 @@
           </button>
         </div>
 
-        <!-- Right: Volume Slider & YouTube Channel Button -->
+        <!-- Right: Volume Slider & 1-Click Download Button -->
         <div class="dock-right-controls">
-          <a href="https://youtube.com/@GW_IMRAN" id="dock-yt-link" target="_blank" rel="noopener noreferrer" class="glass-btn ctrl-btn dock-yt-btn" style="width:34px;height:34px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;" title="GW IMRAN on YouTube" aria-label="YouTube">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+          <button id="dock-download-btn" class="glass-btn ctrl-btn dock-download-btn" style="width:34px;height:34px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;" title="Download active song (MP3)" aria-label="Download Song MP3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
-          </a>
+          </button>
           <div class="volume-wrap">
             <button class="glass-btn ctrl-btn" id="mute-btn" style="width:34px;height:34px;" title="Mute/Unmute (M)" aria-label="Mute">
               <svg id="vol-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -5487,7 +5507,7 @@
       dockThumbImg: document.getElementById('dock-thumb-img'),
       dockSongTitle: document.getElementById('dock-song-title'),
       dockSongArtist: document.getElementById('dock-song-artist'),
-      dockYtLink: document.getElementById('dock-yt-link'),
+      dockDownloadBtn: document.getElementById('dock-download-btn'),
       playlistContainer: document.getElementById('playlist-items-container'),
       playlistSearchInput: document.getElementById('playlist-search-input'),
       playlistCountLabel: document.getElementById('playlist-count-label'),
@@ -6043,14 +6063,12 @@
       // Update hero text
       DOM.heroTitle.textContent = track.title;
       
-      // Update dock text & YouTube channel link
+      // Update dock text & 1-click download button
       DOM.dockSongTitle.textContent = track.title;
       DOM.dockSongArtist.textContent = track.artist;
-      if (DOM.dockYtLink) {
-        DOM.dockYtLink.href = track.youtubeUrl || 'https://youtube.com/@GW_IMRAN';
-        DOM.dockYtLink.title = track.youtubeUrl ? `Watch on YouTube: ${track.title}` : `GW IMRAN on YouTube`;
-        DOM.dockYtLink.setAttribute('aria-label', `YouTube: ${track.title}`);
-        DOM.dockYtLink.removeAttribute('download');
+      if (DOM.dockDownloadBtn) {
+        DOM.dockDownloadBtn.title = `Download MP3: ${track.title}`;
+        DOM.dockDownloadBtn.setAttribute('aria-label', `Download ${track.title}`);
       }
 
       // Handle Premiere / Upcoming Badge on Main Hero Artwork
@@ -6164,7 +6182,7 @@
             DOM.mainArtworkImg.style.opacity = '1';
           }
           
-          const audioSrc = track.streamUrl || track.driveUrl;
+          const audioSrc = track.streamUrl || `/api/stream?id=${encodeURIComponent(track.id)}`;
           const isSameSong = DOM.audioEngine.src && DOM.audioEngine.src.includes(track.id);
           
           if (!isSameSong) {
@@ -6173,6 +6191,7 @@
           }
           DOM.audioEngine.volume = (state.volume || 80) / 100;
           DOM.audioEngine.muted = !!state.isMuted;
+          DOM.audioEngine.loop = false; // Keep false so ended event reliably fires across all devices
           
           // Instant UI feedback before audio starts buffering
           state.isPlaying = true;
@@ -6184,10 +6203,14 @@
               consecutiveErrors = 0;
               setTimeout(() => preloadNextTrack((index + 1) % state.playlist.length), 800);
             }).catch(err => {
-              console.warn('[Slowedfy] Primary stream play failed, trying direct drive link:', err);
-              if (track.driveUrl && DOM.audioEngine.src !== track.driveUrl) {
-                DOM.audioEngine.src = track.driveUrl;
-                DOM.audioEngine.play().catch(() => {
+              console.warn('[Slowedfy] Primary stream play failed, trying fallback stream:', err);
+              const fallbackUrl = track.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(track.id)}&export=download`;
+              if (DOM.audioEngine.src !== fallbackUrl) {
+                DOM.audioEngine.src = fallbackUrl;
+                DOM.audioEngine.play().then(() => {
+                  state.isPlaying = true;
+                  updatePlayPauseBtnUI(true);
+                }).catch(() => {
                   state.isPlaying = false;
                   updatePlayPauseBtnUI(false);
                 });
@@ -6328,12 +6351,52 @@
       }
     }
 
+    let shuffleQueue = [];
+    let shuffleQueueIndex = -1;
+    const trackHistory = [];
+
+    function buildShuffleQueue() {
+      if (!state.playlist || state.playlist.length === 0) {
+        shuffleQueue = [];
+        shuffleQueueIndex = -1;
+        return;
+      }
+      const len = state.playlist.length;
+      const indices = [];
+      for (let i = 0; i < len; i++) {
+        if (i !== state.currentIndex) indices.push(i);
+      }
+      // Fisher-Yates unbiased shuffle
+      for (let i = indices.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const temp = indices[i];
+        indices[i] = indices[j];
+        indices[j] = temp;
+      }
+      shuffleQueue = [state.currentIndex, ...indices];
+      shuffleQueueIndex = 0;
+    }
+
     function nextTrack() {
-      if (state.isShuffled) {
-        const randIndex = Math.floor(Math.random() * state.playlist.length);
-        playTrackAtIndex(randIndex, true);
+      if (!state.playlist || state.playlist.length === 0) return;
+      if (state.isShuffled && state.playlist.length > 1) {
+        if (!shuffleQueue || shuffleQueue.length !== state.playlist.length || shuffleQueueIndex < 0) {
+          buildShuffleQueue();
+        }
+        trackHistory.push(state.currentIndex);
+        shuffleQueueIndex++;
+        if (shuffleQueueIndex >= shuffleQueue.length) {
+          buildShuffleQueue();
+          shuffleQueueIndex = 1;
+        }
+        const nextIdx = (shuffleQueue[shuffleQueueIndex] !== undefined)
+          ? shuffleQueue[shuffleQueueIndex]
+          : Math.floor(Math.random() * state.playlist.length);
+        playTrackAtIndex(nextIdx, true);
       } else {
-        playTrackAtIndex(state.currentIndex + 1, true);
+        trackHistory.push(state.currentIndex);
+        const nextIdx = (state.currentIndex + 1) % state.playlist.length;
+        playTrackAtIndex(nextIdx, true);
       }
     }
 
@@ -6342,7 +6405,24 @@
         seekTo(0);
         return;
       }
-      playTrackAtIndex(state.currentIndex - 1, true);
+      if (trackHistory.length > 0) {
+        const prevIdx = trackHistory.pop();
+        if (state.isShuffled && shuffleQueueIndex > 0) {
+          shuffleQueueIndex--;
+        }
+        playTrackAtIndex(prevIdx, true);
+      } else if (state.isShuffled && state.playlist && state.playlist.length > 1) {
+        if (shuffleQueueIndex > 0) {
+          shuffleQueueIndex--;
+          playTrackAtIndex(shuffleQueue[shuffleQueueIndex], true);
+        } else {
+          const randIdx = Math.floor(Math.random() * state.playlist.length);
+          playTrackAtIndex(randIdx, true);
+        }
+      } else {
+        const prevIdx = state.currentIndex <= 0 ? state.playlist.length - 1 : state.currentIndex - 1;
+        playTrackAtIndex(prevIdx, true);
+      }
     }
 
     function seekRelative(deltaSeconds) {
@@ -7117,14 +7197,25 @@
     // Shuffle & Loop
     DOM.shuffleBtn.addEventListener('click', () => {
       state.isShuffled = !state.isShuffled;
+      if (state.isShuffled) {
+        buildShuffleQueue();
+      }
       DOM.shuffleBtn.classList.toggle('active', state.isShuffled);
-      showToast(`Shuffle: ${state.isShuffled ? 'On' : 'Off'}`, "🔀");
+      DOM.shuffleBtn.setAttribute('aria-pressed', state.isShuffled ? 'true' : 'false');
+      DOM.shuffleBtn.setAttribute('title', `Toggle Shuffle: ${state.isShuffled ? 'On (S)' : 'Off (S)'}`);
+      showToast(`Shuffle: ${state.isShuffled ? 'On' : 'Off'}`, state.isShuffled ? "🔀" : "➡");
     });
 
     DOM.loopBtn.addEventListener('click', () => {
       state.isLooping = !state.isLooping;
+      state.isRepeat = state.isLooping;
+      if (DOM.audioEngine) {
+        DOM.audioEngine.loop = false; // Keep false so ended event reliably fires
+      }
       DOM.loopBtn.classList.toggle('active', state.isLooping);
-      showToast(`Repeat Track: ${state.isLooping ? 'On' : 'Off'}`, "🔁");
+      DOM.loopBtn.setAttribute('aria-pressed', state.isLooping ? 'true' : 'false');
+      DOM.loopBtn.setAttribute('title', `Repeat Track: ${state.isLooping ? 'On (L)' : 'Off (L)'}`);
+      showToast(`Repeat Track: ${state.isLooping ? 'On' : 'Off'}`, state.isLooping ? "🔁" : "➡");
     });
 
     // Volume Slider & Mute (Throttled with requestAnimationFrame)
@@ -7184,6 +7275,43 @@
       updateVolIconUI();
       showToast(state.isMuted ? "Muted" : "Unmuted", state.isMuted ? "🔇" : "🔊");
     });
+
+    // 1-Click Direct Song Download in Mini Player
+    function downloadCurrentTrack() {
+      const track = state.playlist && state.playlist[state.currentIndex];
+      if (!track) {
+        showToast("No track selected", "⚠️");
+        return;
+      }
+      const rawTitle = (track.title || 'song').trim();
+      const cleanTitle = rawTitle.replace(/[/\\?%*:|"<>]/g, '_');
+      const filename = cleanTitle.endsWith('.mp3') ? cleanTitle : `${cleanTitle}.mp3`;
+      
+      showToast(`Downloading: ${rawTitle}`, "⬇️");
+
+      const downloadUrl = `/api/stream?id=${encodeURIComponent(track.id)}&download=true&filename=${encodeURIComponent(filename)}`;
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.setAttribute('download', filename);
+      link.setAttribute('target', '_blank');
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+      }, 1200);
+    }
+
+    if (DOM.dockDownloadBtn) {
+      DOM.dockDownloadBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        downloadCurrentTrack();
+      });
+    }
 
     // High-performance progress bar scrubbing (Instant 60fps UI feedback, single seek on release)
     let cachedProgressRect = null;
@@ -7802,9 +7930,17 @@
       // Setup HTML5 Audio Engine event listeners
       if (DOM.audioEngine) {
         DOM.audioEngine.addEventListener('ended', () => {
-          if (state.isRepeat) {
-            seekTo(0);
-            DOM.audioEngine.play();
+          if (state.isLooping || state.isRepeat) {
+            DOM.audioEngine.currentTime = 0;
+            state.currentTime = 0;
+            updateProgressUI(true);
+            DOM.audioEngine.play().then(() => {
+              state.isPlaying = true;
+              updatePlayPauseBtnUI(true);
+              showToast("Replaying track", "🔁");
+            }).catch((err) => {
+              console.warn("[Slowedfy] Audio loop replay error:", err);
+            });
           } else {
             nextTrack();
           }
@@ -7813,10 +7949,29 @@
         DOM.audioEngine.addEventListener('error', (e) => {
           console.warn('[Slowedfy] Audio playback error:', e);
           const cur = state.playlist && state.playlist[state.currentIndex];
-          if (cur && cur.driveUrl && DOM.audioEngine.src !== cur.driveUrl) {
-            DOM.audioEngine.src = cur.driveUrl;
+          if (!cur) return;
+          
+          const directDriveUrl = cur.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(cur.id)}&export=download`;
+
+          // Step 1: If current src was stream proxy and hasn't tried direct Drive stream, fall back immediately to Google Drive CDN
+          if (!DOM.audioEngine.src.includes('drive.usercontent.google.com') && DOM.audioEngine.src !== directDriveUrl) {
+            console.log('[Slowedfy] Stream proxy error, falling back to direct Drive stream URL:', directDriveUrl);
+            DOM.audioEngine.src = directDriveUrl;
             if (state.isPlaying) DOM.audioEngine.play().catch(() => {});
+            return;
           }
+
+          // Step 2: Retry with cache-busting timestamp
+          if (!DOM.audioEngine.src.includes('&retry=')) {
+            DOM.audioEngine.src = `/api/stream?id=${encodeURIComponent(cur.id)}&retry=${Date.now()}`;
+            if (state.isPlaying) DOM.audioEngine.play().catch(() => {});
+            return;
+          }
+
+          state.isPlaying = false;
+          updatePlayPauseBtnUI(false);
+          showToast("Retrying next track...", "⚠️");
+          setTimeout(() => nextTrack(), 1000);
         });
       }
 

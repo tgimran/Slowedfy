@@ -4,12 +4,12 @@ import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
 import util from "util";
+import type { PlaylistItem } from "./defaultPlaylist.ts";
 import {
-  PlaylistItem,
   OFFICIAL_PLAYLIST,
   DEFAULT_DRIVE_FOLDER_ID,
   AESTHETIC_ARTWORKS,
-} from "./defaultPlaylist";
+} from "./defaultPlaylist.ts";
 
 const execPromise = util.promisify(exec);
 const COVERS_DIR = path.join(process.cwd(), "public", "covers");

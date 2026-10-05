@@ -43,11 +43,20 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // Do NOT cache heavy media/audio streams, YouTube embeds, or Google Video
+  // Do NOT intercept heavy media/audio streams, Google Drive proxy, Range requests, or YouTube
   if (
+    url.pathname.startsWith('/api/stream') ||
+    url.pathname.startsWith('/api/artwork') ||
+    url.pathname.includes('/audio_cache/') ||
+    url.hostname.includes('drive.google.com') ||
+    url.hostname.includes('drive.usercontent.google.com') ||
+    url.hostname.includes('googleusercontent.com') ||
     url.hostname.includes('googlevideo.com') ||
     url.hostname.includes('youtube.com') ||
-    url.hostname.includes('youtube-nocookie.com')
+    url.hostname.includes('youtube-nocookie.com') ||
+    request.headers.get('range') ||
+    request.destination === 'audio' ||
+    request.destination === 'video'
   ) {
     return;
   }

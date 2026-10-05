@@ -4,20 +4,20 @@ import fs from "fs";
 import https from "https";
 import http from "http";
 import { createServer as createViteServer } from "vite";
+import type { PlaylistItem as BasePlaylistItem } from "./src/defaultPlaylist.ts";
 import {
   OFFICIAL_PLAYLIST,
   DEFAULT_PLAYLIST_ID as FALLBACK_ID,
-  PlaylistItem as BasePlaylistItem,
   DEFAULT_DRIVE_FOLDER_ID,
   DEFAULT_DRIVE_FOLDER_URL,
-} from "./src/defaultPlaylist";
+} from "./src/defaultPlaylist.ts";
 import {
   syncGoogleDriveFolder,
   getCachedDrivePlaylist,
   getLastSyncTime,
   getLastSyncSummary,
-} from "./src/driveSync";
-import { extractEmbeddedCoverForTrack } from "./scripts/extractCovers";
+} from "./src/driveSync.ts";
+import { extractEmbeddedCoverForTrack } from "./scripts/extractCovers.ts";
 
 const DEFAULT_PLAYLIST_ID = DEFAULT_DRIVE_FOLDER_ID;
 
@@ -619,7 +619,11 @@ async function startServer() {
       return res.status(400).send("Invalid file ID");
     }
 
-    const localCachePath = path.join(process.cwd(), "public", "audio_cache", `${fileId}.mp3`);
+    const audioCacheDir = path.join(process.cwd(), "public", "audio_cache");
+    if (!fs.existsSync(audioCacheDir)) {
+      try { fs.mkdirSync(audioCacheDir, { recursive: true }); } catch (e) {}
+    }
+    const localCachePath = path.join(audioCacheDir, `${fileId}.mp3`);
     if (fs.existsSync(localCachePath)) {
       try {
         const stat = fs.statSync(localCachePath);
@@ -639,72 +643,95 @@ async function startServer() {
     const targetUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download`;
     const rangeHeader = req.headers.range;
 
-    const headers: Record<string, string> = {
+    const requestHeaders: Record<string, string> = {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "Accept": "*/*",
     };
     if (rangeHeader) {
-      headers["Range"] = rangeHeader;
+      requestHeaders["Range"] = rangeHeader;
     }
 
-    const driveReq = https.get(targetUrl, { headers }, (driveRes) => {
-      if (driveRes.statusCode && driveRes.statusCode >= 300 && driveRes.statusCode < 400 && driveRes.headers.location) {
-        return res.redirect(driveRes.headers.location);
-      }
+    const streamFromUrl = (currentUrl: string, redirectsRemaining = 5) => {
+      const parsedUrl = new URL(currentUrl);
+      const transport = parsedUrl.protocol === "http:" ? http : https;
 
-      const statusCode = driveRes.statusCode || 200;
-      res.status(statusCode);
-
-      const forwardHeaders = ["content-type", "content-length", "content-range", "accept-ranges", "last-modified"];
-      for (const h of forwardHeaders) {
-        if (driveRes.headers[h]) {
-          res.setHeader(h, driveRes.headers[h] as string);
+      const driveReq = transport.get(currentUrl, { headers: requestHeaders }, (driveRes) => {
+        if (driveRes.statusCode && driveRes.statusCode >= 300 && driveRes.statusCode < 400 && driveRes.headers.location && redirectsRemaining > 0) {
+          const nextUrl = new URL(driveRes.headers.location, currentUrl).href;
+          driveRes.resume();
+          return streamFromUrl(nextUrl, redirectsRemaining - 1);
         }
-      }
-      if (req.query.download === "true" || req.query.dl === "1") {
-        const rawTitle = req.query.filename ? String(req.query.filename) : `${fileId}.mp3`;
-        res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(rawTitle)}"`);
-      }
-      res.setHeader("Accept-Ranges", "bytes");
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Cache-Control", "public, max-age=86400");
 
-      // If full file stream (not a partial range query), tee to disk cache for zero-delay future plays
-      if (!rangeHeader && statusCode === 200) {
-        const tmpPath = localCachePath + ".tmp";
-        const fileStream = fs.createWriteStream(tmpPath);
-        driveRes.on("data", (chunk) => {
-          fileStream.write(chunk);
-        });
-        driveRes.on("end", () => {
-          fileStream.end(() => {
-            try {
-              if (fs.existsSync(tmpPath) && fs.statSync(tmpPath).size > 50000) {
-                fs.renameSync(tmpPath, localCachePath);
-              } else if (fs.existsSync(tmpPath)) {
-                fs.unlinkSync(tmpPath);
-              }
-            } catch (e) {}
+        const statusCode = driveRes.statusCode || 200;
+        if (statusCode >= 400 && currentUrl.includes("drive.usercontent.google.com") && redirectsRemaining > 0) {
+          driveRes.resume();
+          return streamFromUrl(`https://drive.google.com/uc?export=download&id=${fileId}`, redirectsRemaining - 1);
+        }
+
+        res.status(statusCode);
+
+        const forwardHeaders = ["content-type", "content-length", "content-range", "accept-ranges", "last-modified"];
+        for (const h of forwardHeaders) {
+          if (driveRes.headers[h]) {
+            res.setHeader(h, driveRes.headers[h] as string);
+          }
+        }
+        if (req.query.download === "true" || req.query.dl === "1") {
+          const rawTitle = req.query.filename ? String(req.query.filename) : `${fileId}.mp3`;
+          res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(rawTitle)}"`);
+        }
+        res.setHeader("Content-Type", "audio/mpeg");
+        res.setHeader("Accept-Ranges", "bytes");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+
+        // If full file stream (not a partial range query), tee to disk cache for zero-delay future plays
+        if (!rangeHeader && statusCode === 200) {
+          const tmpPath = localCachePath + ".tmp";
+          const fileStream = fs.createWriteStream(tmpPath);
+          driveRes.on("data", (chunk) => {
+            fileStream.write(chunk);
           });
-        });
-        driveRes.on("error", () => {
-          fileStream.end();
-          try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
-        });
-      }
+          driveRes.on("end", () => {
+            fileStream.end(() => {
+              try {
+                if (fs.existsSync(tmpPath) && fs.statSync(tmpPath).size > 50000) {
+                  fs.renameSync(tmpPath, localCachePath);
+                } else if (fs.existsSync(tmpPath)) {
+                  fs.unlinkSync(tmpPath);
+                }
+              } catch (e) {}
+            });
+          });
+          driveRes.on("error", () => {
+            fileStream.end();
+            try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
+          });
+        }
 
-      driveRes.pipe(res);
-    });
+        driveRes.pipe(res);
+      });
 
-    driveReq.on("error", (err) => {
-      console.error(`[Stream Proxy] Error streaming file ${fileId}:`, err.message);
-      if (!res.headersSent) {
-        res.redirect(targetUrl);
-      }
-    });
+      driveReq.setTimeout(15000, () => {
+        driveReq.destroy();
+        if (!res.headersSent) {
+          res.status(504).send("Stream Gateway Timeout");
+        }
+      });
 
-    req.on("close", () => {
-      driveReq.destroy();
-    });
+      driveReq.on("error", (err) => {
+        console.error(`[Stream Proxy] Error streaming file ${fileId}:`, err.message);
+        if (!res.headersSent) {
+          res.status(502).send("Streaming error");
+        }
+      });
+
+      req.on("close", () => {
+        driveReq.destroy();
+      });
+    };
+
+    streamFromUrl(targetUrl);
   });
 
   // Dedicated 1:1 Square Album Artwork API (Embedded MP3 ID3 Cover -> Local Cache -> Fallback)

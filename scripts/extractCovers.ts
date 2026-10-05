@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { exec } from "child_process";
 import util from "util";
-import { OFFICIAL_PLAYLIST } from "../src/defaultPlaylist";
+import { OFFICIAL_PLAYLIST } from "../src/defaultPlaylist.ts";
 
 const execPromise = util.promisify(exec);
 
