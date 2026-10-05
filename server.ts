@@ -1,19 +1,35 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import https from "https";
 import http from "http";
 import { createServer as createViteServer } from "vite";
-import { OFFICIAL_PLAYLIST, DEFAULT_PLAYLIST_ID as FALLBACK_ID, PlaylistItem as BasePlaylistItem } from "./src/defaultPlaylist";
+import {
+  OFFICIAL_PLAYLIST,
+  DEFAULT_PLAYLIST_ID as FALLBACK_ID,
+  PlaylistItem as BasePlaylistItem,
+  DEFAULT_DRIVE_FOLDER_ID,
+  DEFAULT_DRIVE_FOLDER_URL,
+} from "./src/defaultPlaylist";
+import {
+  syncGoogleDriveFolder,
+  getCachedDrivePlaylist,
+  getLastSyncTime,
+  getLastSyncSummary,
+} from "./src/driveSync";
+import { extractEmbeddedCoverForTrack } from "./scripts/extractCovers";
 
-const DEFAULT_PLAYLIST_ID = FALLBACK_ID;
+const DEFAULT_PLAYLIST_ID = DEFAULT_DRIVE_FOLDER_ID;
 
 export function cleanPlaylistId(input?: string): string {
-  if (!input) return DEFAULT_PLAYLIST_ID;
+  if (!input) return DEFAULT_DRIVE_FOLDER_ID;
   const trimmed = input.trim();
+  const driveMatch = trimmed.match(/folders\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch) return driveMatch[1];
   const listMatch = trimmed.match(/[?&]list=([a-zA-Z0-9_-]+)/);
   if (listMatch) return listMatch[1];
   if (/^[a-zA-Z0-9_-]{10,}$/.test(trimmed)) return trimmed;
-  return DEFAULT_PLAYLIST_ID;
+  return DEFAULT_DRIVE_FOLDER_ID;
 }
 
 // In-memory cache for fast response and avoiding YouTube rate limits
@@ -469,6 +485,21 @@ async function getLatestPlaylist(
 ): Promise<{ playlist: PlaylistItem[]; title: string; author: string; lastFetchTime: number }> {
   const normalizedId = cleanPlaylistId(playlistId);
   const now = Date.now();
+
+  // If requesting the Master Google Drive playlist or folder
+  if (normalizedId === DEFAULT_DRIVE_FOLDER_ID || normalizedId === DEFAULT_PLAYLIST_ID || normalizedId.startsWith("194R") || !normalizedId) {
+    if (forceRefresh) {
+      await syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID).catch(() => {});
+    }
+    const driveList = getCachedDrivePlaylist();
+    return {
+      playlist: (driveList.length > 0 ? driveList : OFFICIAL_PLAYLIST) as PlaylistItem[],
+      title: "Slowedfy Master Library (Beat Badge × Slowedfy)",
+      author: "Slowedfy",
+      lastFetchTime: getLastSyncTime(),
+    };
+  }
+
   const cached = playlistCache.get(normalizedId);
 
   if (!forceRefresh && cached && cached.playlist.length > 0 && now - cached.lastFetchTime < 10000) {
@@ -554,18 +585,9 @@ async function getLatestPlaylist(
     };
   }
 
-  if (normalizedId === DEFAULT_PLAYLIST_ID) {
-    return {
-      playlist: OFFICIAL_PLAYLIST as PlaylistItem[],
-      title: "Slowedfy Official Playlist",
-      author: "Slowedfy",
-      lastFetchTime: now,
-    };
-  }
-
   return {
-    playlist: [],
-    title: "Slowedfy Playlist",
+    playlist: OFFICIAL_PLAYLIST as PlaylistItem[],
+    title: "Slowedfy Master Library (Beat Badge × Slowedfy)",
     author: "Slowedfy",
     lastFetchTime: now,
   };
@@ -581,12 +603,157 @@ async function startServer() {
   app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Pragma, Cache-Control");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Pragma, Cache-Control, Range");
+    res.setHeader("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length");
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     if (req.method === "OPTIONS") {
       return res.sendStatus(204);
     }
     next();
+  });
+
+  // Direct Audio Streaming Proxy for Google Drive audio with full HTTP Range request support & zero-delay disk caching
+  app.get("/api/stream", (req, res) => {
+    const fileId = req.query.id as string;
+    if (!fileId || typeof fileId !== "string" || !/^[a-zA-Z0-9_-]{20,}$/.test(fileId)) {
+      return res.status(400).send("Invalid file ID");
+    }
+
+    const localCachePath = path.join(process.cwd(), "public", "audio_cache", `${fileId}.mp3`);
+    if (fs.existsSync(localCachePath)) {
+      try {
+        const stat = fs.statSync(localCachePath);
+        if (stat.size > 50000) {
+          if (req.query.download === "true" || req.query.dl === "1") {
+            const rawTitle = req.query.filename ? String(req.query.filename) : `${fileId}.mp3`;
+            res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(rawTitle)}"`);
+          }
+          res.setHeader("Content-Type", "audio/mpeg");
+          res.setHeader("Accept-Ranges", "bytes");
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return res.sendFile(localCachePath, { acceptRanges: true });
+        }
+      } catch (e) {}
+    }
+
+    const targetUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download`;
+    const rangeHeader = req.headers.range;
+
+    const headers: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    };
+    if (rangeHeader) {
+      headers["Range"] = rangeHeader;
+    }
+
+    const driveReq = https.get(targetUrl, { headers }, (driveRes) => {
+      if (driveRes.statusCode && driveRes.statusCode >= 300 && driveRes.statusCode < 400 && driveRes.headers.location) {
+        return res.redirect(driveRes.headers.location);
+      }
+
+      const statusCode = driveRes.statusCode || 200;
+      res.status(statusCode);
+
+      const forwardHeaders = ["content-type", "content-length", "content-range", "accept-ranges", "last-modified"];
+      for (const h of forwardHeaders) {
+        if (driveRes.headers[h]) {
+          res.setHeader(h, driveRes.headers[h] as string);
+        }
+      }
+      if (req.query.download === "true" || req.query.dl === "1") {
+        const rawTitle = req.query.filename ? String(req.query.filename) : `${fileId}.mp3`;
+        res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(rawTitle)}"`);
+      }
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+
+      // If full file stream (not a partial range query), tee to disk cache for zero-delay future plays
+      if (!rangeHeader && statusCode === 200) {
+        const tmpPath = localCachePath + ".tmp";
+        const fileStream = fs.createWriteStream(tmpPath);
+        driveRes.on("data", (chunk) => {
+          fileStream.write(chunk);
+        });
+        driveRes.on("end", () => {
+          fileStream.end(() => {
+            try {
+              if (fs.existsSync(tmpPath) && fs.statSync(tmpPath).size > 50000) {
+                fs.renameSync(tmpPath, localCachePath);
+              } else if (fs.existsSync(tmpPath)) {
+                fs.unlinkSync(tmpPath);
+              }
+            } catch (e) {}
+          });
+        });
+        driveRes.on("error", () => {
+          fileStream.end();
+          try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
+        });
+      }
+
+      driveRes.pipe(res);
+    });
+
+    driveReq.on("error", (err) => {
+      console.error(`[Stream Proxy] Error streaming file ${fileId}:`, err.message);
+      if (!res.headersSent) {
+        res.redirect(targetUrl);
+      }
+    });
+
+    req.on("close", () => {
+      driveReq.destroy();
+    });
+  });
+
+  // Dedicated 1:1 Square Album Artwork API (Embedded MP3 ID3 Cover -> Local Cache -> Fallback)
+  app.get("/api/artwork", async (req, res) => {
+    const trackId = String(req.query.id || "");
+    if (!trackId || !/^[a-zA-Z0-9_-]{10,}$/.test(trackId)) {
+      return res.status(400).send("Invalid track ID");
+    }
+
+    const wantThumb = req.query.size === "thumb";
+    const thumbPath = path.join(process.cwd(), "public", "covers", "thumbs", `${trackId}.jpg`);
+    const fullPath = path.join(process.cwd(), "public", "covers", `${trackId}.jpg`);
+
+    if (wantThumb && fs.existsSync(thumbPath)) {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      return res.sendFile(thumbPath);
+    }
+
+    if (fs.existsSync(fullPath)) {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      return res.sendFile(fullPath);
+    }
+
+    if (fs.existsSync(thumbPath)) {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      return res.sendFile(thumbPath);
+    }
+
+    // Dynamic extraction if not already cached
+    try {
+      const extRes = await extractEmbeddedCoverForTrack(trackId);
+      if (extRes.success && fs.existsSync(fullPath)) {
+        res.setHeader("Content-Type", "image/jpeg");
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        return res.sendFile(fullPath);
+      }
+    } catch (e) {}
+
+    // Fallback: Check track thumb
+    const playlist = getCachedDrivePlaylist();
+    const track = playlist.find((t) => t.id === trackId);
+    if (track && track.thumb && track.thumb.startsWith("http")) {
+      return res.redirect(track.thumb);
+    }
+
+    res.redirect("/assets/logo.png");
   });
 
   // API Routes
@@ -603,6 +770,7 @@ async function startServer() {
       const playlistId = cleanPlaylistId(String(req.query.id || req.query.url || req.query.list || ""));
       const force = req.query.refresh === "true";
       const result = await getLatestPlaylist(playlistId, force);
+      const summary = getLastSyncSummary();
       res.json({
         success: true,
         playlistId,
@@ -611,6 +779,7 @@ async function startServer() {
         count: result.playlist.length,
         lastSync: result.lastFetchTime,
         playlist: result.playlist,
+        summary,
       });
     } catch (err: any) {
       res.status(500).json({
@@ -625,6 +794,7 @@ async function startServer() {
       const playlistId = cleanPlaylistId(String(req.body?.playlistId || req.body?.url || req.query.id || ""));
       const force = req.body?.force !== false;
       const result = await getLatestPlaylist(playlistId, force);
+      const summary = getLastSyncSummary();
       res.json({
         success: true,
         playlistId,
@@ -633,6 +803,7 @@ async function startServer() {
         count: result.playlist.length,
         lastSync: result.lastFetchTime,
         playlist: result.playlist,
+        summary,
         syncedAt: new Date().toISOString(),
       });
     } catch (err: any) {
@@ -643,16 +814,29 @@ async function startServer() {
     }
   });
 
+  app.get("/api/sync/summary", (req, res) => {
+    res.json({
+      success: true,
+      summary: getLastSyncSummary(),
+    });
+  });
+
   app.get("/api/playlist/presets", (req, res) => {
     res.json({
       success: true,
       presets: [
         {
-          id: "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS",
-          title: "Slowedfy Official (Beat Badge × Slowedfy)",
-          genre: "Slowed + Reverb Bollywood & Lo-Fi",
+          id: DEFAULT_DRIVE_FOLDER_ID,
+          title: "Slowedfy Master Library (Beat Badge × Slowedfy)",
+          genre: "Slowed + Reverb Google Drive Master Audio",
           isDefault: true,
-          badge: "Official",
+          badge: "Drive Master",
+        },
+        {
+          id: "PLkCaFs485nRqjo-8WlwgELRmZZP1dc5HS",
+          title: "Slowedfy Classic Collection",
+          genre: "Slowed + Reverb Bollywood & Lo-Fi",
+          badge: "Classic",
         },
         {
           id: "PL4fGSI1pDJn6jXS_PEoNEDWnII3799n2X",
