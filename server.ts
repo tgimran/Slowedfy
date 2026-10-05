@@ -17,8 +17,8 @@ import {
   getLastSyncTime,
   getLastSyncSummary,
   registerSyncUpdateListener,
+  extractEmbeddedCoverForTrack,
 } from "./src/driveSync.ts";
-import { extractEmbeddedCoverForTrack } from "./scripts/extractCovers.ts";
 
 const DEFAULT_PLAYLIST_ID = DEFAULT_DRIVE_FOLDER_ID;
 
@@ -735,7 +735,42 @@ async function startServer() {
     streamFromUrl(targetUrl);
   });
 
-  // Dedicated 1:1 Square Album Artwork API (Embedded MP3 ID3 Cover -> Local Cache -> Fallback)
+  // Dedicated /covers routes ensuring on-the-fly extraction if image not yet on disk
+  app.get(["/covers/:filename", "/covers/thumbs/:filename"], async (req, res) => {
+    const isThumb = req.path.includes("/thumbs/");
+    const filename = req.params.filename;
+    const trackId = filename.replace(/\.jpg$/i, "");
+
+    const thumbPath = path.join(process.cwd(), "public", "covers", "thumbs", filename);
+    const fullPath = path.join(process.cwd(), "public", "covers", filename);
+    const targetPath = isThumb ? thumbPath : fullPath;
+
+    if (fs.existsSync(targetPath)) {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      return res.sendFile(targetPath);
+    }
+
+    // Try extracting on the fly
+    try {
+      const playlist = getCachedDrivePlaylist();
+      const track = playlist.find((t) => t.id === trackId);
+      const extRes = await extractEmbeddedCoverForTrack(trackId, track?.title || "", track?.artist || "");
+      if (extRes.success && fs.existsSync(targetPath)) {
+        res.setHeader("Content-Type", "image/jpeg");
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.sendFile(targetPath);
+      }
+      if (fs.existsSync(fullPath)) {
+        res.setHeader("Content-Type", "image/jpeg");
+        return res.sendFile(fullPath);
+      }
+    } catch (e) {}
+
+    res.redirect("/assets/logo.png");
+  });
+
+  // Dedicated 1:1 Square Album Artwork API (Embedded MP3 ID3 Cover -> Local Cache -> iTunes -> Fallback)
   app.get("/api/artwork", async (req, res) => {
     const trackId = String(req.query.id || "");
     if (!trackId || !/^[a-zA-Z0-9_-]{10,}$/.test(trackId)) {
@@ -748,29 +783,31 @@ async function startServer() {
 
     if (wantThumb && fs.existsSync(thumbPath)) {
       res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.setHeader("Cache-Control", "public, max-age=86400");
       return res.sendFile(thumbPath);
     }
 
     if (fs.existsSync(fullPath)) {
       res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.setHeader("Cache-Control", "public, max-age=86400");
       return res.sendFile(fullPath);
     }
 
     if (fs.existsSync(thumbPath)) {
       res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.setHeader("Cache-Control", "public, max-age=86400");
       return res.sendFile(thumbPath);
     }
 
     // Dynamic extraction if not already cached
     try {
-      const extRes = await extractEmbeddedCoverForTrack(trackId);
+      const playlist = getCachedDrivePlaylist();
+      const track = playlist.find((t) => t.id === trackId);
+      const extRes = await extractEmbeddedCoverForTrack(trackId, track?.title || "", track?.artist || "");
       if (extRes.success && fs.existsSync(fullPath)) {
         res.setHeader("Content-Type", "image/jpeg");
-        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-        return res.sendFile(fullPath);
+        res.setHeader("Cache-Control", "public, max-age=86400");
+        return res.sendFile(wantThumb && fs.existsSync(thumbPath) ? thumbPath : fullPath);
       }
     } catch (e) {}
 

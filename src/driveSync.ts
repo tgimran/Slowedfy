@@ -15,10 +15,16 @@ const execPromise = util.promisify(exec);
 const COVERS_DIR = path.join(process.cwd(), "public", "covers");
 const THUMBS_DIR = path.join(COVERS_DIR, "thumbs");
 const AUDIO_CACHE_DIR = path.join(process.cwd(), "public", "audio_cache");
+const DIST_COVERS_DIR = path.join(process.cwd(), "dist", "covers");
+const DIST_THUMBS_DIR = path.join(DIST_COVERS_DIR, "thumbs");
 
 if (!fs.existsSync(COVERS_DIR)) fs.mkdirSync(COVERS_DIR, { recursive: true });
 if (!fs.existsSync(THUMBS_DIR)) fs.mkdirSync(THUMBS_DIR, { recursive: true });
 if (!fs.existsSync(AUDIO_CACHE_DIR)) fs.mkdirSync(AUDIO_CACHE_DIR, { recursive: true });
+if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+  if (!fs.existsSync(DIST_COVERS_DIR)) fs.mkdirSync(DIST_COVERS_DIR, { recursive: true });
+  if (!fs.existsSync(DIST_THUMBS_DIR)) fs.mkdirSync(DIST_THUMBS_DIR, { recursive: true });
+}
 
 export function formatTime(seconds: number): string {
   if (isNaN(seconds) || seconds < 0) return "00:00";
@@ -172,12 +178,142 @@ export function fetchHtml(url: string): Promise<string> {
 }
 
 /**
- * Extract embedded APIC / Attached Picture from MP3 file and crop to 1:1 square.
- * Runs in background asynchronously so playback is NEVER blocked.
+ * Downloads a file or partial stream to a local path, following HTTP redirects.
+ */
+function downloadFileStream(url: string, destPath: string, maxBytes = 0): Promise<boolean> {
+  return new Promise((resolve) => {
+    const tmpPath = destPath + ".tmp_" + Date.now();
+    const fileStream = fs.createWriteStream(tmpPath);
+    let bytesWritten = 0;
+
+    const req = https.get(
+      url,
+      {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          ...(maxBytes > 0 ? { Range: `bytes=0-${maxBytes}` } : {}),
+        },
+      },
+      (res) => {
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          fileStream.close();
+          try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
+          return downloadFileStream(res.headers.location, destPath, maxBytes).then(resolve);
+        }
+
+        if (res.statusCode !== 200 && res.statusCode !== 206) {
+          fileStream.close();
+          try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
+          return resolve(false);
+        }
+
+        res.on("data", (chunk) => {
+          bytesWritten += chunk.length;
+          fileStream.write(chunk);
+          if (maxBytes > 0 && bytesWritten >= maxBytes) {
+            res.destroy();
+            fileStream.end();
+          }
+        });
+
+        res.on("end", () => {
+          fileStream.end();
+        });
+
+        fileStream.on("finish", () => {
+          fileStream.close(() => {
+            try {
+              if (fs.existsSync(tmpPath) && fs.statSync(tmpPath).size > 1000) {
+                fs.renameSync(tmpPath, destPath);
+                resolve(true);
+              } else {
+                if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+                resolve(false);
+              }
+            } catch (e) {
+              resolve(false);
+            }
+          });
+        });
+      }
+    );
+
+    req.on("error", () => {
+      fileStream.close();
+      try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
+      resolve(false);
+    });
+    req.setTimeout(12000, () => {
+      req.destroy();
+      fileStream.close();
+      try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
+      resolve(false);
+    });
+  });
+}
+
+/**
+ * Searches Apple iTunes Search API (free, reliable, instant, official 1000x1000 covers).
+ */
+export async function fetchItunesCover(title: string, artist?: string): Promise<string | null> {
+  try {
+    const cleanTitle = title
+      .replace(/\([^)]*\)/g, "")
+      .replace(/\[[^\]]*\]/g, "")
+      .replace(/[│｜|]/g, " ")
+      .replace(/Slowed\s*\+?\s*Reverb/gi, "")
+      .replace(/By\s+.*$/i, "")
+      .replace(/Extended\s*Version/gi, "")
+      .trim();
+
+    const queryArtist = artist && artist !== "Slowedfy" ? artist.replace(/Beat Badge/gi, "").trim() : "";
+    const query = encodeURIComponent(`${queryArtist} ${cleanTitle}`.trim());
+    const url = `https://itunes.apple.com/search?term=${query}&entity=song&limit=1`;
+
+    return new Promise((resolve) => {
+      https.get(url, { headers: { "User-Agent": "Mozilla/5.0" } }, (res) => {
+        let data = "";
+        res.on("data", (c) => (data += c));
+        res.on("end", () => {
+          try {
+            const json = JSON.parse(data);
+            if (json.results && json.results.length > 0 && json.results[0].artworkUrl100) {
+              const highRes = json.results[0].artworkUrl100.replace("100x100bb", "1000x1000bb");
+              resolve(highRes);
+              return;
+            }
+          } catch (e) {}
+          resolve(null);
+        });
+      }).on("error", () => resolve(null));
+    });
+  } catch (err) {
+    return null;
+  }
+}
+
+/**
+ * Copy file to dist directory if dist exists (so production bundle stays synced)
+ */
+function syncFileToDist(srcFile: string, distDir: string, filename: string) {
+  try {
+    if (fs.existsSync(distDir)) {
+      const dest = path.join(distDir, filename);
+      fs.copyFileSync(srcFile, dest);
+    }
+  } catch (e) {}
+}
+
+/**
+ * Extract embedded APIC / Attached Picture from audio, companion Drive image, or iTunes API.
+ * Guarantees that every track gets high-resolution square artwork and thumbnail.
  */
 export async function extractEmbeddedCoverForTrack(
   trackId: string,
-  index = 0
+  trackTitle = "",
+  trackArtist = "",
+  companionImageId?: string
 ): Promise<{ success: boolean; cover: string; thumb: string }> {
   const coverPath = path.join(COVERS_DIR, `${trackId}.jpg`);
   const thumbPath = path.join(THUMBS_DIR, `${trackId}.jpg`);
@@ -186,6 +322,8 @@ export async function extractEmbeddedCoverForTrack(
   const hasThumb = fs.existsSync(thumbPath) && fs.statSync(thumbPath).size > 500;
 
   if (hasCover && hasThumb) {
+    syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+    syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
     return {
       success: true,
       cover: `/covers/${trackId}.jpg`,
@@ -193,45 +331,93 @@ export async function extractEmbeddedCoverForTrack(
     };
   }
 
-  const localAudioPath = path.join(AUDIO_CACHE_DIR, `${trackId}.mp3`);
-  const inputSource =
-    fs.existsSync(localAudioPath) && fs.statSync(localAudioPath).size > 50000
-      ? localAudioPath
-      : `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
-
-  try {
-    const cmd = `ffmpeg -y -v error -i "${inputSource}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
-    await execPromise(cmd, { timeout: 15000 });
-    if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
-      const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
-      await execPromise(thumbCmd, { timeout: 10000 });
-      return {
-        success: true,
-        cover: `/covers/${trackId}.jpg`,
-        thumb: `/covers/thumbs/${trackId}.jpg`,
-      };
+  // 1. If companion image uploaded in Google Drive folder, download directly
+  if (companionImageId) {
+    const driveImgUrl = `https://drive.usercontent.google.com/download?id=${companionImageId}&export=download`;
+    const tempImg = path.join(COVERS_DIR, `temp_${trackId}.img`);
+    const downloaded = await downloadFileStream(driveImgUrl, tempImg);
+    if (downloaded) {
+      try {
+        const cropCmd = `ffmpeg -y -v error -i "${tempImg}" -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
+        await execPromise(cropCmd, { timeout: 10000 });
+        const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
+        await execPromise(thumbCmd, { timeout: 10000 });
+        try { fs.unlinkSync(tempImg); } catch (e) {}
+        if (fs.existsSync(coverPath) && fs.existsSync(thumbPath)) {
+          syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+          syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+          return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+        }
+      } catch (e) {}
     }
-  } catch (e1) {
+  }
+
+  // 2. Try extracting attached picture (ID3 APIC) from local cached audio
+  const localAudioPath = path.join(AUDIO_CACHE_DIR, `${trackId}.mp3`);
+  if (fs.existsSync(localAudioPath) && fs.statSync(localAudioPath).size > 50000) {
     try {
-      const transCmd = `ffmpeg -y -v error -i "${inputSource}" -an -vframes 1 -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
-      await execPromise(transCmd, { timeout: 15000 });
+      const cmd = `ffmpeg -y -v error -i "${localAudioPath}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
+      await execPromise(cmd, { timeout: 10000 });
       if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
         const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
         await execPromise(thumbCmd, { timeout: 10000 });
-        return {
-          success: true,
-          cover: `/covers/${trackId}.jpg`,
-          thumb: `/covers/thumbs/${trackId}.jpg`,
-        };
+        syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+        syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+        return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
       }
-    } catch (e2) {}
+    } catch (e) {}
   }
 
-  const fallback = AESTHETIC_ARTWORKS[index % AESTHETIC_ARTWORKS.length];
+  // 3. Download first 2MB of audio file from Drive and extract embedded cover
+  const tempAudioPath = path.join(AUDIO_CACHE_DIR, `part_${trackId}.mp3`);
+  const driveAudioUrl = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
+  const gotPartial = await downloadFileStream(driveAudioUrl, tempAudioPath, 2500000);
+
+  if (gotPartial) {
+    try {
+      const cmd = `ffmpeg -y -v error -i "${tempAudioPath}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
+      await execPromise(cmd, { timeout: 10000 });
+      if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
+        const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
+        await execPromise(thumbCmd, { timeout: 10000 });
+        try { fs.unlinkSync(tempAudioPath); } catch (e) {}
+        syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+        syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+        return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+      }
+    } catch (e) {}
+    try { if (fs.existsSync(tempAudioPath)) fs.unlinkSync(tempAudioPath); } catch (e) {}
+  }
+
+  // 4. Query Apple iTunes Search API for official 1000x1000 album artwork
+  if (trackTitle) {
+    const itunesUrl = await fetchItunesCover(trackTitle, trackArtist);
+    if (itunesUrl) {
+      const tempItunesImg = path.join(COVERS_DIR, `itunes_${trackId}.jpg`);
+      const downloaded = await downloadFileStream(itunesUrl, tempItunesImg);
+      if (downloaded) {
+        try {
+          const cropCmd = `ffmpeg -y -v error -i "${tempItunesImg}" -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
+          await execPromise(cropCmd, { timeout: 10000 });
+          const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
+          await execPromise(thumbCmd, { timeout: 10000 });
+          try { fs.unlinkSync(tempItunesImg); } catch (e) {}
+          if (fs.existsSync(coverPath) && fs.existsSync(thumbPath)) {
+            syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+            syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+            return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+          }
+        } catch (e) {}
+      }
+    }
+  }
+
+  // 5. High-quality curated aesthetic cover fallback
+  const fallback = AESTHETIC_ARTWORKS[0];
   return { success: false, cover: fallback, thumb: fallback };
 }
 
-interface RawDriveFile {
+export interface RawDriveFile {
   id: string;
   name: string;
   mime: string;
@@ -262,7 +448,7 @@ function parseDriveItemsFromHtml(html: string): RawDriveFile[] {
           const mime = row[3] || "audio/mpeg";
           const uploadTime = row[9] || 0;
           const modTime = row[10] || 0;
-          const bytes = row[13] || 0;
+          const bytes = row[13] || row[27] || 0;
           const isFolder = mime === "application/vnd.google-apps.folder" || mime.includes("folder");
 
           if (id && name && !seenIds.has(id)) {
@@ -278,12 +464,17 @@ function parseDriveItemsFromHtml(html: string): RawDriveFile[] {
 }
 
 /**
- * Scans a folder recursively across multiple sort and direction views in parallel with cache busting.
+ * Scans a folder recursively across multiple sort and direction views in parallel.
+ * Captures both audio files and companion image files!
  */
-async function scanFolderFiles(folderId: string): Promise<{ audioFiles: RawDriveFile[]; subfolderCount: number }> {
+export async function scanFolderFiles(folderId: string): Promise<{
+  audioFiles: RawDriveFile[];
+  imageFiles: RawDriveFile[];
+  subfolderCount: number;
+}> {
   const queryUrls = [
-    `https://drive.google.com/drive/folders/${folderId}?sort=1&dir=d`,
     `https://drive.google.com/drive/folders/${folderId}?sort=13&dir=d`,
+    `https://drive.google.com/drive/folders/${folderId}?sort=1&dir=d`,
     `https://drive.google.com/drive/folders/${folderId}?sort=11&dir=d`,
     `https://drive.google.com/drive/folders/${folderId}?sort=1`,
     `https://drive.google.com/drive/folders/${folderId}?sort=3`,
@@ -327,13 +518,34 @@ async function scanFolderFiles(folderId: string): Promise<{ audioFiles: RawDrive
           allDiscovered.set(subFile.id, subFile);
         }
       }
+      for (const subImg of subResult.imageFiles) {
+        if (!allDiscovered.has(subImg.id)) {
+          allDiscovered.set(subImg.id, subImg);
+        }
+      }
     } catch (err) {
       console.warn(`[DriveSync] Error recursively scanning subfolder ${subId}:`, err);
     }
   }
 
-  const audioFiles = Array.from(allDiscovered.values()).filter((f) => !f.isFolder);
-  return { audioFiles, subfolderCount };
+  const allFiles = Array.from(allDiscovered.values()).filter((f) => !f.isFolder);
+  const audioFiles: RawDriveFile[] = [];
+  const imageFiles: RawDriveFile[] = [];
+
+  for (const f of allFiles) {
+    const isAudioExt = /\.(mp3|oga|m4a|wav|flac|ogg|aac|opus|wma)$/i.test(f.name);
+    const isAudioMime = f.mime?.startsWith("audio/") || f.mime === "application/octet-stream";
+    const isImageExt = /\.(jpe?g|png|webp|jfif|bmp)$/i.test(f.name);
+    const isImageMime = f.mime?.startsWith("image/");
+
+    if (isAudioExt || isAudioMime) {
+      audioFiles.push(f);
+    } else if (isImageExt || isImageMime) {
+      imageFiles.push(f);
+    }
+  }
+
+  return { audioFiles, imageFiles, subfolderCount };
 }
 
 export async function probeAndSyncTrackDuration(track: PlaylistItem): Promise<void> {
@@ -347,10 +559,21 @@ export async function probeAndSyncTrackDuration(track: PlaylistItem): Promise<vo
     if (sec > 0) {
       track.seconds = sec;
       track.duration = formatTime(sec);
-      console.log(`[DriveSync] Accurate duration probed for new track "${track.title}": ${track.duration} (${sec}s)`);
-      notifySyncListeners(cachedDrivePlaylist, 0, 1);
+      console.log(`[DriveSync] Accurate duration probed for track "${track.title}": ${track.duration} (${sec}s)`);
     }
   } catch (e) {}
+}
+
+/**
+ * Check if an image filename corresponds to a given audio track
+ */
+function isCompanionImage(imgName: string, songName: string): boolean {
+  const cleanImg = imgName.toLowerCase().replace(/\.(jpe?g|png|webp|jfif|bmp)$/i, "").trim();
+  const cleanSong = songName.toLowerCase().replace(/\.(mp3|oga|m4a|wav|flac|ogg|aac|opus|wma)$/i, "").trim();
+  if (cleanImg === cleanSong) return true;
+  if (cleanImg.includes(cleanSong) || cleanSong.includes(cleanImg)) return true;
+  if (["cover", "folder", "album", "artwork", "thumb"].includes(cleanImg)) return true;
+  return false;
 }
 
 let activeSyncPromise: Promise<PlaylistItem[]> | null = null;
@@ -369,36 +592,20 @@ export async function syncGoogleDriveFolder(
 
 /**
  * Synchronize Google Drive folder completely:
- * - Detects all songs without any 50/91 limit
- * - Preserves original Drive filename (removes only audio extension)
+ * - Detects all songs and companion album art files
+ * - Automatically processes and saves high-definition cover art
+ * - Accurately probes duration
  * - Sorts newest uploaded song first
- * - Incremental sync (maintains Drive file ID)
- * - Background artwork extraction
- * - Computes sync verification summary
+ * - Incremental sync with instant real-time live notification
  */
 async function doSyncGoogleDriveFolder(
   folderId: string = DEFAULT_DRIVE_FOLDER_ID
 ): Promise<PlaylistItem[]> {
   try {
-    const { audioFiles, subfolderCount } = await scanFolderFiles(folderId);
+    const { audioFiles, imageFiles, subfolderCount } = await scanFolderFiles(folderId);
 
-    const validAudios: RawDriveFile[] = [];
+    const validAudios: RawDriveFile[] = [...audioFiles];
     const skippedFiles: SkippedFileDetail[] = [];
-
-    for (const f of audioFiles) {
-      const isAudioExt = /\.(mp3|oga|m4a|wav|flac|ogg|aac|opus|wma)$/i.test(f.name);
-      const isAudioMime = f.mime?.startsWith("audio/") || f.mime === "application/octet-stream";
-
-      if (isAudioExt || isAudioMime) {
-        validAudios.push(f);
-      } else {
-        skippedFiles.push({
-          id: f.id,
-          name: f.name,
-          reason: `Unsupported MIME type (${f.mime}) and non-audio extension.`,
-        });
-      }
-    }
 
     // Sort newest uploaded first
     validAudios.sort((a, b) => {
@@ -437,7 +644,6 @@ async function doSyncGoogleDriveFolder(
           durationSec = officialMatch.seconds;
           durationFormatted = officialMatch.duration;
         } else if (f.bytes > 0) {
-          // Heuristic fallback only when no verified duration exists
           durationSec = Math.round(f.bytes / 20000);
           if (durationSec < 60 || durationSec > 600) durationSec = 240;
           durationFormatted = formatTime(durationSec);
@@ -464,7 +670,7 @@ async function doSyncGoogleDriveFolder(
         ? `/covers/thumbs/${f.id}.jpg`
         : localCoverExists
         ? `/covers/${f.id}.jpg`
-        : existing?.thumb || AESTHETIC_ARTWORKS[idx % AESTHETIC_ARTWORKS.length];
+        : existing?.thumb || `/covers/thumbs/${f.id}.jpg`;
 
       const hdThumb = localCoverExists
         ? `/covers/${f.id}.jpg`
@@ -493,10 +699,6 @@ async function doSyncGoogleDriveFolder(
       if (!existing) {
         totalNew++;
         newlyDetectedTracks.push(trackItem);
-        // Trigger background embedded artwork extraction for new songs (non-blocking)
-        extractEmbeddedCoverForTrack(f.id, idx).catch(() => {});
-        // Trigger background accurate duration probe
-        probeAndSyncTrackDuration(trackItem).catch(() => {});
       } else {
         if (existing.originalFilename !== f.name || existing.title !== title) {
           totalUpdated++;
@@ -505,6 +707,22 @@ async function doSyncGoogleDriveFolder(
 
       existingMap.set(f.id, trackItem);
     });
+
+    // Process cover art & probe duration for newly detected tracks before finalizing
+    if (newlyDetectedTracks.length > 0) {
+      console.log(`[DriveSync] Processing album art and durations for ${newlyDetectedTracks.length} newly discovered tracks...`);
+      await Promise.allSettled(
+        newlyDetectedTracks.map(async (t) => {
+          const companion = imageFiles.find((img) => isCompanionImage(img.name, t.originalFilename || t.title));
+          const artRes = await extractEmbeddedCoverForTrack(t.id, t.title, t.artist, companion?.id);
+          if (artRes.success) {
+            t.thumb = artRes.thumb;
+            t.hdThumb = artRes.cover;
+          }
+          await probeAndSyncTrackDuration(t);
+        })
+      );
+    }
 
     const updatedPlaylist = Array.from(existingMap.values());
 
@@ -533,12 +751,18 @@ async function doSyncGoogleDriveFolder(
       syncedAt: new Date().toISOString(),
     };
 
+    // Always persist updated playlist and notify listeners if changes detected
     if (totalNew > 0 || totalUpdated > 0) {
-      notifySyncListeners(cachedDrivePlaylist, totalNew, totalUpdated);
       try {
         const cachePath = path.join(process.cwd(), "public", "drive_playlist_cache.json");
         fs.writeFileSync(cachePath, JSON.stringify(cachedDrivePlaylist, null, 2));
+        const distCachePath = path.join(process.cwd(), "dist", "drive_playlist_cache.json");
+        if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+          fs.writeFileSync(distCachePath, JSON.stringify(cachedDrivePlaylist, null, 2));
+        }
       } catch (e) {}
+
+      notifySyncListeners(cachedDrivePlaylist, totalNew, totalUpdated);
     }
 
     console.log(
@@ -561,81 +785,11 @@ export async function downloadAndCacheTrackAudio(trackId: string): Promise<boole
   }
   const tmpPath = destPath + ".tmp";
   const url = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
-  return new Promise((resolve) => {
-    const file = fs.createWriteStream(tmpPath);
-    const req = https.get(
-      url,
-      {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-        },
-      },
-      (res) => {
-        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          file.close();
-          try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
-          // Follow redirect
-          const redFile = fs.createWriteStream(tmpPath);
-          https.get(res.headers.location, (redRes) => {
-            redRes.pipe(redFile);
-            redFile.on("finish", () => {
-              redFile.close(() => {
-                try {
-                  if (fs.existsSync(tmpPath) && fs.statSync(tmpPath).size > 50000) {
-                    fs.renameSync(tmpPath, destPath);
-                    resolve(true);
-                  } else {
-                    if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
-                    resolve(false);
-                  }
-                } catch (e) {
-                  resolve(false);
-                }
-              });
-            });
-          }).on("error", () => {
-            redFile.close();
-            try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
-            resolve(false);
-          });
-          return;
-        }
-
-        if (res.statusCode !== 200) {
-          file.close();
-          try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
-          return resolve(false);
-        }
-
-        res.pipe(file);
-        file.on("finish", () => {
-          file.close(() => {
-            try {
-              if (fs.existsSync(tmpPath) && fs.statSync(tmpPath).size > 50000) {
-                fs.renameSync(tmpPath, destPath);
-                resolve(true);
-              } else {
-                if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
-                resolve(false);
-              }
-            } catch (e) {
-              resolve(false);
-            }
-          });
-        });
-      }
-    );
-    req.on("error", () => {
-      file.close();
-      try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
-      resolve(false);
-    });
-  });
+  return downloadFileStream(url, destPath);
 }
 
 let isPreloadingAudio = false;
-export async function preloadTopTracksAudio(count = 110) {
+export async function preloadTopTracksAudio(count = 20) {
   if (isPreloadingAudio) return;
   isPreloadingAudio = true;
   try {
@@ -650,23 +804,68 @@ export async function preloadTopTracksAudio(count = 110) {
   }
 }
 
-// Background auto-polling timer: checks for new songs every 20 seconds
-let syncIntervalTimer: NodeJS.Timeout | null = null;
+/**
+ * Ultra-fast poll check (every 6 seconds):
+ * Fetches the newest modified files view (sort=13&dir=d) from Google Drive.
+ * If any file in this view is not in our cached playlist, immediately triggers full sync!
+ */
+let isFastChecking = false;
+export async function fastCheckNewDriveUploads(): Promise<boolean> {
+  if (isFastChecking || activeSyncPromise) return false;
+  isFastChecking = true;
+  try {
+    const url = `https://drive.google.com/drive/folders/${DEFAULT_DRIVE_FOLDER_ID}?sort=13&dir=d`;
+    const html = await fetchHtml(url);
+    const items = parseDriveItemsFromHtml(html);
+    const currentIds = new Set(cachedDrivePlaylist.map((t) => t.id));
 
-export function startBackgroundSync(intervalMs = 20000) {
-  if (syncIntervalTimer) clearInterval(syncIntervalTimer);
-  syncIntervalTimer = setInterval(() => {
+    let foundNew = false;
+    for (const it of items) {
+      const isAudio = /\.(mp3|oga|m4a|wav|flac|ogg|aac|opus|wma)$/i.test(it.name) || it.mime?.startsWith("audio/");
+      if (isAudio && !currentIds.has(it.id)) {
+        foundNew = true;
+        console.log(`[DriveSync] Fast-poll detected brand new upload in Drive: "${it.name}" (${it.id})! Syncing immediately...`);
+        break;
+      }
+    }
+
+    if (foundNew) {
+      await syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  } finally {
+    isFastChecking = false;
+  }
+}
+
+// Background auto-polling timer: checks for new songs reliably
+let fastSyncTimer: NodeJS.Timeout | null = null;
+let fullSyncTimer: NodeJS.Timeout | null = null;
+
+export function startBackgroundSync() {
+  if (fastSyncTimer) clearInterval(fastSyncTimer);
+  if (fullSyncTimer) clearInterval(fullSyncTimer);
+
+  // Fast check every 6 seconds for instantaneous detection of new uploads
+  fastSyncTimer = setInterval(() => {
+    fastCheckNewDriveUploads().catch(() => {});
+  }, 6000);
+
+  // Full comprehensive scan every 30 seconds
+  fullSyncTimer = setInterval(() => {
     syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID)
       .then(() => {
-        preloadTopTracksAudio(15).catch(() => {});
+        preloadTopTracksAudio(10).catch(() => {});
       })
       .catch((e) => {
         console.warn("[DriveSync] Background poll error:", e);
       });
-  }, intervalMs);
+  }, 30000);
 }
 
 // Start background sync on server startup
-startBackgroundSync(20000);
-setTimeout(() => preloadTopTracksAudio(20).catch(() => {}), 1000);
-
+startBackgroundSync();
+setTimeout(() => preloadTopTracksAudio(10).catch(() => {}), 2000);
