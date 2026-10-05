@@ -1,6 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "http";
 import https from "https";
 import http from "http";
+import fs from "fs";
+import path from "path";
 import { OFFICIAL_PLAYLIST, DEFAULT_PLAYLIST_ID, PlaylistItem } from "../src/defaultPlaylist";
 
 function cleanPlaylistId(input?: string): string {
@@ -233,6 +235,17 @@ export default async function handler(req: IncomingMessage & { query?: Record<st
 
     // Return Master Google Drive playlist with verified durations directly
     if (playlistId === DEFAULT_PLAYLIST_ID || playlistId.startsWith("194R") || !playlistId) {
+      let list = OFFICIAL_PLAYLIST;
+      try {
+        const diskCacheFile = path.join(process.cwd(), "public", "drive_playlist_cache.json");
+        if (fs.existsSync(diskCacheFile)) {
+          const parsed = JSON.parse(fs.readFileSync(diskCacheFile, "utf-8"));
+          if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
+            list = parsed;
+          }
+        }
+      } catch (e) {}
+
       res.statusCode = 200;
       res.setHeader("Content-Type", "application/json");
       res.end(
@@ -241,8 +254,8 @@ export default async function handler(req: IncomingMessage & { query?: Record<st
           playlistId: DEFAULT_PLAYLIST_ID,
           title: "Slowedfy Master Library (Beat Badge × Slowedfy)",
           author: "Slowedfy",
-          count: OFFICIAL_PLAYLIST.length,
-          playlist: OFFICIAL_PLAYLIST,
+          count: list.length,
+          playlist: list,
           lastSync: Date.now(),
         })
       );

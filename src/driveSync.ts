@@ -78,18 +78,29 @@ export interface SyncSummary {
 }
 
 let cachedDrivePlaylist: PlaylistItem[] = [...OFFICIAL_PLAYLIST];
+try {
+  const diskCacheFile = path.join(process.cwd(), "public", "drive_playlist_cache.json");
+  if (fs.existsSync(diskCacheFile)) {
+    const raw = fs.readFileSync(diskCacheFile, "utf-8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
+      cachedDrivePlaylist = parsed;
+    }
+  }
+} catch (e) {}
+
 let lastSyncTimestamp = Date.now();
 let lastSyncSummary: SyncSummary = {
-  totalDriveFilesDiscovered: OFFICIAL_PLAYLIST.length,
-  totalValidAudioFiles: OFFICIAL_PLAYLIST.length,
+  totalDriveFilesDiscovered: cachedDrivePlaylist.length,
+  totalValidAudioFiles: cachedDrivePlaylist.length,
   totalFilesInSubfolders: 0,
-  totalAlreadyImported: OFFICIAL_PLAYLIST.length,
+  totalAlreadyImported: cachedDrivePlaylist.length,
   totalNewlyImported: 0,
   totalUpdated: 0,
   totalDuplicates: 0,
   totalSkipped: 0,
   skippedFilesDetails: [],
-  finalWebsiteSongs: OFFICIAL_PLAYLIST.length,
+  finalWebsiteSongs: cachedDrivePlaylist.length,
   syncedAt: new Date().toISOString(),
 };
 
@@ -105,17 +116,35 @@ export function getLastSyncSummary(): SyncSummary {
   return lastSyncSummary;
 }
 
+type SyncUpdateListener = (playlist: PlaylistItem[], totalNew: number, totalUpdated: number) => void;
+const syncListeners: SyncUpdateListener[] = [];
+
+export function registerSyncUpdateListener(listener: SyncUpdateListener) {
+  syncListeners.push(listener);
+}
+
+function notifySyncListeners(playlist: PlaylistItem[], totalNew: number, totalUpdated: number) {
+  for (const listener of syncListeners) {
+    try {
+      listener(playlist, totalNew, totalUpdated);
+    } catch (e) {}
+  }
+}
+
 export function fetchHtml(url: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
+    parsed.searchParams.set("_t", Date.now().toString());
     const client = parsed.protocol === "https:" ? https : http;
     const req = client.get(
-      url,
+      parsed.toString(),
       {
         headers: {
           "User-Agent":
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
           "Accept-Language": "en-US,en;q=0.9",
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
         },
       },
       (res) => {
@@ -135,7 +164,7 @@ export function fetchHtml(url: string): Promise<string> {
       }
     );
     req.on("error", reject);
-    req.setTimeout(15000, () => {
+    req.setTimeout(8000, () => {
       req.destroy();
       reject(new Error("Drive request timeout"));
     });
@@ -249,28 +278,34 @@ function parseDriveItemsFromHtml(html: string): RawDriveFile[] {
 }
 
 /**
- * Scans a folder recursively across multiple sort and direction views.
+ * Scans a folder recursively across multiple sort and direction views in parallel with cache busting.
  */
 async function scanFolderFiles(folderId: string): Promise<{ audioFiles: RawDriveFile[]; subfolderCount: number }> {
   const queryUrls = [
-    `https://drive.google.com/drive/folders/${folderId}?sort=1`,
     `https://drive.google.com/drive/folders/${folderId}?sort=1&dir=d`,
+    `https://drive.google.com/drive/folders/${folderId}?sort=13&dir=d`,
+    `https://drive.google.com/drive/folders/${folderId}?sort=11&dir=d`,
+    `https://drive.google.com/drive/folders/${folderId}?sort=1`,
     `https://drive.google.com/drive/folders/${folderId}?sort=3`,
-    `https://drive.google.com/drive/folders/${folderId}?sort=3&dir=a`,
-    `https://drive.google.com/drive/folders/${folderId}?sort=11`,
-    `https://drive.google.com/drive/folders/${folderId}?sort=11&dir=a`,
     `https://drive.google.com/drive/folders/${folderId}?sort=7`,
-    `https://drive.google.com/drive/folders/${folderId}?sort=7&dir=a`,
   ];
 
   const allDiscovered = new Map<string, RawDriveFile>();
   const subfolders: string[] = [];
 
-  for (const u of queryUrls) {
+  const fetchPromises = queryUrls.map(async (u) => {
     try {
       const html = await fetchHtml(u);
-      const items = parseDriveItemsFromHtml(html);
-      for (const it of items) {
+      return parseDriveItemsFromHtml(html);
+    } catch (err) {
+      return [];
+    }
+  });
+
+  const results = await Promise.allSettled(fetchPromises);
+  for (const r of results) {
+    if (r.status === "fulfilled") {
+      for (const it of r.value) {
         if (!allDiscovered.has(it.id)) {
           allDiscovered.set(it.id, it);
           if (it.isFolder) {
@@ -278,8 +313,6 @@ async function scanFolderFiles(folderId: string): Promise<{ audioFiles: RawDrive
           }
         }
       }
-    } catch (err) {
-      console.warn(`[DriveSync] Error querying view ${u}:`, err);
     }
   }
 
@@ -303,6 +336,37 @@ async function scanFolderFiles(folderId: string): Promise<{ audioFiles: RawDrive
   return { audioFiles, subfolderCount };
 }
 
+export async function probeAndSyncTrackDuration(track: PlaylistItem): Promise<void> {
+  try {
+    const inputUrl = `https://drive.usercontent.google.com/download?id=${track.id}&export=download`;
+    const { stdout } = await execPromise(
+      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${inputUrl}"`,
+      { timeout: 8000 }
+    );
+    const sec = Math.round(parseFloat(stdout.trim()));
+    if (sec > 0) {
+      track.seconds = sec;
+      track.duration = formatTime(sec);
+      console.log(`[DriveSync] Accurate duration probed for new track "${track.title}": ${track.duration} (${sec}s)`);
+      notifySyncListeners(cachedDrivePlaylist, 0, 1);
+    }
+  } catch (e) {}
+}
+
+let activeSyncPromise: Promise<PlaylistItem[]> | null = null;
+
+export async function syncGoogleDriveFolder(
+  folderId: string = DEFAULT_DRIVE_FOLDER_ID
+): Promise<PlaylistItem[]> {
+  if (activeSyncPromise) {
+    return activeSyncPromise;
+  }
+  activeSyncPromise = doSyncGoogleDriveFolder(folderId).finally(() => {
+    activeSyncPromise = null;
+  });
+  return activeSyncPromise;
+}
+
 /**
  * Synchronize Google Drive folder completely:
  * - Detects all songs without any 50/91 limit
@@ -312,7 +376,7 @@ async function scanFolderFiles(folderId: string): Promise<{ audioFiles: RawDrive
  * - Background artwork extraction
  * - Computes sync verification summary
  */
-export async function syncGoogleDriveFolder(
+async function doSyncGoogleDriveFolder(
   folderId: string = DEFAULT_DRIVE_FOLDER_ID
 ): Promise<PlaylistItem[]> {
   try {
@@ -431,6 +495,8 @@ export async function syncGoogleDriveFolder(
         newlyDetectedTracks.push(trackItem);
         // Trigger background embedded artwork extraction for new songs (non-blocking)
         extractEmbeddedCoverForTrack(f.id, idx).catch(() => {});
+        // Trigger background accurate duration probe
+        probeAndSyncTrackDuration(trackItem).catch(() => {});
       } else {
         if (existing.originalFilename !== f.name || existing.title !== title) {
           totalUpdated++;
@@ -466,6 +532,14 @@ export async function syncGoogleDriveFolder(
       finalWebsiteSongs: updatedPlaylist.length,
       syncedAt: new Date().toISOString(),
     };
+
+    if (totalNew > 0 || totalUpdated > 0) {
+      notifySyncListeners(cachedDrivePlaylist, totalNew, totalUpdated);
+      try {
+        const cachePath = path.join(process.cwd(), "public", "drive_playlist_cache.json");
+        fs.writeFileSync(cachePath, JSON.stringify(cachedDrivePlaylist, null, 2));
+      } catch (e) {}
+    }
 
     console.log(
       `[DriveSync] Completed sync for ${folderId}: ${updatedPlaylist.length} tracks (New: ${totalNew}, Updated: ${totalUpdated})`

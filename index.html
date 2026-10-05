@@ -3361,6 +3361,25 @@
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
   {
+    "id": "19sz1uO5hx8D0H-BFO5n4tPffo5UPiy7C",
+    "originalFilename": "Kon Disa Mein - Extended Version│Varsha Singh Dhanoa│Guru Dhanoa│Maddy Sharma│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Kon Disa Mein - Extended Version│Varsha Singh Dhanoa│Guru Dhanoa│Maddy Sharma│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge × Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "06:25",
+    "seconds": 385,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "6.8 MB",
+    "date": "5 Oct 2026",
+    "uploadTime": 1791194473083,
+    "streamUrl": "/api/stream?id=19sz1uO5hx8D0H-BFO5n4tPffo5UPiy7C",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=19sz1uO5hx8D0H-BFO5n4tPffo5UPiy7C&export=download",
+    "thumb": "/covers/thumbs/19sz1uO5hx8D0H-BFO5n4tPffo5UPiy7C.jpg",
+    "hdThumb": "/covers/19sz1uO5hx8D0H-BFO5n4tPffo5UPiy7C.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "1YGDaQpEHdUaGVfpKnFtqehId3uer0a4H",
     "originalFilename": "Jab Koi Baat Recreated│Atif Aslam│Shirley Setia│DJ Chetas│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
     "title": "Jab Koi Baat Recreated│Atif Aslam│Shirley Setia│DJ Chetas│(Slowed + Reverb) By Beat Badge × Slowedfy",
@@ -7984,6 +8003,112 @@
     // Retain syncPlaylistFromYouTube alias for backwards compatibility
     const syncPlaylistFromYouTube = syncDrivePlaylist;
 
+    function syncWithLatestTracks(latest, newCount = 0) {
+      if (!Array.isArray(latest) || latest.length === 0) return;
+
+      const currentIds = new Set(state.playlist.map(t => t.id));
+      const newTracks = latest.filter(t => !currentIds.has(t.id));
+
+      if (newTracks.length > 0 || latest.length !== state.playlist.length) {
+        const currentActiveTrackId = state.playlist[state.currentIndex]?.id;
+
+        state.playlist = latest;
+        state.originalPlaylist = [...latest];
+        if (state.activePlaylistId === PLAYLIST_ID) {
+          try {
+            localStorage.setItem('slowedfy_drive_master_v4', JSON.stringify(latest));
+          } catch (e) {}
+        }
+
+        if (currentActiveTrackId) {
+          const newIndex = state.playlist.findIndex(t => t.id === currentActiveTrackId);
+          if (newIndex !== -1) {
+            state.currentIndex = newIndex;
+          }
+        }
+
+        const prevScroll = DOM.playlistContainer ? DOM.playlistContainer.scrollTop : 0;
+        buildPlaylistDOM();
+        if (DOM.playlistContainer) DOM.playlistContainer.scrollTop = prevScroll;
+        updateActiveTrackUI();
+        updateSyncModalUI();
+
+        if (newTracks.length > 0) {
+          showToast(`✨ New Song Detected: ${newTracks[0].title.slice(0, 34)}...`, "🎵");
+        }
+      } else {
+        // In-place duration & metadata update
+        latest.forEach((lat, i) => {
+          const cur = state.playlist[i];
+          if (cur) {
+            if (lat.duration) cur.duration = lat.duration;
+            if (lat.seconds) cur.seconds = lat.seconds;
+            if (lat.title) cur.title = lat.title;
+            if (lat.streamUrl) cur.streamUrl = lat.streamUrl;
+            if (lat.driveUrl) cur.driveUrl = lat.driveUrl;
+            if (lat.thumb) cur.thumb = lat.thumb;
+
+            const row = playlistItemElements.get(cur.id);
+            if (row) {
+              const durEl = row.querySelector('.track-duration');
+              if (durEl && !cur.isPremiere) {
+                durEl.textContent = cur.duration || formatTime(cur.seconds);
+              }
+            }
+          }
+        });
+      }
+    }
+
+    function initRealtimeSync() {
+      if (typeof EventSource === 'undefined') return;
+
+      let eventSource = null;
+      let reconnectTimer = null;
+
+      function connect() {
+        if (eventSource) {
+          try { eventSource.close(); } catch (e) {}
+          eventSource = null;
+        }
+
+        try {
+          eventSource = new EventSource('/api/playlist/events');
+
+          eventSource.addEventListener('update', (e) => {
+            try {
+              const data = JSON.parse(e.data);
+              if (data && Array.isArray(data.playlist) && data.playlist.length > 0) {
+                syncWithLatestTracks(data.playlist, data.newCount || 0);
+              }
+            } catch (err) {}
+          });
+
+          eventSource.addEventListener('init', (e) => {
+            try {
+              const data = JSON.parse(e.data);
+              if (data && Array.isArray(data.playlist) && data.playlist.length > 0) {
+                syncWithLatestTracks(data.playlist, 0);
+              }
+            } catch (err) {}
+          });
+
+          eventSource.onerror = () => {
+            try { if (eventSource) eventSource.close(); } catch (e) {}
+            eventSource = null;
+            if (!reconnectTimer) {
+              reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                connect();
+              }, 4000);
+            }
+          };
+        } catch (err) {}
+      }
+
+      connect();
+    }
+
     function setAutoSyncInterval(ms) {
       state.autoSyncIntervalMs = ms;
       if (autoSyncTimer) {
@@ -8147,22 +8272,25 @@
         }
       }, 500);
 
-      // Debounced background sync: does not fire if sync ran recently or while actively playing
+      // Debounced background sync: does not fire if sync ran recently
       let lastAutoSyncEventTime = 0;
       function debouncedVisibilitySync() {
         if (document.hidden) return;
         const now = Date.now();
-        if (now - lastAutoSyncEventTime < 45000 || state.isPlaying) return;
+        if (now - lastAutoSyncEventTime < 8000) return;
         lastAutoSyncEventTime = now;
-        syncPlaylistFromYouTube(false);
+        syncDrivePlaylist(false);
       }
 
       document.addEventListener('visibilitychange', debouncedVisibilitySync);
       window.addEventListener('focus', debouncedVisibilitySync);
       window.addEventListener('online', debouncedVisibilitySync);
 
-      // Start periodic auto-sync (60s interval to prevent main-thread spikes during playback)
-      setAutoSyncInterval(60000);
+      // Start periodic auto-sync (12s interval for instant detection)
+      setAutoSyncInterval(12000);
+
+      // Start real-time Server-Sent Events (SSE) stream for instant Drive sync
+      initRealtimeSync();
 
       if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
         window.addEventListener('load', () => {

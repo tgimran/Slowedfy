@@ -1,42 +1,4 @@
-// Auto-generated Slowedfy Master Library from Google Drive Folder: 194R85uwyR_UyKRn6RC9xGsmN87kNC4bF
-// Total Tracks: 111 (Newest Uploads First)
-// Verified at: 2026-10-05T10:08:57.277Z
-
-export interface PlaylistItem {
-  id: string;
-  originalFilename?: string;
-  title: string;
-  artist: string;
-  album?: string;
-  duration: string;
-  seconds: number;
-  format?: string;
-  quality?: string;
-  size?: string;
-  date?: string;
-  uploadTime?: number;
-  streamUrl?: string;
-  driveUrl?: string;
-  thumb: string;
-  hdThumb?: string;
-  isPremiere?: boolean;
-  premiereText?: string;
-  startTime?: number;
-}
-
-export const DEFAULT_DRIVE_FOLDER_ID = "194R85uwyR_UyKRn6RC9xGsmN87kNC4bF";
-export const DEFAULT_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/194R85uwyR_UyKRn6RC9xGsmN87kNC4bF";
-export const DEFAULT_PLAYLIST_ID = DEFAULT_DRIVE_FOLDER_ID;
-
-export const AESTHETIC_ARTWORKS: string[] = [
-  "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=80",
-  "https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=800&auto=format&fit=crop&q=80"
-];
-
-export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
+[
   {
     "id": "19sz1uO5hx8D0H-BFO5n4tPffo5UPiy7C",
     "originalFilename": "Kon Disa Mein - Extended Version│Varsha Singh Dhanoa│Guru Dhanoa│Maddy Sharma│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
@@ -2146,4 +2108,4 @@ export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
     "hdThumb": "/covers/196TAgv-pcYZshA-APymKGG8ZDRZNO6-E.jpg",
     "isPremiere": false
   }
-];
+]

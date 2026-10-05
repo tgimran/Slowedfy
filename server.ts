@@ -16,6 +16,7 @@ import {
   getCachedDrivePlaylist,
   getLastSyncTime,
   getLastSyncSummary,
+  registerSyncUpdateListener,
 } from "./src/driveSync.ts";
 import { extractEmbeddedCoverForTrack } from "./scripts/extractCovers.ts";
 
@@ -488,7 +489,7 @@ async function getLatestPlaylist(
 
   // If requesting the Master Google Drive playlist or folder
   if (normalizedId === DEFAULT_DRIVE_FOLDER_ID || normalizedId === DEFAULT_PLAYLIST_ID || normalizedId.startsWith("194R") || !normalizedId) {
-    if (forceRefresh) {
+    if (forceRefresh || now - getLastSyncTime() > 10000) {
       await syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID).catch(() => {});
     }
     const driveList = getCachedDrivePlaylist();
@@ -887,11 +888,73 @@ async function startServer() {
     });
   });
 
-  // Pre-fetch default official playlist on startup and poll every 15 seconds
+  // Server-Sent Events (SSE) subscribers for real-time Drive sync
+  const sseClients = new Set<express.Response>();
+
+  function broadcastPlaylistUpdate(latestPlaylist: PlaylistItem[], totalNew = 0) {
+    if (sseClients.size === 0) return;
+    const payload = JSON.stringify({
+      type: "playlist:updated",
+      count: latestPlaylist.length,
+      newCount: totalNew,
+      lastSync: getLastSyncTime(),
+      playlist: latestPlaylist,
+    });
+
+    for (const client of sseClients) {
+      try {
+        client.write(`event: update\ndata: ${payload}\n\n`);
+      } catch (e) {
+        sseClients.delete(client);
+      }
+    }
+  }
+
+  // Hook up driveSync listener to SSE broadcaster
+  registerSyncUpdateListener((playlist, totalNew) => {
+    broadcastPlaylistUpdate(playlist as PlaylistItem[], totalNew);
+  });
+
+  // Real-Time Server-Sent Events (SSE) for instant Drive sync without manual refresh
+  app.get("/api/playlist/events", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    const client = res;
+    sseClients.add(client);
+
+    // Initial message
+    const currentList = getCachedDrivePlaylist();
+    client.write(`event: init\ndata: ${JSON.stringify({
+      count: currentList.length,
+      lastSync: getLastSyncTime(),
+      playlist: currentList
+    })}\n\n`);
+
+    // Keep connection alive with heartbeat every 15s
+    const heartbeat = setInterval(() => {
+      try {
+        client.write(": ping\n\n");
+      } catch (e) {
+        clearInterval(heartbeat);
+        sseClients.delete(client);
+      }
+    }, 15000);
+
+    req.on("close", () => {
+      clearInterval(heartbeat);
+      sseClients.delete(client);
+    });
+  });
+
+  // Pre-fetch default official playlist on startup and poll every 10 seconds in background
   getLatestPlaylist(DEFAULT_PLAYLIST_ID, true).catch(() => {});
   setInterval(() => {
     getLatestPlaylist(DEFAULT_PLAYLIST_ID, true).catch(() => {});
-  }, 15000);
+  }, 10000);
 
   // Serve static public assets (manifest, sw, icons, logo)
   app.use(express.static(path.join(process.cwd(), "public")));
