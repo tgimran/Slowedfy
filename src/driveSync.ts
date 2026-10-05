@@ -359,12 +359,30 @@ export async function syncGoogleDriveFolder(
       const format = f.name.endsWith(".oga") ? "OGG" : "MP3";
 
       let sizeStr = existing?.size || "5.0 MB";
-      let durationSec = existing?.seconds || 240;
+      let durationSec = 240;
+      let durationFormatted = "04:00";
+
+      // Priority 1: Check existing tracked metadata if valid
+      if (existing?.seconds && existing.seconds > 10 && existing.duration && !existing.duration.includes(":60")) {
+        durationSec = existing.seconds;
+        durationFormatted = existing.duration;
+      } else {
+        // Priority 2: Check verified OFFICIAL_PLAYLIST
+        const officialMatch = OFFICIAL_PLAYLIST.find((o) => o.id === f.id);
+        if (officialMatch && officialMatch.seconds > 10 && officialMatch.duration && !officialMatch.duration.includes(":60")) {
+          durationSec = officialMatch.seconds;
+          durationFormatted = officialMatch.duration;
+        } else if (f.bytes > 0) {
+          // Heuristic fallback only when no verified duration exists
+          durationSec = Math.round(f.bytes / 20000);
+          if (durationSec < 60 || durationSec > 600) durationSec = 240;
+          durationFormatted = formatTime(durationSec);
+        }
+      }
+
       if (f.bytes > 0) {
         const mb = (f.bytes / (1024 * 1024)).toFixed(1);
         sizeStr = `${mb} MB`;
-        durationSec = Math.round(f.bytes / 20000);
-        if (durationSec < 60 || durationSec > 600) durationSec = 240;
       }
 
       const dateStr = f.uploadTime
@@ -394,7 +412,7 @@ export async function syncGoogleDriveFolder(
         title,
         artist,
         album: "Slowed & Reverb Master Collection",
-        duration: formatTime(durationSec),
+        duration: durationFormatted,
         seconds: durationSec,
         format,
         quality: "320 kbps HQ Audio",

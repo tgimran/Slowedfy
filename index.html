@@ -3632,7 +3632,7 @@
     "title": "Ae Watan│Arijit Singh│(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Beat Badge × Slowedfy",
     "album": "Slowed & Reverb Master Collection",
-    "duration": "03:60",
+    "duration": "04:00",
     "seconds": 240,
     "format": "MP3",
     "quality": "320 kbps HQ Audio",
@@ -4829,8 +4829,8 @@
     "title": "I'm Done. Ft.Maan Panu (Slowed + Reverb) By Beat Badge × GW IMRAN",
     "artist": "Beat Badge × GW IMRAN",
     "album": "Slowed & Reverb Master Collection",
-    "duration": "03:10",
-    "seconds": 190,
+    "duration": "03:04",
+    "seconds": 184,
     "format": "MP3",
     "quality": "320 kbps HQ Audio",
     "size": "3.6 MB",
@@ -4867,8 +4867,8 @@
     "title": "Tony Kakkar 90's Kid (Slowed + Reverb) By Beat Badge × GW IMRAN",
     "artist": "Beat Badge × GW IMRAN",
     "album": "Slowed & Reverb Master Collection",
-    "duration": "03:15",
-    "seconds": 195,
+    "duration": "02:35",
+    "seconds": 155,
     "format": "MP3",
     "quality": "320 kbps HQ Audio",
     "size": "3.7 MB",
@@ -5095,8 +5095,8 @@
     "title": "Yuvi - Soo Jao (Slowed - Reverb) By Beat Badge × GW IMRAN",
     "artist": "Beat Badge × GW IMRAN",
     "album": "Slowed & Reverb Master Collection",
-    "duration": "03:36",
-    "seconds": 216,
+    "duration": "03:41",
+    "seconds": 221,
     "format": "MP3",
     "quality": "320 kbps HQ Audio",
     "size": "4.1 MB",
@@ -5171,8 +5171,8 @@
     "title": "Koi Apna Hoga - Tony Kakkar (Slowed - Reverb) By Beat Badge × GW IMRAN",
     "artist": "Beat Badge × GW IMRAN",
     "album": "Slowed & Reverb Master Collection",
-    "duration": "02:32",
-    "seconds": 152,
+    "duration": "02:38",
+    "seconds": 158,
     "format": "MP3",
     "quality": "320 kbps HQ Audio",
     "size": "2.9 MB",
@@ -5190,8 +5190,8 @@
     "title": "Industry World By Beat Badge × GW IMRAN",
     "artist": "Beat Badge × GW IMRAN",
     "album": "Slowed & Reverb Master Collection",
-    "duration": "03:42",
-    "seconds": 222,
+    "duration": "03:00",
+    "seconds": 180,
     "format": "MP3",
     "quality": "320 kbps HQ Audio",
     "size": "4.2 MB",
@@ -5209,8 +5209,8 @@
     "title": "Aadami Ek Khilona Hai ft Arrjun pandey(Slowed - Reverb) By Beat Badge × GW IMRAN",
     "artist": "Beat Badge × GW IMRAN",
     "album": "Slowed & Reverb Master Collection",
-    "duration": "02:00",
-    "seconds": 120,
+    "duration": "01:45",
+    "seconds": 105,
     "format": "MP3",
     "quality": "320 kbps HQ Audio",
     "size": "2.3 MB",
@@ -5247,8 +5247,8 @@
     "title": "Akhil Redhu - Main Haara Nahi (Slowed - Reverb) By Beat Badge × GW IMRAN",
     "artist": "Beat Badge × GW IMRAN",
     "album": "Slowed & Reverb Master Collection",
-    "duration": "03:57",
-    "seconds": 237,
+    "duration": "04:16",
+    "seconds": 256,
     "format": "MP3",
     "quality": "320 kbps HQ Audio",
     "size": "4.5 MB",
@@ -5932,6 +5932,8 @@
         row.setAttribute('role', 'listitem');
         row.setAttribute('tabindex', '0');
 
+        const durDisplay = item.isPremiere ? 'PREMIERE' : (item.duration && !item.duration.includes(':60') ? item.duration : formatTime(item.seconds || 240));
+
         row.innerHTML = `
           <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
           <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
@@ -5946,7 +5948,7 @@
             <div class="track-item-title">${item.title}</div>
             <div class="track-item-artist">${item.artist}</div>
           </div>
-          <div class="track-duration ${item.isPremiere ? 'track-premiere-duration' : ''}">${item.duration || (item.seconds ? formatTime(item.seconds) : (item.isPremiere ? 'PREMIERE' : '04:00'))}</div>
+          <div class="track-duration ${item.isPremiere ? 'track-premiere-duration' : ''}">${durDisplay}</div>
         `;
 
         if (isCurrent) currentActiveItemRow = row;
@@ -6069,7 +6071,7 @@
 
         // Persist update so it stays live across sessions
         try {
-          localStorage.setItem('slowedfy_drive_master_v3', JSON.stringify(state.playlist));
+          localStorage.setItem('slowedfy_drive_master_v4', JSON.stringify(state.playlist));
         } catch (e) {}
       }
     }
@@ -6538,6 +6540,19 @@
           state.duration = duration;
         }
 
+        if (isFinite(rawDur) && rawDur > 0 && curTrack) {
+          const actualSec = Math.round(rawDur);
+          if (curTrack.seconds !== actualSec || !curTrack.duration) {
+            curTrack.seconds = actualSec;
+            curTrack.duration = formatTime(actualSec);
+            const row = playlistItemElements.get(curTrack.id);
+            if (row) {
+              const durEl = row.querySelector('.track-duration');
+              if (durEl && !curTrack.isPremiere) durEl.textContent = curTrack.duration;
+            }
+          }
+        }
+
         if (DOM.audioEngine.buffered && DOM.audioEngine.buffered.length > 0) {
           try {
             const bufEnd = DOM.audioEngine.buffered.end(DOM.audioEngine.buffered.length - 1);
@@ -6646,20 +6661,35 @@
         }
       }, { passive: true });
 
-      DOM.audioEngine.addEventListener('loadedmetadata', () => {
-        const d = DOM.audioEngine.duration;
-        if (isFinite(d) && d > 0) {
-          state.duration = d;
-          updateProgressUI(true);
+      function syncCurrentTrackAudioDuration(rawDuration) {
+        if (!isFinite(rawDuration) || rawDuration <= 0) return;
+        state.duration = rawDuration;
+        const curTrack = state.playlist && state.playlist[state.currentIndex];
+        if (curTrack) {
+          const actualSec = Math.round(rawDuration);
+          if (curTrack.seconds !== actualSec || !curTrack.duration) {
+            curTrack.seconds = actualSec;
+            curTrack.duration = formatTime(actualSec);
+            const row = playlistItemElements.get(curTrack.id);
+            if (row) {
+              const durEl = row.querySelector('.track-duration');
+              if (durEl && !curTrack.isPremiere) durEl.textContent = curTrack.duration;
+            }
+          }
         }
+        updateProgressUI(true);
+      }
+
+      DOM.audioEngine.addEventListener('loadedmetadata', () => {
+        syncCurrentTrackAudioDuration(DOM.audioEngine.duration);
       });
 
       DOM.audioEngine.addEventListener('durationchange', () => {
-        const d = DOM.audioEngine.duration;
-        if (isFinite(d) && d > 0) {
-          state.duration = d;
-          updateProgressUI(true);
-        }
+        syncCurrentTrackAudioDuration(DOM.audioEngine.duration);
+      });
+
+      DOM.audioEngine.addEventListener('canplay', () => {
+        syncCurrentTrackAudioDuration(DOM.audioEngine.duration);
       });
 
       DOM.audioEngine.addEventListener('play', () => {
@@ -7858,6 +7888,14 @@
                   if (lat.streamUrl) cur.streamUrl = lat.streamUrl;
                   if (lat.driveUrl) cur.driveUrl = lat.driveUrl;
                   if (lat.thumb) cur.thumb = lat.thumb;
+
+                  const row = playlistItemElements.get(cur.id);
+                  if (row) {
+                    const durEl = row.querySelector('.track-duration');
+                    if (durEl && !cur.isPremiere) {
+                      durEl.textContent = cur.duration || formatTime(cur.seconds);
+                    }
+                  }
                 }
               });
               changed = false;
@@ -7887,7 +7925,7 @@
             state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_drive_master_v3', JSON.stringify(mergedPlaylist));
+                localStorage.setItem('slowedfy_drive_master_v4', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -8057,8 +8095,10 @@
 
       // Load saved playlist from storage if available and valid
       try {
-        localStorage.removeItem('slowedfy_drive_master_v2'); // Invalidate old cache with incorrect durations
-        const saved = localStorage.getItem('slowedfy_drive_master_v3');
+        localStorage.removeItem('slowedfy_drive_master');
+        localStorage.removeItem('slowedfy_drive_master_v2');
+        localStorage.removeItem('slowedfy_drive_master_v3'); // Invalidate old cache with incorrect durations
+        const saved = localStorage.getItem('slowedfy_drive_master_v4');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {

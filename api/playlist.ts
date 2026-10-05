@@ -231,6 +231,24 @@ export default async function handler(req: IncomingMessage & { query?: Record<st
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     const playlistId = cleanPlaylistId(url.searchParams.get("id") || url.searchParams.get("list") || DEFAULT_PLAYLIST_ID);
 
+    // Return Master Google Drive playlist with verified durations directly
+    if (playlistId === DEFAULT_PLAYLIST_ID || playlistId.startsWith("194R") || !playlistId) {
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "application/json");
+      res.end(
+        JSON.stringify({
+          success: true,
+          playlistId: DEFAULT_PLAYLIST_ID,
+          title: "Slowedfy Master Library (Beat Badge × Slowedfy)",
+          author: "Slowedfy",
+          count: OFFICIAL_PLAYLIST.length,
+          playlist: OFFICIAL_PLAYLIST,
+          lastSync: Date.now(),
+        })
+      );
+      return;
+    }
+
     const [htmlResult, rssVideos] = await Promise.allSettled([
       fetchFromYouTube(playlistId),
       fetchRssVideos(playlistId),
