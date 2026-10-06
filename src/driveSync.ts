@@ -356,7 +356,7 @@ export async function extractEmbeddedCoverForTrack(
   const localAudioPath = path.join(AUDIO_CACHE_DIR, `${trackId}.mp3`);
   if (fs.existsSync(localAudioPath) && fs.statSync(localAudioPath).size > 50000) {
     try {
-      const cmd = `ffmpeg -y -v error -i "${localAudioPath}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
+      const cmd = `ffmpeg -y -v error -i "${localAudioPath}" -an -vcodec copy "${coverPath}"`;
       await execPromise(cmd, { timeout: 10000 });
       if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
         const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
@@ -365,17 +365,54 @@ export async function extractEmbeddedCoverForTrack(
         syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
         return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
       }
-    } catch (e) {}
+    } catch (e) {
+      try {
+        const cmd = `ffmpeg -y -v error -i "${localAudioPath}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
+        await execPromise(cmd, { timeout: 10000 });
+        if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
+          const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
+          await execPromise(thumbCmd, { timeout: 10000 });
+          syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+          syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+          return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+        }
+      } catch (e2) {}
+    }
   }
 
-  // 3. Download first 2MB of audio file from Drive and extract embedded cover
-  const tempAudioPath = path.join(AUDIO_CACHE_DIR, `part_${trackId}.mp3`);
+  // 3. Direct extraction from Google Drive stream (copies embedded 1080x1080 front cover)
   const driveAudioUrl = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
+  try {
+    const copyCmd = `ffmpeg -y -v error -i "${driveAudioUrl}" -an -vcodec copy "${coverPath}"`;
+    await execPromise(copyCmd, { timeout: 14000 });
+    if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
+      const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
+      await execPromise(thumbCmd, { timeout: 8000 });
+      syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+      syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+      return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+    }
+  } catch (eCopy) {
+    try {
+      const transCmd = `ffmpeg -y -v error -i "${driveAudioUrl}" -an -vframes 1 -q:v 2 "${coverPath}"`;
+      await execPromise(transCmd, { timeout: 14000 });
+      if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
+        const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
+        await execPromise(thumbCmd, { timeout: 8000 });
+        syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+        syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+        return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+      }
+    } catch (eTrans) {}
+  }
+
+  // 4. Download first 2.5MB of audio file from Drive and extract embedded cover
+  const tempAudioPath = path.join(AUDIO_CACHE_DIR, `part_${trackId}.mp3`);
   const gotPartial = await downloadFileStream(driveAudioUrl, tempAudioPath, 2500000);
 
   if (gotPartial) {
     try {
-      const cmd = `ffmpeg -y -v error -i "${tempAudioPath}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
+      const cmd = `ffmpeg -y -v error -i "${tempAudioPath}" -an -vcodec copy "${coverPath}"`;
       await execPromise(cmd, { timeout: 10000 });
       if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
         const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
@@ -385,11 +422,24 @@ export async function extractEmbeddedCoverForTrack(
         syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
         return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
       }
-    } catch (e) {}
+    } catch (e) {
+      try {
+        const cmd = `ffmpeg -y -v error -i "${tempAudioPath}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
+        await execPromise(cmd, { timeout: 10000 });
+        if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
+          const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
+          await execPromise(thumbCmd, { timeout: 10000 });
+          try { fs.unlinkSync(tempAudioPath); } catch (e) {}
+          syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+          syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+          return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+        }
+      } catch (e2) {}
+    }
     try { if (fs.existsSync(tempAudioPath)) fs.unlinkSync(tempAudioPath); } catch (e) {}
   }
 
-  // 4. Query Apple iTunes Search API for official 1000x1000 album artwork
+  // 5. Query Apple iTunes Search API for official 1000x1000 album artwork
   if (trackTitle) {
     const itunesUrl = await fetchItunesCover(trackTitle, trackArtist);
     if (itunesUrl) {

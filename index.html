@@ -5853,13 +5853,13 @@
       }
       const curTrack = state.playlist && state.playlist.find(t => t.id === trackId);
       // Priority 1: High-definition embedded MP3 artwork
-      if (curTrack && curTrack.hdThumb) {
+      if (curTrack && curTrack.hdThumb && !curTrack.hdThumb.includes('unsplash.com') && !curTrack.hdThumb.includes('ytimg.com')) {
         artworkCache.set(trackId, curTrack.hdThumb);
         callback(curTrack.hdThumb);
         return;
       }
       // Priority 2: Standard embedded thumb
-      if (curTrack && curTrack.thumb) {
+      if (curTrack && curTrack.thumb && !curTrack.thumb.includes('unsplash.com') && !curTrack.thumb.includes('ytimg.com')) {
         artworkCache.set(trackId, curTrack.thumb);
         callback(curTrack.thumb);
         return;
@@ -5942,7 +5942,14 @@
 
       state.playlist.forEach((item, index) => {
         const isCurrent = index === state.currentIndex;
-        const ytThumb = item.thumb || `https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800&auto=format&fit=crop&q=80`;
+        let ytThumb = item.thumb;
+        if (!ytThumb || ytThumb.includes('unsplash.com') || ytThumb.includes('ytimg.com')) {
+          ytThumb = `/covers/thumbs/${item.id}.jpg`;
+          item.thumb = ytThumb;
+        }
+        if (!item.hdThumb || item.hdThumb.includes('unsplash.com') || item.hdThumb.includes('ytimg.com')) {
+          item.hdThumb = `/covers/${item.id}.jpg`;
+        }
 
         const row = document.createElement('div');
         row.className = `playlist-item ${isCurrent ? 'active' : ''} ${isCurrent && state.isPlaying ? 'playing' : ''}`;
@@ -6090,7 +6097,7 @@
 
         // Persist update so it stays live across sessions
         try {
-          localStorage.setItem('slowedfy_drive_master_v4', JSON.stringify(state.playlist));
+          localStorage.setItem('slowedfy_drive_master_v5', JSON.stringify(state.playlist));
         } catch (e) {}
       }
     }
@@ -7972,7 +7979,7 @@
             state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_drive_master_v4', JSON.stringify(mergedPlaylist));
+                localStorage.setItem('slowedfy_drive_master_v5', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -8044,7 +8051,7 @@
         state.originalPlaylist = [...latest];
         if (state.activePlaylistId === PLAYLIST_ID) {
           try {
-            localStorage.setItem('slowedfy_drive_master_v4', JSON.stringify(latest));
+            localStorage.setItem('slowedfy_drive_master_v5', JSON.stringify(latest));
           } catch (e) {}
         }
 
@@ -8264,8 +8271,9 @@
       try {
         localStorage.removeItem('slowedfy_drive_master');
         localStorage.removeItem('slowedfy_drive_master_v2');
-        localStorage.removeItem('slowedfy_drive_master_v3'); // Invalidate old cache with incorrect durations
-        const saved = localStorage.getItem('slowedfy_drive_master_v4');
+        localStorage.removeItem('slowedfy_drive_master_v3');
+        localStorage.removeItem('slowedfy_drive_master_v4'); // Invalidate old cache with placeholder artwork
+        const saved = localStorage.getItem('slowedfy_drive_master_v5');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
@@ -8274,7 +8282,7 @@
         }
       } catch (e) {}
 
-      // Absolute guarantee: Ensure state.playlist always contains all official baseline songs with exact durations
+      // Absolute guarantee: Ensure state.playlist always contains all official baseline songs with exact durations & verified embedded artwork
       const officialMap = new Map(OFFICIAL_PLAYLIST.map(p => [p.id, p]));
       if (!state.playlist || state.playlist.length < OFFICIAL_PLAYLIST.length) {
         const currentIds = new Set((state.playlist || []).map(p => p.id));
@@ -8282,12 +8290,21 @@
         state.playlist = [...(state.playlist || []), ...missing];
       }
 
-      // Re-synchronize exact verified durations and seconds for all official tracks
+      // Re-synchronize exact verified embedded album artwork, durations and seconds for all official tracks
       state.playlist.forEach(item => {
         const off = officialMap.get(item.id);
         if (off) {
           item.duration = off.duration;
           item.seconds = off.seconds;
+          item.thumb = off.thumb || `/covers/thumbs/${item.id}.jpg`;
+          item.hdThumb = off.hdThumb || `/covers/${item.id}.jpg`;
+        } else {
+          if (!item.thumb || item.thumb.includes('unsplash.com') || item.thumb.includes('ytimg.com')) {
+            item.thumb = `/covers/thumbs/${item.id}.jpg`;
+          }
+          if (!item.hdThumb || item.hdThumb.includes('unsplash.com') || item.hdThumb.includes('ytimg.com')) {
+            item.hdThumb = `/covers/${item.id}.jpg`;
+          }
         }
       });
 
@@ -8302,7 +8319,8 @@
       setupPlayerViewportObserver();
       const firstTrack = state.playlist[0];
       if (firstTrack && DOM.bgLayer1 && state.currentTheme === 'dynamic-art') {
-        DOM.bgLayer1.style.backgroundImage = `url('https://i.ytimg.com/vi/${firstTrack.id}/mqdefault.jpg')`;
+        const initialBg = firstTrack.hdThumb || firstTrack.thumb || `/covers/${firstTrack.id}.jpg`;
+        DOM.bgLayer1.style.backgroundImage = `url('${initialBg}')`;
       }
       updateActiveTrackUI();
       updateSyncModalUI();
