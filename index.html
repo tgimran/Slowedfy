@@ -5956,7 +5956,7 @@
         row.innerHTML = `
           <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
           <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
-            <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" />
+            <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="if(!this.dataset.t){this.dataset.t='1';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&size=thumb';}" />
             <div class="track-playing-eq">
               <div class="eq-bar"></div>
               <div class="eq-bar"></div>
@@ -6140,6 +6140,20 @@
       const reqId = ++currentArtworkRequestId;
       resolveHighResArtwork(track.id, (hdThumbUrl) => {
         if (reqId !== currentArtworkRequestId) return;
+        DOM.mainArtworkImg.dataset.retried = '';
+        DOM.dockThumbImg.dataset.retried = '';
+        DOM.mainArtworkImg.onerror = () => {
+          if (!DOM.mainArtworkImg.dataset.retried) {
+            DOM.mainArtworkImg.dataset.retried = '1';
+            DOM.mainArtworkImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}`;
+          }
+        };
+        DOM.dockThumbImg.onerror = () => {
+          if (!DOM.dockThumbImg.dataset.retried) {
+            DOM.dockThumbImg.dataset.retried = '1';
+            DOM.dockThumbImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&size=thumb`;
+          }
+        };
         DOM.mainArtworkImg.src = hdThumbUrl;
         DOM.dockThumbImg.src = track.thumb || hdThumbUrl;
         updateBackgroundArtwork(hdThumbUrl);
@@ -7907,12 +7921,26 @@
                   if (lat.streamUrl) cur.streamUrl = lat.streamUrl;
                   if (lat.driveUrl) cur.driveUrl = lat.driveUrl;
                   if (lat.thumb) cur.thumb = lat.thumb;
+                  if (lat.hdThumb) cur.hdThumb = lat.hdThumb;
 
                   const row = playlistItemElements.get(cur.id);
                   if (row) {
                     const durEl = row.querySelector('.track-duration');
                     if (durEl && !cur.isPremiere) {
                       durEl.textContent = cur.duration || formatTime(cur.seconds);
+                    }
+                    const imgEl = row.querySelector('.track-thumb');
+                    if (imgEl && lat.thumb && imgEl.getAttribute('src') !== lat.thumb) {
+                      imgEl.src = lat.thumb;
+                    }
+                  }
+
+                  if (state.currentIndex === i) {
+                    const activeArt = lat.hdThumb || lat.thumb;
+                    if (activeArt && DOM.mainArtworkImg) {
+                      DOM.mainArtworkImg.src = activeArt;
+                      if (DOM.dockThumbImg) DOM.dockThumbImg.src = lat.thumb || activeArt;
+                      updateBackgroundArtwork(activeArt);
                     }
                   }
                 }
@@ -8047,12 +8075,26 @@
             if (lat.streamUrl) cur.streamUrl = lat.streamUrl;
             if (lat.driveUrl) cur.driveUrl = lat.driveUrl;
             if (lat.thumb) cur.thumb = lat.thumb;
+            if (lat.hdThumb) cur.hdThumb = lat.hdThumb;
 
             const row = playlistItemElements.get(cur.id);
             if (row) {
               const durEl = row.querySelector('.track-duration');
               if (durEl && !cur.isPremiere) {
                 durEl.textContent = cur.duration || formatTime(cur.seconds);
+              }
+              const imgEl = row.querySelector('.track-thumb');
+              if (imgEl && lat.thumb && imgEl.getAttribute('src') !== lat.thumb) {
+                imgEl.src = lat.thumb;
+              }
+            }
+
+            if (state.currentIndex === i) {
+              const activeArt = lat.hdThumb || lat.thumb;
+              if (activeArt && DOM.mainArtworkImg) {
+                DOM.mainArtworkImg.src = activeArt;
+                if (DOM.dockThumbImg) DOM.dockThumbImg.src = lat.thumb || activeArt;
+                updateBackgroundArtwork(activeArt);
               }
             }
           }
