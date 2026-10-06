@@ -298,16 +298,20 @@ export async function fetchItunesCover(title: string, artist?: string): Promise<
  */
 function syncFileToDist(srcFile: string, distDir: string, filename: string) {
   try {
-    if (fs.existsSync(distDir)) {
-      const dest = path.join(distDir, filename);
-      fs.copyFileSync(srcFile, dest);
+    if (!fs.existsSync(distDir)) {
+      fs.mkdirSync(distDir, { recursive: true });
     }
+    const dest = path.join(distDir, filename);
+    fs.copyFileSync(srcFile, dest);
   } catch (e) {}
 }
+
+const inFlightCoverExtractions = new Map<string, Promise<{ success: boolean; cover: string; thumb: string }>>();
 
 /**
  * Extract embedded APIC / Attached Picture from audio, companion Drive image, or iTunes API.
  * Guarantees that every track gets high-resolution square artwork and thumbnail.
+ * Includes concurrency deduplication to prevent redundant extractions.
  */
 export async function extractEmbeddedCoverForTrack(
   trackId: string,
@@ -315,11 +319,49 @@ export async function extractEmbeddedCoverForTrack(
   trackArtist = "",
   companionImageId?: string
 ): Promise<{ success: boolean; cover: string; thumb: string }> {
+  const existingPromise = inFlightCoverExtractions.get(trackId);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
+  const extractionPromise = doExtractEmbeddedCoverForTrack(trackId, trackTitle, trackArtist, companionImageId);
+  inFlightCoverExtractions.set(trackId, extractionPromise);
+
+  try {
+    return await extractionPromise;
+  } finally {
+    inFlightCoverExtractions.delete(trackId);
+  }
+}
+
+async function doExtractEmbeddedCoverForTrack(
+  trackId: string,
+  trackTitle = "",
+  trackArtist = "",
+  companionImageId?: string
+): Promise<{ success: boolean; cover: string; thumb: string }> {
   const coverPath = path.join(COVERS_DIR, `${trackId}.jpg`);
   const thumbPath = path.join(THUMBS_DIR, `${trackId}.jpg`);
+  const distCoverPath = path.join(DIST_COVERS_DIR, `${trackId}.jpg`);
+  const distThumbPath = path.join(DIST_THUMBS_DIR, `${trackId}.jpg`);
 
-  const hasCover = fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000;
-  const hasThumb = fs.existsSync(thumbPath) && fs.statSync(thumbPath).size > 500;
+  // Check public directory
+  let hasCover = fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000;
+  let hasThumb = fs.existsSync(thumbPath) && fs.statSync(thumbPath).size > 500;
+
+  // Check dist directory if missing in public
+  if (!hasCover && fs.existsSync(distCoverPath) && fs.statSync(distCoverPath).size > 1000) {
+    try {
+      fs.copyFileSync(distCoverPath, coverPath);
+      hasCover = true;
+    } catch (e) {}
+  }
+  if (!hasThumb && fs.existsSync(distThumbPath) && fs.statSync(distThumbPath).size > 500) {
+    try {
+      fs.copyFileSync(distThumbPath, thumbPath);
+      hasThumb = true;
+    } catch (e) {}
+  }
 
   if (hasCover && hasThumb) {
     syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
@@ -352,26 +394,31 @@ export async function extractEmbeddedCoverForTrack(
     }
   }
 
-  // 2. Try extracting attached picture (ID3 APIC) from local cached audio
+  // 2. Try extracting attached picture (ID3 APIC) from local cached audio (ultra-fast, zero network latency)
   const localAudioPath = path.join(AUDIO_CACHE_DIR, `${trackId}.mp3`);
-  if (fs.existsSync(localAudioPath) && fs.statSync(localAudioPath).size > 50000) {
+  const distAudioPath = path.join(process.cwd(), "dist", "audio_cache", `${trackId}.mp3`);
+  const existingAudio = (fs.existsSync(localAudioPath) && fs.statSync(localAudioPath).size > 50000)
+    ? localAudioPath
+    : ((fs.existsSync(distAudioPath) && fs.statSync(distAudioPath).size > 50000) ? distAudioPath : null);
+
+  if (existingAudio) {
     try {
-      const cmd = `ffmpeg -y -v error -i "${localAudioPath}" -an -vcodec copy "${coverPath}"`;
-      await execPromise(cmd, { timeout: 10000 });
+      const cmd = `ffmpeg -y -v error -i "${existingAudio}" -an -vcodec copy "${coverPath}"`;
+      await execPromise(cmd, { timeout: 8000 });
       if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
         const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
-        await execPromise(thumbCmd, { timeout: 10000 });
+        await execPromise(thumbCmd, { timeout: 6000 });
         syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
         syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
         return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
       }
     } catch (e) {
       try {
-        const cmd = `ffmpeg -y -v error -i "${localAudioPath}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
-        await execPromise(cmd, { timeout: 10000 });
+        const cmd = `ffmpeg -y -v error -i "${existingAudio}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
+        await execPromise(cmd, { timeout: 8000 });
         if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
           const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
-          await execPromise(thumbCmd, { timeout: 10000 });
+          await execPromise(thumbCmd, { timeout: 6000 });
           syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
           syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
           return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
@@ -380,10 +427,10 @@ export async function extractEmbeddedCoverForTrack(
     }
   }
 
-  // 3. Direct extraction from Google Drive stream (copies embedded 1080x1080 front cover)
+  // 3. Direct extraction from Google Drive stream (extracts embedded 1080x1080 front cover with User-Agent)
   const driveAudioUrl = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
   try {
-    const copyCmd = `ffmpeg -y -v error -i "${driveAudioUrl}" -an -vcodec copy "${coverPath}"`;
+    const copyCmd = `ffmpeg -y -v error -headers "User-Agent: Mozilla/5.0\r\n" -i "${driveAudioUrl}" -an -vcodec copy "${coverPath}"`;
     await execPromise(copyCmd, { timeout: 14000 });
     if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
       const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
@@ -394,7 +441,7 @@ export async function extractEmbeddedCoverForTrack(
     }
   } catch (eCopy) {
     try {
-      const transCmd = `ffmpeg -y -v error -i "${driveAudioUrl}" -an -vframes 1 -q:v 2 "${coverPath}"`;
+      const transCmd = `ffmpeg -y -v error -headers "User-Agent: Mozilla/5.0\r\n" -i "${driveAudioUrl}" -an -vframes 1 -q:v 2 "${coverPath}"`;
       await execPromise(transCmd, { timeout: 14000 });
       if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
         const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
@@ -462,7 +509,7 @@ export async function extractEmbeddedCoverForTrack(
     }
   }
 
-  // 5. High-quality curated aesthetic cover fallback
+  // 6. High-quality curated aesthetic cover fallback
   const fallback = AESTHETIC_ARTWORKS[0];
   return { success: false, cover: fallback, thumb: fallback };
 }
@@ -828,14 +875,36 @@ async function doSyncGoogleDriveFolder(
 // Audio caching helper for zero-delay playback
 export async function downloadAndCacheTrackAudio(trackId: string): Promise<boolean> {
   const destPath = path.join(AUDIO_CACHE_DIR, `${trackId}.mp3`);
+  const distAudioDir = path.join(process.cwd(), "dist", "audio_cache");
+  const distDestPath = path.join(distAudioDir, `${trackId}.mp3`);
+
   if (fs.existsSync(destPath)) {
     try {
-      if (fs.statSync(destPath).size > 50000) return true;
+      if (fs.statSync(destPath).size > 50000) {
+        if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+          if (!fs.existsSync(distAudioDir)) fs.mkdirSync(distAudioDir, { recursive: true });
+          if (!fs.existsSync(distDestPath)) {
+            try { fs.copyFileSync(destPath, distDestPath); } catch (e) {}
+          }
+        }
+        return true;
+      }
     } catch (e) {}
   }
-  const tmpPath = destPath + ".tmp";
   const url = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
-  return downloadFileStream(url, destPath);
+  const ok = await downloadFileStream(url, destPath);
+  if (ok) {
+    if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+      if (!fs.existsSync(distAudioDir)) fs.mkdirSync(distAudioDir, { recursive: true });
+      try { fs.copyFileSync(destPath, distDestPath); } catch (e) {}
+    }
+    // Verify album art exists for this track; extract immediately from local cached audio if missing
+    const coverPath = path.join(COVERS_DIR, `${trackId}.jpg`);
+    if (!fs.existsSync(coverPath) || fs.statSync(coverPath).size < 1000) {
+      extractEmbeddedCoverForTrack(trackId).catch(() => {});
+    }
+  }
+  return ok;
 }
 
 let isPreloadingAudio = false;
@@ -848,6 +917,29 @@ export async function preloadTopTracksAudio(count = 20) {
       try {
         await downloadAndCacheTrackAudio(t.id);
       } catch (e) {}
+    }
+  } finally {
+    isPreloadingAudio = false;
+  }
+}
+
+/**
+ * Progressively caches all tracks in the playlist in the background.
+ * Ensures that every song in the master library plays instantly with 0ms delay.
+ */
+export async function cacheAllTracksInBackground() {
+  if (isPreloadingAudio) return;
+  isPreloadingAudio = true;
+  try {
+    const tracks = [...cachedDrivePlaylist];
+    for (const t of tracks) {
+      const destPath = path.join(AUDIO_CACHE_DIR, `${t.id}.mp3`);
+      if (!fs.existsSync(destPath) || fs.statSync(destPath).size < 50000) {
+        try {
+          await downloadAndCacheTrackAudio(t.id);
+        } catch (e) {}
+        await new Promise((r) => setTimeout(r, 120));
+      }
     }
   } finally {
     isPreloadingAudio = false;
@@ -916,6 +1008,10 @@ export function startBackgroundSync() {
   }, 30000);
 }
 
-// Start background sync on server startup
+// Start background sync and progressive audio caching on server startup
 startBackgroundSync();
-setTimeout(() => preloadTopTracksAudio(10).catch(() => {}), 2000);
+setTimeout(() => {
+  preloadTopTracksAudio(10)
+    .then(() => cacheAllTracksInBackground())
+    .catch(() => {});
+}, 1500);

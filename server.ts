@@ -18,6 +18,7 @@ import {
   getLastSyncSummary,
   registerSyncUpdateListener,
   extractEmbeddedCoverForTrack,
+  downloadAndCacheTrackAudio,
 } from "./src/driveSync.ts";
 
 const DEFAULT_PLAYLIST_ID = DEFAULT_DRIVE_FOLDER_ID;
@@ -613,6 +614,10 @@ async function startServer() {
     next();
   });
 
+  // Keep-alive agent pool for ultra-low latency streaming handshakes
+  const streamAgentHttps = new https.Agent({ keepAlive: true, maxSockets: 64, timeout: 15000 });
+  const streamAgentHttp = new http.Agent({ keepAlive: true, maxSockets: 64, timeout: 15000 });
+
   // Direct Audio Streaming Proxy for Google Drive audio with full HTTP Range request support & zero-delay disk caching
   app.get("/api/stream", (req, res) => {
     const fileId = req.query.id as string;
@@ -621,32 +626,42 @@ async function startServer() {
     }
 
     const audioCacheDir = path.join(process.cwd(), "public", "audio_cache");
+    const distAudioCacheDir = path.join(process.cwd(), "dist", "audio_cache");
     if (!fs.existsSync(audioCacheDir)) {
       try { fs.mkdirSync(audioCacheDir, { recursive: true }); } catch (e) {}
     }
     const localCachePath = path.join(audioCacheDir, `${fileId}.mp3`);
-    if (fs.existsSync(localCachePath)) {
+    const distCachePath = path.join(distAudioCacheDir, `${fileId}.mp3`);
+
+    const cachedFilePath = (fs.existsSync(localCachePath) && fs.statSync(localCachePath).size > 50000)
+      ? localCachePath
+      : ((fs.existsSync(distCachePath) && fs.statSync(distCachePath).size > 50000) ? distCachePath : null);
+
+    if (cachedFilePath) {
       try {
-        const stat = fs.statSync(localCachePath);
-        if (stat.size > 50000) {
-          if (req.query.download === "true" || req.query.dl === "1") {
-            const rawTitle = req.query.filename ? String(req.query.filename) : `${fileId}.mp3`;
-            res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(rawTitle)}"`);
-          }
-          res.setHeader("Content-Type", "audio/mpeg");
-          res.setHeader("Accept-Ranges", "bytes");
-          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-          return res.sendFile(localCachePath, { acceptRanges: true });
+        if (req.query.download === "true" || req.query.dl === "1") {
+          const rawTitle = req.query.filename ? String(req.query.filename) : `${fileId}.mp3`;
+          res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(rawTitle)}"`);
         }
+        res.setHeader("Content-Type", "audio/mpeg");
+        res.setHeader("Accept-Ranges", "bytes");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        res.socket?.setNoDelay(true);
+        return res.sendFile(cachedFilePath, { acceptRanges: true });
       } catch (e) {}
     }
+
+    // Proactively queue background download so future plays are zero-delay from local disk
+    downloadAndCacheTrackAudio(fileId).catch(() => {});
 
     const targetUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download`;
     const rangeHeader = req.headers.range;
 
     const requestHeaders: Record<string, string> = {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       "Accept": "*/*",
+      "Accept-Encoding": "identity",
     };
     if (rangeHeader) {
       requestHeaders["Range"] = rangeHeader;
@@ -654,9 +669,11 @@ async function startServer() {
 
     const streamFromUrl = (currentUrl: string, redirectsRemaining = 5) => {
       const parsedUrl = new URL(currentUrl);
-      const transport = parsedUrl.protocol === "http:" ? http : https;
+      const isHttps = parsedUrl.protocol === "https:";
+      const transport = isHttps ? https : http;
+      const agent = isHttps ? streamAgentHttps : streamAgentHttp;
 
-      const driveReq = transport.get(currentUrl, { headers: requestHeaders }, (driveRes) => {
+      const driveReq = transport.get(currentUrl, { headers: requestHeaders, agent }, (driveRes) => {
         if (driveRes.statusCode && driveRes.statusCode >= 300 && driveRes.statusCode < 400 && driveRes.headers.location && redirectsRemaining > 0) {
           const nextUrl = new URL(driveRes.headers.location, currentUrl).href;
           driveRes.resume();
@@ -685,10 +702,12 @@ async function startServer() {
         res.setHeader("Accept-Ranges", "bytes");
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Cache-Control", "public, max-age=86400");
+        res.socket?.setNoDelay(true);
 
-        // If full file stream (not a partial range query), tee to disk cache for zero-delay future plays
-        if (!rangeHeader && statusCode === 200) {
-          const tmpPath = localCachePath + ".tmp";
+        // If stream starts from byte 0, tee to disk cache for instant future plays
+        const isFromStart = !rangeHeader || rangeHeader === "bytes=0-" || rangeHeader.startsWith("bytes=0-");
+        if (isFromStart && (statusCode === 200 || statusCode === 206)) {
+          const tmpPath = localCachePath + ".tmp_" + Date.now();
           const fileStream = fs.createWriteStream(tmpPath);
           driveRes.on("data", (chunk) => {
             fileStream.write(chunk);
@@ -698,6 +717,9 @@ async function startServer() {
               try {
                 if (fs.existsSync(tmpPath) && fs.statSync(tmpPath).size > 50000) {
                   fs.renameSync(tmpPath, localCachePath);
+                  if (fs.existsSync(distAudioCacheDir)) {
+                    try { fs.copyFileSync(localCachePath, distCachePath); } catch (e) {}
+                  }
                 } else if (fs.existsSync(tmpPath)) {
                   fs.unlinkSync(tmpPath);
                 }
@@ -743,12 +765,21 @@ async function startServer() {
 
     const thumbPath = path.join(process.cwd(), "public", "covers", "thumbs", filename);
     const fullPath = path.join(process.cwd(), "public", "covers", filename);
+    const distThumbPath = path.join(process.cwd(), "dist", "covers", "thumbs", filename);
+    const distFullPath = path.join(process.cwd(), "dist", "covers", filename);
+
     const targetPath = isThumb ? thumbPath : fullPath;
+    const altDistPath = isThumb ? distThumbPath : distFullPath;
 
     if (fs.existsSync(targetPath)) {
       res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       return res.sendFile(targetPath);
+    }
+    if (fs.existsSync(altDistPath)) {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      return res.sendFile(altDistPath);
     }
 
     // Try extracting on the fly
@@ -756,14 +787,13 @@ async function startServer() {
       const playlist = getCachedDrivePlaylist();
       const track = playlist.find((t) => t.id === trackId);
       const extRes = await extractEmbeddedCoverForTrack(trackId, track?.title || "", track?.artist || "");
-      if (extRes.success && fs.existsSync(targetPath)) {
-        res.setHeader("Content-Type", "image/jpeg");
-        res.setHeader("Cache-Control", "public, max-age=86400");
-        return res.sendFile(targetPath);
-      }
-      if (fs.existsSync(fullPath)) {
-        res.setHeader("Content-Type", "image/jpeg");
-        return res.sendFile(fullPath);
+      if (extRes.success) {
+        const fileToSend = isThumb ? (fs.existsSync(thumbPath) ? thumbPath : fullPath) : (fs.existsSync(fullPath) ? fullPath : thumbPath);
+        if (fs.existsSync(fileToSend)) {
+          res.setHeader("Content-Type", "image/jpeg");
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return res.sendFile(fileToSend);
+        }
       }
     } catch (e) {}
 
@@ -780,22 +810,36 @@ async function startServer() {
     const wantThumb = req.query.size === "thumb";
     const thumbPath = path.join(process.cwd(), "public", "covers", "thumbs", `${trackId}.jpg`);
     const fullPath = path.join(process.cwd(), "public", "covers", `${trackId}.jpg`);
+    const distThumbPath = path.join(process.cwd(), "dist", "covers", "thumbs", `${trackId}.jpg`);
+    const distFullPath = path.join(process.cwd(), "dist", "covers", `${trackId}.jpg`);
 
-    if (wantThumb && fs.existsSync(thumbPath)) {
-      res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=86400");
-      return res.sendFile(thumbPath);
+    if (wantThumb) {
+      if (fs.existsSync(thumbPath)) {
+        res.setHeader("Content-Type", "image/jpeg");
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        return res.sendFile(thumbPath);
+      }
+      if (fs.existsSync(distThumbPath)) {
+        res.setHeader("Content-Type", "image/jpeg");
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        return res.sendFile(distThumbPath);
+      }
     }
 
     if (fs.existsSync(fullPath)) {
       res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       return res.sendFile(fullPath);
+    }
+    if (fs.existsSync(distFullPath)) {
+      res.setHeader("Content-Type", "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      return res.sendFile(distFullPath);
     }
 
     if (fs.existsSync(thumbPath)) {
       res.setHeader("Content-Type", "image/jpeg");
-      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       return res.sendFile(thumbPath);
     }
 
@@ -804,10 +848,13 @@ async function startServer() {
       const playlist = getCachedDrivePlaylist();
       const track = playlist.find((t) => t.id === trackId);
       const extRes = await extractEmbeddedCoverForTrack(trackId, track?.title || "", track?.artist || "");
-      if (extRes.success && fs.existsSync(fullPath)) {
-        res.setHeader("Content-Type", "image/jpeg");
-        res.setHeader("Cache-Control", "public, max-age=86400");
-        return res.sendFile(wantThumb && fs.existsSync(thumbPath) ? thumbPath : fullPath);
+      if (extRes.success) {
+        const fileToSend = wantThumb && fs.existsSync(thumbPath) ? thumbPath : (fs.existsSync(fullPath) ? fullPath : thumbPath);
+        if (fs.existsSync(fileToSend)) {
+          res.setHeader("Content-Type", "image/jpeg");
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+          return res.sendFile(fileToSend);
+        }
       }
     } catch (e) {}
 
