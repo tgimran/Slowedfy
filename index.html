@@ -217,37 +217,27 @@
        ========================================================================== */
     html[data-perf="lite"] .artwork-ambient-rays {
       animation: none !important;
-      filter: blur(8px) !important;
-      opacity: 0.35 !important;
+      filter: blur(12px) !important;
+      opacity: 0.5 !important;
       transform: none !important;
     }
 
     html[data-perf="lite"] .liquid-glass,
     html[data-perf="lite"] .glass-dock,
     html[data-perf="lite"] .glass-panel,
-    html[data-perf="lite"] .modal-dialog,
-    html[data-perf="lite"] .player-dock,
-    html[data-perf="lite"] .dock-pill,
-    html[data-perf="lite"] .dock-now-playing,
-    html[data-perf="lite"] .volume-popup-card,
-    html[data-perf="lite"] .sync-modal-glass,
-    html[data-perf="lite"] .hero-headphone-tip,
-    html[data-perf="lite"] .artwork-glass-card {
+    html[data-perf="lite"] .modal-dialog {
       backdrop-filter: blur(10px) !important;
       -webkit-backdrop-filter: blur(10px) !important;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
     }
 
     html[data-perf="lite"] .bg-layer {
-      filter: blur(14px) saturate(1.1) !important;
+      filter: blur(calc(var(--dynamic-bg-blur, 31px) * 0.65)) saturate(1.15) !important;
       will-change: auto !important;
     }
 
     html[data-perf="lite"] .headphone-pulse,
-    html[data-perf="lite"] .shimmer-light,
-    html[data-perf="lite"] .support-heart,
-    html[data-perf="lite"] .pulse-live-dot,
-    html[data-perf="lite"] .support-btn-glow {
+    html[data-perf="lite"] .shimmer-light {
       animation: none !important;
     }
 
@@ -258,13 +248,6 @@
 
     html[data-perf="lite"] .track-playing-eq .eq-bar {
       animation-duration: 1.2s !important;
-    }
-
-    /* Complete background sleep: pause all animations when tab/screen is hidden */
-    body.page-hidden *,
-    body.page-hidden *::before,
-    body.page-hidden *::after {
-      animation-play-state: paused !important;
     }
 
     .playlist-scroll {
@@ -1164,24 +1147,18 @@
       width: 3px;
       background: var(--accent-cyan);
       border-radius: 3px;
-      transform-origin: bottom center;
-      transform: scaleY(0.4);
-    }
-    .eq-bar:nth-child(1) { height: 10px; }
-    .eq-bar:nth-child(2) { height: 16px; }
-    .eq-bar:nth-child(3) { height: 8px; }
-
-    .playlist-item.active.playing .eq-bar,
-    body.is-playing .playlist-item.active .eq-bar {
       animation: eq-bounce 0.8s ease-in-out infinite alternate;
+      transform-origin: bottom center;
       will-change: transform;
     }
-    .playlist-item.active.playing .eq-bar:nth-child(1),
-    body.is-playing .playlist-item.active .eq-bar:nth-child(1) { animation-delay: 0.1s; }
-    .playlist-item.active.playing .eq-bar:nth-child(2),
-    body.is-playing .playlist-item.active .eq-bar:nth-child(2) { animation-delay: 0.3s; }
-    .playlist-item.active.playing .eq-bar:nth-child(3),
-    body.is-playing .playlist-item.active .eq-bar:nth-child(3) { animation-delay: 0.2s; }
+    .eq-bar:nth-child(1) { height: 10px; animation-delay: 0.1s; }
+    .eq-bar:nth-child(2) { height: 16px; animation-delay: 0.3s; }
+    .eq-bar:nth-child(3) { height: 8px; animation-delay: 0.2s; }
+
+    .playlist-item:not(.playing) .eq-bar,
+    body:not(.is-playing) .eq-bar {
+      animation-play-state: paused;
+    }
 
     @keyframes eq-bounce {
       from { transform: scaleY(0.3); }
@@ -5674,8 +5651,8 @@
             setTier('lite', false);
           } else {
             setTier('high', false);
-            startMonitoring();
           }
+          startMonitoring();
         }
 
         updateButtons();
@@ -6076,12 +6053,11 @@
       if (!trackId) return;
       if (playlistHoverPreloadTimer) clearTimeout(playlistHoverPreloadTimer);
       playlistHoverPreloadTimer = setTimeout(() => {
-        if (document.documentElement.getAttribute('data-perf') === 'lite') return;
         const item = state.playlist && state.playlist.find(p => p.id === trackId);
         if (item && item.streamUrl && (!DOM.audioEngine.src || !DOM.audioEngine.src.includes(trackId))) {
           fetch(item.streamUrl, { headers: { Range: 'bytes=0-262143' } }).catch(() => {});
         }
-      }, 150);
+      }, 120);
     }, { passive: true });
 
     /* ==========================================================================
@@ -6316,15 +6292,14 @@
               consecutiveErrors = 0;
               setTimeout(() => preloadNextTrack((index + 1) % state.playlist.length), 800);
             }).catch(err => {
-              console.warn('[Slowedfy] Primary stream play failed, trying local audio cache:', err);
-              const fallbackUrl = `/audio_cache/${encodeURIComponent(track.id)}.mp3`;
-              if (DOM.audioEngine.src !== fallbackUrl && !DOM.audioEngine.src.endsWith(`${track.id}.mp3`)) {
+              console.warn('[Slowedfy] Primary stream play failed, trying fallback stream:', err);
+              const fallbackUrl = track.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(track.id)}&export=download`;
+              if (DOM.audioEngine.src !== fallbackUrl) {
                 DOM.audioEngine.src = fallbackUrl;
                 DOM.audioEngine.play().then(() => {
                   state.isPlaying = true;
                   updatePlayPauseBtnUI(true);
-                }).catch((cacheErr) => {
-                  console.warn('[Slowedfy] Audio cache fallback failed:', cacheErr);
+                }).catch(() => {
                   state.isPlaying = false;
                   updatePlayPauseBtnUI(false);
                 });
@@ -6577,8 +6552,6 @@
     let lastRenderedCurrentSecs = -1;
     let lastRenderedDurationSecs = -1;
     let lastRenderedPct = -1;
-    let lastRenderedAriaVal = -1;
-    let lastProgressFrameTime = 0;
     let progressRafId = null;
 
     function updateProgressUI(force = false) {
@@ -6600,17 +6573,12 @@
 
       const pct = Math.max(0, Math.min(100, (current / total) * 100));
 
-      if (force || Math.abs(pct - lastRenderedPct) >= 0.05) {
+      if (force || Math.abs(pct - lastRenderedPct) >= 0.001) {
         const scale = Math.max(0, Math.min(1, pct / 100));
         DOM.progressFill.style.transform = `scaleX(${scale})`;
         DOM.progressHandle.style.left = `${pct}%`;
+        DOM.progressContainer.setAttribute('aria-valuenow', Math.round(pct));
         lastRenderedPct = pct;
-
-        const roundPct = Math.round(pct);
-        if (roundPct !== lastRenderedAriaVal) {
-          DOM.progressContainer.setAttribute('aria-valuenow', roundPct);
-          lastRenderedAriaVal = roundPct;
-        }
       }
     }
 
@@ -6693,17 +6661,12 @@
       }
     }
 
-    function progressLoop(timestamp) {
+    function progressLoop() {
       if (!state.isPlaying || isSeeking || !isTabVisible) {
         progressRafId = null;
         return;
       }
-      const isLiteTier = document.documentElement.getAttribute('data-perf') === 'lite';
-      const frameThreshold = isLiteTier ? 33 : 16;
-      if (!lastProgressFrameTime || (timestamp - lastProgressFrameTime) >= frameThreshold) {
-        lastProgressFrameTime = timestamp;
-        pollPlayerProgress();
-      }
+      pollPlayerProgress();
       progressRafId = requestAnimationFrame(progressLoop);
     }
 
@@ -8228,7 +8191,6 @@
       }
       if (ms > 0) {
         autoSyncTimer = setInterval(() => {
-          if (document.hidden) return; // Never poll when tab is backgrounded to save battery & network
           syncDrivePlaylist(false);
         }, ms);
       }
@@ -8306,17 +8268,17 @@
           const cur = state.playlist && state.playlist[state.currentIndex];
           if (!cur) return;
           
-          const staticCacheUrl = `/audio_cache/${encodeURIComponent(cur.id)}.mp3`;
+          const directDriveUrl = cur.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(cur.id)}&export=download`;
 
-          // Step 1: If current src was stream proxy and hasn't tried direct static cache, fall back to /audio_cache/
-          if (!DOM.audioEngine.src.includes('/audio_cache/') && !DOM.audioEngine.src.endsWith(`${cur.id}.mp3`)) {
-            console.log('[Slowedfy] Stream error, falling back to static audio cache:', staticCacheUrl);
-            DOM.audioEngine.src = staticCacheUrl;
+          // Step 1: If current src was stream proxy and hasn't tried direct Drive stream, fall back immediately to Google Drive CDN
+          if (!DOM.audioEngine.src.includes('drive.usercontent.google.com') && DOM.audioEngine.src !== directDriveUrl) {
+            console.log('[Slowedfy] Stream proxy error, falling back to direct Drive stream URL:', directDriveUrl);
+            DOM.audioEngine.src = directDriveUrl;
             if (state.isPlaying) DOM.audioEngine.play().catch(() => {});
             return;
           }
 
-          // Step 2: Retry with cache-busting timestamp on /api/stream
+          // Step 2: Retry with cache-busting timestamp
           if (!DOM.audioEngine.src.includes('&retry=')) {
             DOM.audioEngine.src = `/api/stream?id=${encodeURIComponent(cur.id)}&retry=${Date.now()}`;
             if (state.isPlaying) DOM.audioEngine.play().catch(() => {});
@@ -8393,7 +8355,10 @@
       if (firstTrack && DOM.audioEngine) {
         const initialAudioSrc = firstTrack.streamUrl || `/api/stream?id=${encodeURIComponent(firstTrack.id)}`;
         DOM.audioEngine.src = initialAudioSrc;
-        DOM.audioEngine.preload = 'metadata';
+        DOM.audioEngine.preload = 'auto';
+        try {
+          DOM.audioEngine.load();
+        } catch (e) {}
       }
 
       // Auto-sync initial background check

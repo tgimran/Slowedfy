@@ -805,23 +805,11 @@ async function doSyncGoogleDriveFolder(
       existingMap.set(f.id, trackItem);
     });
 
-    // Process cover art & probe duration for newly detected tracks and any tracks missing verified artwork
-    const tracksNeedingArtwork = Array.from(existingMap.values()).filter((t) => {
-      const coverP = path.join(COVERS_DIR, `${t.id}.jpg`);
-      const thumbP = path.join(THUMBS_DIR, `${t.id}.jpg`);
-      return (
-        !fs.existsSync(coverP) ||
-        fs.statSync(coverP).size < 1000 ||
-        !fs.existsSync(thumbP) ||
-        fs.statSync(thumbP).size < 500 ||
-        newlyDetectedTracks.some((nt) => nt.id === t.id)
-      );
-    });
-
-    if (tracksNeedingArtwork.length > 0) {
-      console.log(`[DriveSync] Processing album art and durations for ${tracksNeedingArtwork.length} tracks...`);
+    // Process cover art & probe duration for newly detected tracks before finalizing
+    if (newlyDetectedTracks.length > 0) {
+      console.log(`[DriveSync] Processing album art and durations for ${newlyDetectedTracks.length} newly discovered tracks...`);
       await Promise.allSettled(
-        tracksNeedingArtwork.map(async (t) => {
+        newlyDetectedTracks.map(async (t) => {
           const companion = imageFiles.find((img) => isCompanionImage(img.name, t.originalFilename || t.title));
           const artRes = await extractEmbeddedCoverForTrack(t.id, t.title, t.artist, companion?.id);
           if (artRes.success) {
