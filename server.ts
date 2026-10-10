@@ -597,7 +597,7 @@ async function getLatestPlaylist(
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
 
@@ -755,6 +755,38 @@ async function startServer() {
     };
 
     streamFromUrl(targetUrl);
+  });
+
+  // Dedicated /audio_cache routes guaranteeing Range requests, CORS, and fallback to /api/stream
+  app.get("/audio_cache/:filename", (req, res) => {
+    const filename = req.params.filename;
+    const pubPath = path.join(process.cwd(), "public", "audio_cache", filename);
+    const distPath = path.join(process.cwd(), "dist", "audio_cache", filename);
+
+    const targetPath = (fs.existsSync(pubPath) && fs.statSync(pubPath).size > 50000)
+      ? pubPath
+      : ((fs.existsSync(distPath) && fs.statSync(distPath).size > 50000) ? distPath : null);
+
+    if (targetPath) {
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Accept-Ranges", "bytes");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length");
+      res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      res.socket?.setNoDelay(true);
+      return res.sendFile(targetPath, { acceptRanges: true }, (err) => {
+        if (err && !res.headersSent) {
+          res.status(404).end();
+        }
+      });
+    }
+
+    const fileIdMatch = filename.match(/^([a-zA-Z0-9_-]{20,})\.mp3$/i);
+    if (fileIdMatch) {
+      return res.redirect(`/api/stream?id=${fileIdMatch[1]}`);
+    }
+
+    res.status(404).send("Audio not found");
   });
 
   // Dedicated /covers routes ensuring on-the-fly extraction if image not yet on disk
@@ -1068,6 +1100,9 @@ async function startServer() {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
+      if (req.path.startsWith("/api/") || req.path.startsWith("/audio_cache/") || req.path.startsWith("/covers/")) {
+        return res.status(404).send("Not found");
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   }

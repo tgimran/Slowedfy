@@ -6316,14 +6316,15 @@
               consecutiveErrors = 0;
               setTimeout(() => preloadNextTrack((index + 1) % state.playlist.length), 800);
             }).catch(err => {
-              console.warn('[Slowedfy] Primary stream play failed, trying fallback stream:', err);
-              const fallbackUrl = track.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(track.id)}&export=download`;
-              if (DOM.audioEngine.src !== fallbackUrl) {
+              console.warn('[Slowedfy] Primary stream play failed, trying local audio cache:', err);
+              const fallbackUrl = `/audio_cache/${encodeURIComponent(track.id)}.mp3`;
+              if (DOM.audioEngine.src !== fallbackUrl && !DOM.audioEngine.src.endsWith(`${track.id}.mp3`)) {
                 DOM.audioEngine.src = fallbackUrl;
                 DOM.audioEngine.play().then(() => {
                   state.isPlaying = true;
                   updatePlayPauseBtnUI(true);
-                }).catch(() => {
+                }).catch((cacheErr) => {
+                  console.warn('[Slowedfy] Audio cache fallback failed:', cacheErr);
                   state.isPlaying = false;
                   updatePlayPauseBtnUI(false);
                 });
@@ -8305,17 +8306,17 @@
           const cur = state.playlist && state.playlist[state.currentIndex];
           if (!cur) return;
           
-          const directDriveUrl = cur.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(cur.id)}&export=download`;
+          const staticCacheUrl = `/audio_cache/${encodeURIComponent(cur.id)}.mp3`;
 
-          // Step 1: If current src was stream proxy and hasn't tried direct Drive stream, fall back immediately to Google Drive CDN
-          if (!DOM.audioEngine.src.includes('drive.usercontent.google.com') && DOM.audioEngine.src !== directDriveUrl) {
-            console.log('[Slowedfy] Stream proxy error, falling back to direct Drive stream URL:', directDriveUrl);
-            DOM.audioEngine.src = directDriveUrl;
+          // Step 1: If current src was stream proxy and hasn't tried direct static cache, fall back to /audio_cache/
+          if (!DOM.audioEngine.src.includes('/audio_cache/') && !DOM.audioEngine.src.endsWith(`${cur.id}.mp3`)) {
+            console.log('[Slowedfy] Stream error, falling back to static audio cache:', staticCacheUrl);
+            DOM.audioEngine.src = staticCacheUrl;
             if (state.isPlaying) DOM.audioEngine.play().catch(() => {});
             return;
           }
 
-          // Step 2: Retry with cache-busting timestamp
+          // Step 2: Retry with cache-busting timestamp on /api/stream
           if (!DOM.audioEngine.src.includes('&retry=')) {
             DOM.audioEngine.src = `/api/stream?id=${encodeURIComponent(cur.id)}&retry=${Date.now()}`;
             if (state.isPlaying) DOM.audioEngine.play().catch(() => {});
@@ -8392,10 +8393,7 @@
       if (firstTrack && DOM.audioEngine) {
         const initialAudioSrc = firstTrack.streamUrl || `/api/stream?id=${encodeURIComponent(firstTrack.id)}`;
         DOM.audioEngine.src = initialAudioSrc;
-        DOM.audioEngine.preload = 'auto';
-        try {
-          DOM.audioEngine.load();
-        } catch (e) {}
+        DOM.audioEngine.preload = 'metadata';
       }
 
       // Auto-sync initial background check
