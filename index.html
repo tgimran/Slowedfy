@@ -217,27 +217,37 @@
        ========================================================================== */
     html[data-perf="lite"] .artwork-ambient-rays {
       animation: none !important;
-      filter: blur(12px) !important;
-      opacity: 0.5 !important;
+      filter: blur(8px) !important;
+      opacity: 0.35 !important;
       transform: none !important;
     }
 
     html[data-perf="lite"] .liquid-glass,
     html[data-perf="lite"] .glass-dock,
     html[data-perf="lite"] .glass-panel,
-    html[data-perf="lite"] .modal-dialog {
+    html[data-perf="lite"] .modal-dialog,
+    html[data-perf="lite"] .player-dock,
+    html[data-perf="lite"] .dock-pill,
+    html[data-perf="lite"] .dock-now-playing,
+    html[data-perf="lite"] .volume-popup-card,
+    html[data-perf="lite"] .sync-modal-glass,
+    html[data-perf="lite"] .hero-headphone-tip,
+    html[data-perf="lite"] .artwork-glass-card {
       backdrop-filter: blur(10px) !important;
       -webkit-backdrop-filter: blur(10px) !important;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
     }
 
     html[data-perf="lite"] .bg-layer {
-      filter: blur(calc(var(--dynamic-bg-blur, 31px) * 0.65)) saturate(1.15) !important;
+      filter: blur(14px) saturate(1.1) !important;
       will-change: auto !important;
     }
 
     html[data-perf="lite"] .headphone-pulse,
-    html[data-perf="lite"] .shimmer-light {
+    html[data-perf="lite"] .shimmer-light,
+    html[data-perf="lite"] .support-heart,
+    html[data-perf="lite"] .pulse-live-dot,
+    html[data-perf="lite"] .support-btn-glow {
       animation: none !important;
     }
 
@@ -248,6 +258,13 @@
 
     html[data-perf="lite"] .track-playing-eq .eq-bar {
       animation-duration: 1.2s !important;
+    }
+
+    /* Complete background sleep: pause all animations when tab/screen is hidden */
+    body.page-hidden *,
+    body.page-hidden *::before,
+    body.page-hidden *::after {
+      animation-play-state: paused !important;
     }
 
     .playlist-scroll {
@@ -1147,18 +1164,24 @@
       width: 3px;
       background: var(--accent-cyan);
       border-radius: 3px;
-      animation: eq-bounce 0.8s ease-in-out infinite alternate;
       transform-origin: bottom center;
+      transform: scaleY(0.4);
+    }
+    .eq-bar:nth-child(1) { height: 10px; }
+    .eq-bar:nth-child(2) { height: 16px; }
+    .eq-bar:nth-child(3) { height: 8px; }
+
+    .playlist-item.active.playing .eq-bar,
+    body.is-playing .playlist-item.active .eq-bar {
+      animation: eq-bounce 0.8s ease-in-out infinite alternate;
       will-change: transform;
     }
-    .eq-bar:nth-child(1) { height: 10px; animation-delay: 0.1s; }
-    .eq-bar:nth-child(2) { height: 16px; animation-delay: 0.3s; }
-    .eq-bar:nth-child(3) { height: 8px; animation-delay: 0.2s; }
-
-    .playlist-item:not(.playing) .eq-bar,
-    body:not(.is-playing) .eq-bar {
-      animation-play-state: paused;
-    }
+    .playlist-item.active.playing .eq-bar:nth-child(1),
+    body.is-playing .playlist-item.active .eq-bar:nth-child(1) { animation-delay: 0.1s; }
+    .playlist-item.active.playing .eq-bar:nth-child(2),
+    body.is-playing .playlist-item.active .eq-bar:nth-child(2) { animation-delay: 0.3s; }
+    .playlist-item.active.playing .eq-bar:nth-child(3),
+    body.is-playing .playlist-item.active .eq-bar:nth-child(3) { animation-delay: 0.2s; }
 
     @keyframes eq-bounce {
       from { transform: scaleY(0.3); }
@@ -5651,8 +5674,8 @@
             setTier('lite', false);
           } else {
             setTier('high', false);
+            startMonitoring();
           }
-          startMonitoring();
         }
 
         updateButtons();
@@ -6053,11 +6076,12 @@
       if (!trackId) return;
       if (playlistHoverPreloadTimer) clearTimeout(playlistHoverPreloadTimer);
       playlistHoverPreloadTimer = setTimeout(() => {
+        if (document.documentElement.getAttribute('data-perf') === 'lite') return;
         const item = state.playlist && state.playlist.find(p => p.id === trackId);
         if (item && item.streamUrl && (!DOM.audioEngine.src || !DOM.audioEngine.src.includes(trackId))) {
           fetch(item.streamUrl, { headers: { Range: 'bytes=0-262143' } }).catch(() => {});
         }
-      }, 120);
+      }, 150);
     }, { passive: true });
 
     /* ==========================================================================
@@ -6552,6 +6576,8 @@
     let lastRenderedCurrentSecs = -1;
     let lastRenderedDurationSecs = -1;
     let lastRenderedPct = -1;
+    let lastRenderedAriaVal = -1;
+    let lastProgressFrameTime = 0;
     let progressRafId = null;
 
     function updateProgressUI(force = false) {
@@ -6573,12 +6599,17 @@
 
       const pct = Math.max(0, Math.min(100, (current / total) * 100));
 
-      if (force || Math.abs(pct - lastRenderedPct) >= 0.001) {
+      if (force || Math.abs(pct - lastRenderedPct) >= 0.05) {
         const scale = Math.max(0, Math.min(1, pct / 100));
         DOM.progressFill.style.transform = `scaleX(${scale})`;
         DOM.progressHandle.style.left = `${pct}%`;
-        DOM.progressContainer.setAttribute('aria-valuenow', Math.round(pct));
         lastRenderedPct = pct;
+
+        const roundPct = Math.round(pct);
+        if (roundPct !== lastRenderedAriaVal) {
+          DOM.progressContainer.setAttribute('aria-valuenow', roundPct);
+          lastRenderedAriaVal = roundPct;
+        }
       }
     }
 
@@ -6661,12 +6692,17 @@
       }
     }
 
-    function progressLoop() {
+    function progressLoop(timestamp) {
       if (!state.isPlaying || isSeeking || !isTabVisible) {
         progressRafId = null;
         return;
       }
-      pollPlayerProgress();
+      const isLiteTier = document.documentElement.getAttribute('data-perf') === 'lite';
+      const frameThreshold = isLiteTier ? 33 : 16;
+      if (!lastProgressFrameTime || (timestamp - lastProgressFrameTime) >= frameThreshold) {
+        lastProgressFrameTime = timestamp;
+        pollPlayerProgress();
+      }
       progressRafId = requestAnimationFrame(progressLoop);
     }
 
@@ -8191,6 +8227,7 @@
       }
       if (ms > 0) {
         autoSyncTimer = setInterval(() => {
+          if (document.hidden) return; // Never poll when tab is backgrounded to save battery & network
           syncDrivePlaylist(false);
         }, ms);
       }
