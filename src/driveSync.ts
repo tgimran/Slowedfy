@@ -991,12 +991,12 @@ export function startBackgroundSync() {
   if (fastSyncTimer) clearInterval(fastSyncTimer);
   if (fullSyncTimer) clearInterval(fullSyncTimer);
 
-  // Fast check every 45 seconds for detection of new uploads
+  // Fast check every 6 seconds for instantaneous detection of new uploads
   fastSyncTimer = setInterval(() => {
     fastCheckNewDriveUploads().catch(() => {});
-  }, 45000);
+  }, 6000);
 
-  // Full comprehensive scan every 3 minutes
+  // Full comprehensive scan every 30 seconds
   fullSyncTimer = setInterval(() => {
     syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID)
       .then(() => {
@@ -1005,7 +1005,7 @@ export function startBackgroundSync() {
       .catch((e) => {
         console.warn("[DriveSync] Background poll error:", e);
       });
-  }, 180000);
+  }, 30000);
 }
 
 // Start background sync and progressive audio caching on server startup

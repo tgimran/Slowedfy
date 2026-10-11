@@ -4,9 +4,12 @@ import fs from "fs";
 import https from "https";
 import http from "http";
 import { createServer as createViteServer } from "vite";
+import type { PlaylistItem as BasePlaylistItem } from "./src/defaultPlaylist.ts";
 import {
   OFFICIAL_PLAYLIST,
+  DEFAULT_PLAYLIST_ID as FALLBACK_ID,
   DEFAULT_DRIVE_FOLDER_ID,
+  DEFAULT_DRIVE_FOLDER_URL,
 } from "./src/defaultPlaylist.ts";
 import {
   syncGoogleDriveFolder,
@@ -52,6 +55,7 @@ interface PlaylistCacheEntry {
 }
 
 const playlistCache = new Map<string, PlaylistCacheEntry>();
+const CACHE_TTL_MS = 15 * 1000; // 15 seconds cache
 
 function fetchUrl(targetUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -1030,8 +1034,11 @@ async function startServer() {
     });
   });
 
-  // Pre-fetch default official playlist once on startup
+  // Pre-fetch default official playlist on startup and poll every 10 seconds in background
   getLatestPlaylist(DEFAULT_PLAYLIST_ID, true).catch(() => {});
+  setInterval(() => {
+    getLatestPlaylist(DEFAULT_PLAYLIST_ID, true).catch(() => {});
+  }, 10000);
 
   // Serve static public assets (manifest, sw, icons, logo)
   app.use(express.static(path.join(process.cwd(), "public")));
