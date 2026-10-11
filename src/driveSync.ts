@@ -266,6 +266,94 @@ function downloadFileStream(url: string, destPath: string, maxBytes = 0): Promis
   });
 }
 
+// Fetch byte range from URL directly into Buffer
+export function downloadFileRange(url: string, maxBytes = 2500000, redirectsRemaining = 5): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch (e) {
+      return reject(e);
+    }
+    const client = parsed.protocol === "http:" ? http : https;
+    const req = client.get(
+      url,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Range": `bytes=0-${maxBytes}`,
+        },
+      },
+      (res) => {
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirectsRemaining > 0) {
+          const next = res.headers.location.startsWith("http")
+            ? res.headers.location
+            : new URL(res.headers.location, parsed.origin).href;
+          res.resume();
+          return downloadFileRange(next, maxBytes, redirectsRemaining - 1).then(resolve).catch(reject);
+        }
+        const chunks: Buffer[] = [];
+        let total = 0;
+        res.on("data", (chunk: Buffer) => {
+          chunks.push(chunk);
+          total += chunk.length;
+          if (total >= maxBytes) {
+            res.destroy();
+            resolve(Buffer.concat(chunks));
+          }
+        });
+        res.on("end", () => resolve(Buffer.concat(chunks)));
+      }
+    );
+    req.on("error", reject);
+    req.setTimeout(12000, () => {
+      req.destroy();
+      reject(new Error("Timeout"));
+    });
+  });
+}
+
+// Pure Node.js embedded MP3 ID3 APIC picture extractor (zero external binaries required)
+export function extractId3Picture(buf: Buffer): { mime: string; data: Buffer } | null {
+  if (!buf || buf.length < 32) return null;
+
+  let frameIdx = buf.indexOf("APIC");
+  if (frameIdx === -1) frameIdx = buf.indexOf("PIC");
+  const startSearch = frameIdx !== -1 ? frameIdx : 0;
+
+  // Look for JPEG start marker (FF D8 FF)
+  const jpgStart = buf.indexOf(Buffer.from([0xFF, 0xD8, 0xFF]), startSearch);
+  if (jpgStart !== -1) {
+    let lastJpgEnd = -1;
+    let pos = jpgStart;
+    while ((pos = buf.indexOf(Buffer.from([0xFF, 0xD9]), pos + 1)) !== -1) {
+      lastJpgEnd = pos;
+    }
+    if (lastJpgEnd !== -1 && lastJpgEnd > jpgStart) {
+      const imgData = buf.slice(jpgStart, lastJpgEnd + 2);
+      if (imgData.length > 2000) {
+        return { mime: "image/jpeg", data: imgData };
+      }
+    }
+  }
+
+  // Look for PNG header (89 50 4E 47 0D 0A 1A 0A)
+  const pngHeader = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+  const pngStart = buf.indexOf(pngHeader, startSearch);
+  if (pngStart !== -1) {
+    const iend = Buffer.from([0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
+    const pngEnd = buf.indexOf(iend, pngStart);
+    if (pngEnd !== -1 && pngEnd > pngStart) {
+      const imgData = buf.slice(pngStart, pngEnd + 8);
+      if (imgData.length > 2000) {
+        return { mime: "image/png", data: imgData };
+      }
+    }
+  }
+
+  return null;
+}
+
 /**
  * Searches Apple iTunes Search API (free, reliable, instant, official 1000x1000 covers).
  */
@@ -407,7 +495,22 @@ async function doExtractEmbeddedCoverForTrack(
     }
   }
 
-  // 2. Try extracting attached picture (ID3 APIC) from local cached audio (ultra-fast, zero network latency)
+  // 2. Pure Node.js direct ID3 APIC extraction from Google Drive stream (super-fast, zero external binaries)
+  const driveAudioUrl = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
+  try {
+    const buf = await downloadFileRange(driveAudioUrl, 2500000);
+    const pic = extractId3Picture(buf);
+    if (pic && pic.data && pic.data.length > 2000) {
+      fs.writeFileSync(coverPath, pic.data);
+      fs.writeFileSync(thumbPath, pic.data);
+      syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+      syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+      console.log(`[DriveSync] 🎨 Auto-extracted embedded ID3 artwork for ${trackId} (${(pic.data.length / 1024).toFixed(1)} KB)`);
+      return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+    }
+  } catch (eAp) {}
+
+  // 3. Try extracting attached picture (ID3 APIC) from local cached audio if available
   const localAudioPath = path.join(AUDIO_CACHE_DIR, `${trackId}.mp3`);
   const distAudioPath = path.join(process.cwd(), "dist", "audio_cache", `${trackId}.mp3`);
   const existingAudio = (fs.existsSync(localAudioPath) && fs.statSync(localAudioPath).size > 50000)
@@ -416,54 +519,16 @@ async function doExtractEmbeddedCoverForTrack(
 
   if (existingAudio) {
     try {
-      const cmd = `ffmpeg -y -v error -i "${existingAudio}" -an -vcodec copy "${coverPath}"`;
-      await execPromise(cmd, { timeout: 8000 });
-      if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
-        const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
-        await execPromise(thumbCmd, { timeout: 6000 });
+      const buf = fs.readFileSync(existingAudio);
+      const pic = extractId3Picture(buf);
+      if (pic && pic.data && pic.data.length > 2000) {
+        fs.writeFileSync(coverPath, pic.data);
+        fs.writeFileSync(thumbPath, pic.data);
         syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
         syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
         return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
       }
-    } catch (e) {
-      try {
-        const cmd = `ffmpeg -y -v error -i "${existingAudio}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=800:800:flags=lanczos" "${coverPath}"`;
-        await execPromise(cmd, { timeout: 8000 });
-        if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
-          const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
-          await execPromise(thumbCmd, { timeout: 6000 });
-          syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
-          syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
-          return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
-        }
-      } catch (e2) {}
-    }
-  }
-
-  // 3. Direct extraction from Google Drive stream (extracts embedded 1080x1080 front cover with User-Agent)
-  const driveAudioUrl = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
-  try {
-    const copyCmd = `ffmpeg -y -v error -headers "User-Agent: Mozilla/5.0\r\n" -i "${driveAudioUrl}" -an -vcodec copy "${coverPath}"`;
-    await execPromise(copyCmd, { timeout: 14000 });
-    if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
-      const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
-      await execPromise(thumbCmd, { timeout: 8000 });
-      syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
-      syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
-      return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
-    }
-  } catch (eCopy) {
-    try {
-      const transCmd = `ffmpeg -y -v error -headers "User-Agent: Mozilla/5.0\r\n" -i "${driveAudioUrl}" -an -vframes 1 -q:v 2 "${coverPath}"`;
-      await execPromise(transCmd, { timeout: 14000 });
-      if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
-        const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "scale=200:200" "${thumbPath}"`;
-        await execPromise(thumbCmd, { timeout: 8000 });
-        syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
-        syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
-        return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
-      }
-    } catch (eTrans) {}
+    } catch (e) {}
   }
 
   // 4. Download first 2.5MB of audio file from Drive and extract embedded cover

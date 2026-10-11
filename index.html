@@ -5970,7 +5970,7 @@
         row.innerHTML = `
           <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
           <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
-            <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="if(!this.dataset.t){this.dataset.t='1';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&size=thumb';}" />
+            <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="if(!this.dataset.t){this.dataset.t='1';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&size=thumb';}else if(this.dataset.t==='1'){this.dataset.t='2';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&title='+encodeURIComponent('${encodeURIComponent(item.title)}');}" />
             <div class="track-playing-eq">
               <div class="eq-bar"></div>
               <div class="eq-bar"></div>
@@ -6176,12 +6176,18 @@
           if (!DOM.mainArtworkImg.dataset.retried) {
             DOM.mainArtworkImg.dataset.retried = '1';
             DOM.mainArtworkImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}`;
+          } else if (DOM.mainArtworkImg.dataset.retried === '1') {
+            DOM.mainArtworkImg.dataset.retried = '2';
+            DOM.mainArtworkImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&title=${encodeURIComponent(track.title)}`;
           }
         };
         DOM.dockThumbImg.onerror = () => {
           if (!DOM.dockThumbImg.dataset.retried) {
             DOM.dockThumbImg.dataset.retried = '1';
             DOM.dockThumbImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&size=thumb`;
+          } else if (DOM.dockThumbImg.dataset.retried === '1') {
+            DOM.dockThumbImg.dataset.retried = '2';
+            DOM.dockThumbImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&title=${encodeURIComponent(track.title)}`;
           }
         };
         DOM.mainArtworkImg.src = hdThumbUrl;
