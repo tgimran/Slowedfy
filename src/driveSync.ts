@@ -137,10 +137,19 @@ function notifySyncListeners(playlist: PlaylistItem[], totalNew: number, totalUp
   }
 }
 
-export function fetchHtml(url: string): Promise<string> {
+export function fetchHtml(url: string, redirectsRemaining = 5): Promise<string> {
   return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
-    parsed.searchParams.set("_t", Date.now().toString());
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch (e) {
+      return reject(e);
+    }
+
+    if (!parsed.searchParams.has("_t")) {
+      parsed.searchParams.set("_t", Date.now().toString());
+    }
+
     const client = parsed.protocol === "https:" ? https : http;
     const req = client.get(
       parsed.toString(),
@@ -158,9 +167,13 @@ export function fetchHtml(url: string): Promise<string> {
           res.statusCode &&
           res.statusCode >= 300 &&
           res.statusCode < 400 &&
-          res.headers.location
+          res.headers.location &&
+          redirectsRemaining > 0
         ) {
-          return fetchHtml(res.headers.location).then(resolve).catch(reject);
+          const nextUrl = res.headers.location.startsWith("http")
+            ? res.headers.location
+            : new URL(res.headers.location, parsed.origin).href;
+          return fetchHtml(nextUrl, redirectsRemaining - 1).then(resolve).catch(reject);
         }
         let data = "";
         res.on("data", (chunk) => {
@@ -170,7 +183,7 @@ export function fetchHtml(url: string): Promise<string> {
       }
     );
     req.on("error", reject);
-    req.setTimeout(8000, () => {
+    req.setTimeout(12000, () => {
       req.destroy();
       reject(new Error("Drive request timeout"));
     });
@@ -526,12 +539,14 @@ export interface RawDriveFile {
 
 /**
  * Parses Google Drive items from HTML responses.
+ * Scans both window['_DRIVE_ivd'] and all embedded AF_initDataCallback structures.
  */
 function parseDriveItemsFromHtml(html: string): RawDriveFile[] {
   const items: RawDriveFile[] = [];
   const seenIds = new Set<string>();
 
-  const ivdMatch = html.match(/window\['_DRIVE_ivd'\]\s*=\s*'([^']+)'/);
+  // 1. window['_DRIVE_ivd'] (both single and double quote formats)
+  const ivdMatch = html.match(/window\[['"]_DRIVE_ivd['"]\]\s*=\s*['"]([^'"]+)['"]/);
   if (ivdMatch) {
     try {
       const unescaped = ivdMatch[1].replace(/\\x([0-9A-Fa-f]{2})/g, (_, hex) =>
@@ -543,12 +558,12 @@ function parseDriveItemsFromHtml(html: string): RawDriveFile[] {
           const id = row[0];
           const name = row[2];
           const mime = row[3] || "audio/mpeg";
-          const uploadTime = row[9] || 0;
-          const modTime = row[10] || 0;
-          const bytes = row[13] || row[27] || 0;
+          const uploadTime = Number(row[9]) || 0;
+          const modTime = Number(row[10]) || 0;
+          const bytes = Number(row[13]) || Number(row[27]) || 0;
           const isFolder = mime === "application/vnd.google-apps.folder" || mime.includes("folder");
 
-          if (id && name && !seenIds.has(id)) {
+          if (id && name && typeof id === "string" && typeof name === "string" && !seenIds.has(id)) {
             seenIds.add(id);
             items.push({ id, name, mime, uploadTime, modTime, bytes, isFolder });
           }
@@ -557,12 +572,54 @@ function parseDriveItemsFromHtml(html: string): RawDriveFile[] {
     } catch (e) {}
   }
 
+  // 2. Parse all AF_initDataCallback blocks (e.g. ds:4, ds:0 etc)
+  try {
+    const afMatches = html.matchAll(/AF_initDataCallback\s*\(\s*(\{.*?key\s*:\s*['"]ds:\d+['"].*?\})\s*\)\s*;/gs);
+    for (const m of afMatches) {
+      try {
+        const fn = new Function("return " + m[1]);
+        const obj = fn();
+        if (obj && obj.data) {
+          const walkData = (node: any) => {
+            if (!node || typeof node !== "object") return;
+            if (Array.isArray(node)) {
+              if (
+                node.length >= 4 &&
+                typeof node[0] === "string" &&
+                /^[a-zA-Z0-9_-]{25,}$/.test(node[0]) &&
+                typeof node[2] === "string" &&
+                /\.(mp3|oga|m4a|wav|flac|ogg|aac|opus|wma|jpe?g|png|webp|jfif|bmp)$/i.test(node[2])
+              ) {
+                const id = node[0];
+                const name = node[2];
+                const mime = node[3] || "audio/mpeg";
+                const uploadTime = Number(node[9]) || 0;
+                const modTime = Number(node[10]) || 0;
+                const bytes = Number(node[13]) || 0;
+                const isFolder = mime === "application/vnd.google-apps.folder" || mime.includes("folder");
+                if (!seenIds.has(id)) {
+                  seenIds.add(id);
+                  items.push({ id, name, mime, uploadTime, modTime, bytes, isFolder });
+                }
+              }
+              for (const child of node) {
+                walkData(child);
+              }
+            }
+          };
+          walkData(obj.data);
+        }
+      } catch (e2) {}
+    }
+  } catch (e) {}
+
   return items;
 }
 
 /**
  * Scans a folder recursively across multiple sort and direction views in parallel.
- * Captures both audio files and companion image files!
+ * Puts sort=14&dir=d (Upload date descending) and sort=11&dir=d (Modified date descending) FIRST
+ * so ANY newly uploaded track is discovered immediately in the fastest possible query batch!
  */
 export async function scanFolderFiles(folderId: string): Promise<{
   audioFiles: RawDriveFile[];
@@ -570,12 +627,16 @@ export async function scanFolderFiles(folderId: string): Promise<{
   subfolderCount: number;
 }> {
   const queryUrls = [
-    `https://drive.google.com/drive/folders/${folderId}?sort=13&dir=d`,
-    `https://drive.google.com/drive/folders/${folderId}?sort=1&dir=d`,
-    `https://drive.google.com/drive/folders/${folderId}?sort=11&dir=d`,
-    `https://drive.google.com/drive/folders/${folderId}?sort=1`,
-    `https://drive.google.com/drive/folders/${folderId}?sort=3`,
-    `https://drive.google.com/drive/folders/${folderId}?sort=7`,
+    `https://drive.google.com/drive/folders/${folderId}?sort=14&dir=d`, // Upload time descending (NEWEST UPLOADS FIRST)
+    `https://drive.google.com/drive/folders/${folderId}?sort=11&dir=d`, // Modified time descending
+    `https://drive.google.com/drive/folders/${folderId}?sort=13&dir=d`, // Last opened descending
+    `https://drive.google.com/drive/folders/${folderId}?sort=14`,       // Upload time ascending
+    `https://drive.google.com/drive/folders/${folderId}?sort=11`,       // Modified time ascending
+    `https://drive.google.com/drive/folders/${folderId}?sort=1&dir=d`,  // Name descending
+    `https://drive.google.com/drive/folders/${folderId}?sort=1`,        // Name ascending
+    `https://drive.google.com/drive/folders/${folderId}?sort=7&dir=d`,  // Size descending
+    `https://drive.google.com/drive/folders/${folderId}?sort=7`,        // Size ascending
+    `https://drive.google.com/drive/folders/${folderId}?sort=3`,        // Last modified by me
   ];
 
   const allDiscovered = new Map<string, RawDriveFile>();
@@ -693,7 +754,7 @@ export async function syncGoogleDriveFolder(
  * - Automatically processes and saves high-definition cover art
  * - Accurately probes duration
  * - Sorts newest uploaded song first
- * - Incremental sync with instant real-time live notification
+ * - Incremental sync with INSTANT real-time live notification
  */
 async function doSyncGoogleDriveFolder(
   folderId: string = DEFAULT_DRIVE_FOLDER_ID
@@ -720,15 +781,15 @@ async function doSyncGoogleDriveFolder(
     let totalUpdated = 0;
     const newlyDetectedTracks: PlaylistItem[] = [];
 
-    validAudios.forEach((f, idx) => {
+    validAudios.forEach((f) => {
       const existing = existingMap.get(f.id);
       const title = getDisplayedTitle(f.name);
       const artist = extractArtist(f.name);
       const format = f.name.endsWith(".oga") ? "OGG" : "MP3";
 
       let sizeStr = existing?.size || "5.0 MB";
-      let durationSec = 240;
-      let durationFormatted = "04:00";
+      let durationSec = existing?.seconds || 240;
+      let durationFormatted = existing?.duration || "04:00";
 
       // Priority 1: Check existing tracked metadata if valid
       if (existing?.seconds && existing.seconds > 10 && existing.duration && !existing.duration.includes(":60")) {
@@ -758,7 +819,7 @@ async function doSyncGoogleDriveFolder(
             month: "short",
             year: "numeric",
           })
-        : existing?.date || "2026";
+        : existing?.date || new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
       const localCoverExists = fs.existsSync(path.join(COVERS_DIR, `${f.id}.jpg`));
       const localThumbExists = fs.existsSync(path.join(THUMBS_DIR, `${f.id}.jpg`));
@@ -767,11 +828,17 @@ async function doSyncGoogleDriveFolder(
         ? `/covers/thumbs/${f.id}.jpg`
         : localCoverExists
         ? `/covers/${f.id}.jpg`
-        : existing?.thumb || `/covers/thumbs/${f.id}.jpg`;
+        : existing?.thumb || `/api/artwork?id=${f.id}&size=thumb`;
 
       const hdThumb = localCoverExists
         ? `/covers/${f.id}.jpg`
-        : existing?.hdThumb || thumb;
+        : existing?.hdThumb || `/api/artwork?id=${f.id}`;
+
+      // CRITICAL: Newly uploaded files MUST sort to the top!
+      let uploadTime = Number(f.uploadTime) || Number(f.modTime) || 0;
+      if (!uploadTime || uploadTime < 1000000000) {
+        uploadTime = (!existing ? Date.now() : existing.uploadTime || Date.now());
+      }
 
       const trackItem: PlaylistItem = {
         id: f.id,
@@ -785,7 +852,7 @@ async function doSyncGoogleDriveFolder(
         quality: "320 kbps HQ Audio",
         size: sizeStr,
         date: dateStr,
-        uploadTime: f.uploadTime || existing?.uploadTime || 0,
+        uploadTime,
         streamUrl: `/api/stream?id=${f.id}`,
         driveUrl: `https://drive.usercontent.google.com/download?id=${f.id}&export=download`,
         thumb,
@@ -804,22 +871,6 @@ async function doSyncGoogleDriveFolder(
 
       existingMap.set(f.id, trackItem);
     });
-
-    // Process cover art & probe duration for newly detected tracks before finalizing
-    if (newlyDetectedTracks.length > 0) {
-      console.log(`[DriveSync] Processing album art and durations for ${newlyDetectedTracks.length} newly discovered tracks...`);
-      await Promise.allSettled(
-        newlyDetectedTracks.map(async (t) => {
-          const companion = imageFiles.find((img) => isCompanionImage(img.name, t.originalFilename || t.title));
-          const artRes = await extractEmbeddedCoverForTrack(t.id, t.title, t.artist, companion?.id);
-          if (artRes.success) {
-            t.thumb = artRes.thumb;
-            t.hdThumb = artRes.cover;
-          }
-          await probeAndSyncTrackDuration(t);
-        })
-      );
-    }
 
     const updatedPlaylist = Array.from(existingMap.values());
 
@@ -848,7 +899,7 @@ async function doSyncGoogleDriveFolder(
       syncedAt: new Date().toISOString(),
     };
 
-    // Always persist updated playlist and notify listeners if changes detected
+    // CRITICAL: IF NEW TRACKS DETECTED, PERSIST & NOTIFY IMMEDIATELY!
     if (totalNew > 0 || totalUpdated > 0) {
       try {
         const cachePath = path.join(process.cwd(), "public", "drive_playlist_cache.json");
@@ -859,7 +910,41 @@ async function doSyncGoogleDriveFolder(
         }
       } catch (e) {}
 
+      // NOTIFY ALL CLIENTS IMMEDIATELY OVER SSE (0 MILLISECOND DELAY)
       notifySyncListeners(cachedDrivePlaylist, totalNew, totalUpdated);
+      console.log(`[DriveSync] ⚡ INSTANT LIVE SYNC: ${totalNew} new song(s) added immediately to website playlist!`);
+    }
+
+    // PROCESS ARTWORK & ACCURATE DURATION ASYNCHRONOUSLY IN BACKGROUND (NEVER BLOCKS LIVE PLAYLIST!)
+    if (newlyDetectedTracks.length > 0) {
+      setImmediate(async () => {
+        let metaChanged = false;
+        for (const t of newlyDetectedTracks) {
+          try {
+            const companion = imageFiles.find((img) => isCompanionImage(img.name, t.originalFilename || t.title));
+            const artRes = await extractEmbeddedCoverForTrack(t.id, t.title, t.artist, companion?.id);
+            if (artRes.success) {
+              t.thumb = artRes.thumb;
+              t.hdThumb = artRes.cover;
+              metaChanged = true;
+            }
+            await probeAndSyncTrackDuration(t);
+            metaChanged = true;
+          } catch (e) {}
+        }
+
+        if (metaChanged) {
+          try {
+            const cachePath = path.join(process.cwd(), "public", "drive_playlist_cache.json");
+            fs.writeFileSync(cachePath, JSON.stringify(cachedDrivePlaylist, null, 2));
+            const distCachePath = path.join(process.cwd(), "dist", "drive_playlist_cache.json");
+            if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+              fs.writeFileSync(distCachePath, JSON.stringify(cachedDrivePlaylist, null, 2));
+            }
+          } catch (e) {}
+          notifySyncListeners(cachedDrivePlaylist, 0, newlyDetectedTracks.length);
+        }
+      });
     }
 
     console.log(
@@ -991,12 +1076,12 @@ export function startBackgroundSync() {
   if (fastSyncTimer) clearInterval(fastSyncTimer);
   if (fullSyncTimer) clearInterval(fullSyncTimer);
 
-  // Fast check every 45 seconds for detection of new uploads
+  // Fast check every 6 seconds for instantaneous detection of new uploads
   fastSyncTimer = setInterval(() => {
     fastCheckNewDriveUploads().catch(() => {});
-  }, 45000);
+  }, 6000);
 
-  // Full comprehensive scan every 3 minutes
+  // Full comprehensive scan every 30 seconds
   fullSyncTimer = setInterval(() => {
     syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID)
       .then(() => {
@@ -1005,7 +1090,7 @@ export function startBackgroundSync() {
       .catch((e) => {
         console.warn("[DriveSync] Background poll error:", e);
       });
-  }, 180000);
+  }, 30000);
 }
 
 // Start background sync and progressive audio caching on server startup

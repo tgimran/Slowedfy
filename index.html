@@ -8046,10 +8046,23 @@
     function syncWithLatestTracks(latest, newCount = 0) {
       if (!Array.isArray(latest) || latest.length === 0) return;
 
+      // Ensure baseline tracks are not lost if switching or syncing master
+      if (state.activePlaylistId === PLAYLIST_ID && latest.length < OFFICIAL_PLAYLIST.length) {
+        const currentIds = new Set(latest.map(t => t.id));
+        const missingOfficial = OFFICIAL_PLAYLIST.filter(t => !currentIds.has(t.id));
+        if (missingOfficial.length > 0) {
+          latest = [...latest, ...missingOfficial];
+        }
+      }
+
       const currentIds = new Set(state.playlist.map(t => t.id));
       const newTracks = latest.filter(t => !currentIds.has(t.id));
 
-      if (newTracks.length > 0 || latest.length !== state.playlist.length) {
+      const isOrderOrContentChanged = latest.length !== state.playlist.length ||
+        (state.playlist.length > 0 && latest[0] && state.playlist[0].id !== latest[0].id) ||
+        latest.some((lat, i) => !state.playlist[i] || state.playlist[i].id !== lat.id);
+
+      if (newTracks.length > 0 || isOrderOrContentChanged) {
         const currentActiveTrackId = state.playlist[state.currentIndex]?.id;
 
         state.playlist = latest;
@@ -8074,7 +8087,9 @@
         updateSyncModalUI();
 
         if (newTracks.length > 0) {
-          showToast(`✨ New Song Detected: ${newTracks[0].title.slice(0, 34)}...`, "🎵");
+          showToast(`✨ New Song Detected: ${newTracks[0].title.slice(0, 36)}...`, "🎵");
+        } else if (newCount > 0) {
+          showToast(`✨ Live Sync: ${newCount} New Song(s) Added!`, "🎵");
         }
       } else {
         // In-place duration & metadata update
@@ -8129,23 +8144,18 @@
         try {
           eventSource = new EventSource('/api/playlist/events');
 
-          eventSource.addEventListener('update', (e) => {
+          const handleIncomingPayload = (rawData) => {
             try {
-              const data = JSON.parse(e.data);
+              const data = typeof rawData === 'string' ? JSON.parse(rawData) : rawData;
               if (data && Array.isArray(data.playlist) && data.playlist.length > 0) {
                 syncWithLatestTracks(data.playlist, data.newCount || 0);
               }
             } catch (err) {}
-          });
+          };
 
-          eventSource.addEventListener('init', (e) => {
-            try {
-              const data = JSON.parse(e.data);
-              if (data && Array.isArray(data.playlist) && data.playlist.length > 0) {
-                syncWithLatestTracks(data.playlist, 0);
-              }
-            } catch (err) {}
-          });
+          eventSource.addEventListener('update', (e) => handleIncomingPayload(e.data));
+          eventSource.addEventListener('init', (e) => handleIncomingPayload(e.data));
+          eventSource.onmessage = (e) => handleIncomingPayload(e.data);
 
           eventSource.onerror = () => {
             try { if (eventSource) eventSource.close(); } catch (e) {}
@@ -8154,7 +8164,7 @@
               reconnectTimer = setTimeout(() => {
                 reconnectTimer = null;
                 connect();
-              }, 4000);
+              }, 3000);
             }
           };
         } catch (err) {}

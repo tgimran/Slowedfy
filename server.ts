@@ -4,9 +4,12 @@ import fs from "fs";
 import https from "https";
 import http from "http";
 import { createServer as createViteServer } from "vite";
+import type { PlaylistItem as BasePlaylistItem } from "./src/defaultPlaylist.ts";
 import {
   OFFICIAL_PLAYLIST,
+  DEFAULT_PLAYLIST_ID as FALLBACK_ID,
   DEFAULT_DRIVE_FOLDER_ID,
+  DEFAULT_DRIVE_FOLDER_URL,
 } from "./src/defaultPlaylist.ts";
 import {
   syncGoogleDriveFolder,
@@ -52,6 +55,7 @@ interface PlaylistCacheEntry {
 }
 
 const playlistCache = new Map<string, PlaylistCacheEntry>();
+const CACHE_TTL_MS = 15 * 1000; // 15 seconds cache
 
 function fetchUrl(targetUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -971,12 +975,13 @@ async function startServer() {
   // Server-Sent Events (SSE) subscribers for real-time Drive sync
   const sseClients = new Set<express.Response>();
 
-  function broadcastPlaylistUpdate(latestPlaylist: PlaylistItem[], totalNew = 0) {
+  function broadcastPlaylistUpdate(latestPlaylist: PlaylistItem[], totalNew = 0, totalUpdated = 0) {
     if (sseClients.size === 0) return;
     const payload = JSON.stringify({
       type: "playlist:updated",
       count: latestPlaylist.length,
       newCount: totalNew,
+      updatedCount: totalUpdated,
       lastSync: getLastSyncTime(),
       playlist: latestPlaylist,
     });
@@ -984,6 +989,7 @@ async function startServer() {
     for (const client of sseClients) {
       try {
         client.write(`event: update\ndata: ${payload}\n\n`);
+        client.write(`data: ${payload}\n\n`);
       } catch (e) {
         sseClients.delete(client);
       }
@@ -991,8 +997,8 @@ async function startServer() {
   }
 
   // Hook up driveSync listener to SSE broadcaster
-  registerSyncUpdateListener((playlist, totalNew) => {
-    broadcastPlaylistUpdate(playlist as PlaylistItem[], totalNew);
+  registerSyncUpdateListener((playlist, totalNew, totalUpdated) => {
+    broadcastPlaylistUpdate(playlist as PlaylistItem[], totalNew, totalUpdated);
   });
 
   // Real-Time Server-Sent Events (SSE) for instant Drive sync without manual refresh
@@ -1008,13 +1014,15 @@ async function startServer() {
 
     // Initial message
     const currentList = getCachedDrivePlaylist();
-    client.write(`event: init\ndata: ${JSON.stringify({
+    const initPayload = JSON.stringify({
       count: currentList.length,
       lastSync: getLastSyncTime(),
-      playlist: currentList
-    })}\n\n`);
+      playlist: currentList,
+    });
+    client.write(`event: init\ndata: ${initPayload}\n\n`);
+    client.write(`data: ${initPayload}\n\n`);
 
-    // Keep connection alive with heartbeat every 15s
+    // Keep connection alive with heartbeat every 10s
     const heartbeat = setInterval(() => {
       try {
         client.write(": ping\n\n");
@@ -1022,7 +1030,7 @@ async function startServer() {
         clearInterval(heartbeat);
         sseClients.delete(client);
       }
-    }, 15000);
+    }, 10000);
 
     req.on("close", () => {
       clearInterval(heartbeat);
@@ -1030,8 +1038,25 @@ async function startServer() {
     });
   });
 
-  // Pre-fetch default official playlist once on startup
-  getLatestPlaylist(DEFAULT_PLAYLIST_ID, true).catch(() => {});
+  // Continuous real-time Drive sync poll:
+  // Check Drive folder every 5 seconds for instant upload detection
+  let isDriveSyncing = false;
+  const pollDrive = async () => {
+    if (isDriveSyncing) return;
+    isDriveSyncing = true;
+    try {
+      await syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID);
+    } catch (e) {
+      console.warn("[Background Sync Error]:", e);
+    } finally {
+      isDriveSyncing = false;
+    }
+  };
+
+  // Immediate sync on startup
+  pollDrive();
+  // Continuous automated sync every 5 seconds!
+  setInterval(pollDrive, 5000);
 
   // Serve static public assets (manifest, sw, icons, logo)
   app.use(express.static(path.join(process.cwd(), "public")));
