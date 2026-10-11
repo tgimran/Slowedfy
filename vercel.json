@@ -1,5 +1,9 @@
 {
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite"
+  "framework": "vite",
+  "rewrites": [
+    { "source": "/api/playlist/sync", "destination": "/api/playlist" },
+    { "source": "/api/playlist/events", "destination": "/api/playlist" }
+  ]
 }

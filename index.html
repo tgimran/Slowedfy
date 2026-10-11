@@ -891,6 +891,12 @@
       color: #ffffff;
     }
 
+    @media (min-width: 641px) {
+      .hero-headphone-tip {
+        display: none !important;
+      }
+    }
+
     @keyframes headphone-pulse {
       0% {
         box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 12px rgba(78, 226, 236, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.3);
@@ -6095,7 +6101,7 @@
 
         // Persist update so it stays live across sessions
         try {
-          localStorage.setItem('slowedfy_drive_master_v6', JSON.stringify(state.playlist));
+          localStorage.setItem('slowedfy_drive_master_v7', JSON.stringify(state.playlist));
         } catch (e) {}
       }
     }
@@ -7984,7 +7990,7 @@
             state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_drive_master_v6', JSON.stringify(mergedPlaylist));
+                localStorage.setItem('slowedfy_drive_master_v7', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -8069,7 +8075,7 @@
         state.originalPlaylist = [...latest];
         if (state.activePlaylistId === PLAYLIST_ID) {
           try {
-            localStorage.setItem('slowedfy_drive_master_v6', JSON.stringify(latest));
+            localStorage.setItem('slowedfy_drive_master_v7', JSON.stringify(latest));
           } catch (e) {}
         }
 
@@ -8289,7 +8295,8 @@
         localStorage.removeItem('slowedfy_drive_master_v3');
         localStorage.removeItem('slowedfy_drive_master_v4');
         localStorage.removeItem('slowedfy_drive_master_v5'); // Invalidate old cache to ensure verified embedded artwork
-        const saved = localStorage.getItem('slowedfy_drive_master_v6');
+        localStorage.removeItem('slowedfy_drive_master_v6'); // Invalidate v6 so live users always receive newest synced tracks
+        const saved = localStorage.getItem('slowedfy_drive_master_v7');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
