@@ -3,12 +3,12 @@ import https from "https";
 import http from "http";
 import fs from "fs";
 import path from "path";
-import { OFFICIAL_PLAYLIST, DEFAULT_PLAYLIST_ID, PlaylistItem } from "../src/defaultPlaylist";
+import { OFFICIAL_PLAYLIST, DEFAULT_PLAYLIST_ID, PlaylistItem } from "../src/defaultPlaylist.ts";
 import {
   syncGoogleDriveFolder,
   getCachedDrivePlaylist,
   getLastSyncSummary,
-} from "../src/driveSync";
+} from "../src/driveSync.ts";
 
 function cleanPlaylistId(input?: string): string {
   if (!input) return DEFAULT_PLAYLIST_ID;

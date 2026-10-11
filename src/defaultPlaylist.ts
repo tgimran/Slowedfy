@@ -1,6 +1,6 @@
 // Auto-generated Slowedfy Master Library from Google Drive Folder: 194R85uwyR_UyKRn6RC9xGsmN87kNC4bF
-// Total Tracks: 111 (Newest Uploads First)
-// Verified at: 2026-10-05T10:08:57.277Z
+// Total Tracks: 112 (Newest Uploads First)
+// Verified at: 2026-10-11T14:58:11.243Z
 
 export interface PlaylistItem {
   id: string;
@@ -37,6 +37,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 ];
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
+  {
+    "id": "1cicjutdOXsG5wTmKRT0A_FLXhaFR921M",
+    "originalFilename": "Tu Jo Mila│Pritam│K.K.│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Tu Jo Mila│Pritam│K.K.│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge × Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "04:15",
+    "seconds": 255,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "4.0 MB",
+    "date": "11 Oct 2026",
+    "uploadTime": 1791728168932,
+    "streamUrl": "/api/stream?id=1cicjutdOXsG5wTmKRT0A_FLXhaFR921M",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=1cicjutdOXsG5wTmKRT0A_FLXhaFR921M&export=download",
+    "thumb": "/covers/thumbs/1cicjutdOXsG5wTmKRT0A_FLXhaFR921M.jpg",
+    "hdThumb": "/covers/1cicjutdOXsG5wTmKRT0A_FLXhaFR921M.jpg",
+    "isPremiere": false
+  },
   {
     "id": "19sz1uO5hx8D0H-BFO5n4tPffo5UPiy7C",
     "originalFilename": "Kon Disa Mein - Extended Version│Varsha Singh Dhanoa│Guru Dhanoa│Maddy Sharma│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
@@ -1407,8 +1426,8 @@ export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   },
   {
     "id": "1ddYs1OEZmSefz7p4bccSO-jeCC6QfljG",
-    "originalFilename": "Sunn Raha Hai Na Tu│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
-    "title": "Sunn Raha Hai Na Tu│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "originalFilename": "Sunn Raha Hai Na Tu│Shreya Ghoshal��(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Sunn Raha Hai Na Tu│Shreya Ghoshal��(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Beat Badge × Slowedfy",
     "album": "Slowed & Reverb Master Collection",
     "duration": "06:04",
