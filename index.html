@@ -6303,16 +6303,30 @@
               consecutiveErrors = 0;
               setTimeout(() => preloadNextTrack((index + 1) % state.playlist.length), 800);
             }).catch(err => {
-              console.warn('[Slowedfy] Primary stream play failed, trying fallback stream:', err);
-              const fallbackUrl = track.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(track.id)}&export=download`;
-              if (DOM.audioEngine.src !== fallbackUrl) {
-                DOM.audioEngine.src = fallbackUrl;
+              console.warn('[Slowedfy] Primary stream play failed:', err);
+              if (err && err.name === 'NotAllowedError') {
+                // Browser Autoplay policy blocked audio until user interaction
+                state.isPlaying = false;
+                updatePlayPauseBtnUI(false);
+                return;
+              }
+              // Stream proxy retry
+              const retryProxyUrl = `/api/stream?id=${encodeURIComponent(track.id)}&_retry=${Date.now()}`;
+              if (!DOM.audioEngine.src.includes('&_retry=')) {
+                DOM.audioEngine.src = retryProxyUrl;
                 DOM.audioEngine.play().then(() => {
                   state.isPlaying = true;
                   updatePlayPauseBtnUI(true);
                 }).catch(() => {
-                  state.isPlaying = false;
-                  updatePlayPauseBtnUI(false);
+                  const fallbackUrl = track.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(track.id)}&export=download`;
+                  DOM.audioEngine.src = fallbackUrl;
+                  DOM.audioEngine.play().then(() => {
+                    state.isPlaying = true;
+                    updatePlayPauseBtnUI(true);
+                  }).catch(() => {
+                    state.isPlaying = false;
+                    updatePlayPauseBtnUI(false);
+                  });
                 });
               } else {
                 state.isPlaying = false;
@@ -6383,7 +6397,14 @@
           showToast("Paused", "‣");
         } else {
           state.userInitiatedPause = false;
-          DOM.audioEngine.play().catch(e => console.warn("Audio play error:", e));
+          if (!DOM.audioEngine.src || DOM.audioEngine.src === '' || DOM.audioEngine.src === window.location.href) {
+            playTrackAtIndex(state.currentIndex);
+            return;
+          }
+          DOM.audioEngine.play().catch(e => {
+            console.warn("Audio play error:", e);
+            playTrackAtIndex(state.currentIndex);
+          });
           state.isPlaying = true;
           updatePlayPauseBtnUI(true);
           showToast("Playing", "▐▐");

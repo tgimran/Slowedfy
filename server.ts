@@ -642,7 +642,10 @@ async function startServer() {
         if (req.query.download === "true" || req.query.dl === "1") {
           const rawTitle = req.query.filename ? String(req.query.filename) : `${fileId}.mp3`;
           res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(rawTitle)}"`);
+        } else {
+          res.setHeader("Content-Disposition", "inline");
         }
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
         res.setHeader("Content-Type", "audio/mpeg");
         res.setHeader("Accept-Ranges", "bytes");
         res.setHeader("Access-Control-Allow-Origin", "*");
@@ -697,7 +700,10 @@ async function startServer() {
         if (req.query.download === "true" || req.query.dl === "1") {
           const rawTitle = req.query.filename ? String(req.query.filename) : `${fileId}.mp3`;
           res.setHeader("Content-Disposition", `attachment; filename="${encodeURIComponent(rawTitle)}"`);
+        } else {
+          res.setHeader("Content-Disposition", "inline");
         }
+        res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
         res.setHeader("Content-Type", "audio/mpeg");
         res.setHeader("Accept-Ranges", "bytes");
         res.setHeader("Access-Control-Allow-Origin", "*");

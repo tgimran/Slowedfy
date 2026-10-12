@@ -5,6 +5,7 @@
   "rewrites": [
     { "source": "/api/playlist/sync", "destination": "/api/playlist" },
     { "source": "/api/playlist/events", "destination": "/api/playlist" },
-    { "source": "/api/artwork", "destination": "/api/artwork" }
+    { "source": "/api/artwork", "destination": "/api/artwork" },
+    { "source": "/api/stream", "destination": "/api/stream" }
   ]
 }
