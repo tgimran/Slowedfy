@@ -6282,12 +6282,14 @@
             DOM.mainArtworkImg.style.opacity = '1';
           }
           
-          const audioSrc = track.streamUrl || `/api/stream?id=${encodeURIComponent(track.id)}`;
-          const isSameSong = DOM.audioEngine.src && DOM.audioEngine.src.includes(track.id);
+          const targetSrc = track.streamUrl || `/api/stream?id=${encodeURIComponent(track.id)}`;
+          const currentSrc = DOM.audioEngine.src || '';
+          const isAlreadyPlayingThisSrc = currentSrc.endsWith(targetSrc) || currentSrc.includes(targetSrc);
           
-          if (!isSameSong) {
-            DOM.audioEngine.src = audioSrc;
+          if (!isAlreadyPlayingThisSrc || forceReload) {
+            DOM.audioEngine.src = targetSrc;
             DOM.audioEngine.currentTime = 0;
+            try { DOM.audioEngine.load(); } catch (e) {}
           }
           DOM.audioEngine.volume = (state.volume || 80) / 100;
           DOM.audioEngine.muted = !!state.isMuted;
@@ -6305,28 +6307,21 @@
             }).catch(err => {
               console.warn('[Slowedfy] Primary stream play failed:', err);
               if (err && err.name === 'NotAllowedError') {
-                // Browser Autoplay policy blocked audio until user interaction
                 state.isPlaying = false;
                 updatePlayPauseBtnUI(false);
                 return;
               }
-              // Stream proxy retry
+              // Stream proxy retry with cache-buster
               const retryProxyUrl = `/api/stream?id=${encodeURIComponent(track.id)}&_retry=${Date.now()}`;
               if (!DOM.audioEngine.src.includes('&_retry=')) {
                 DOM.audioEngine.src = retryProxyUrl;
+                try { DOM.audioEngine.load(); } catch (e) {}
                 DOM.audioEngine.play().then(() => {
                   state.isPlaying = true;
                   updatePlayPauseBtnUI(true);
                 }).catch(() => {
-                  const fallbackUrl = track.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(track.id)}&export=download`;
-                  DOM.audioEngine.src = fallbackUrl;
-                  DOM.audioEngine.play().then(() => {
-                    state.isPlaying = true;
-                    updatePlayPauseBtnUI(true);
-                  }).catch(() => {
-                    state.isPlaying = false;
-                    updatePlayPauseBtnUI(false);
-                  });
+                  state.isPlaying = false;
+                  updatePlayPauseBtnUI(false);
                 });
               } else {
                 state.isPlaying = false;
@@ -8310,27 +8305,21 @@
           const cur = state.playlist && state.playlist[state.currentIndex];
           if (!cur) return;
           
-          const directDriveUrl = cur.driveUrl || `https://drive.usercontent.google.com/download?id=${encodeURIComponent(cur.id)}&export=download`;
-
-          // Step 1: If current src was stream proxy and hasn't tried direct Drive stream, fall back immediately to Google Drive CDN
-          if (!DOM.audioEngine.src.includes('drive.usercontent.google.com') && DOM.audioEngine.src !== directDriveUrl) {
-            console.log('[Slowedfy] Stream proxy error, falling back to direct Drive stream URL:', directDriveUrl);
-            DOM.audioEngine.src = directDriveUrl;
-            if (state.isPlaying) DOM.audioEngine.play().catch(() => {});
+          // Retry proxy stream with fresh timestamp
+          if (!DOM.audioEngine.src.includes('&_retry=')) {
+            console.log('[Slowedfy] Retrying stream with fresh connection...');
+            DOM.audioEngine.src = `/api/stream?id=${encodeURIComponent(cur.id)}&_retry=${Date.now()}`;
+            try { DOM.audioEngine.load(); } catch (err) {}
+            if (state.isPlaying) {
+              DOM.audioEngine.play().catch(() => {});
+            }
             return;
           }
 
-          // Step 2: Retry with cache-busting timestamp
-          if (!DOM.audioEngine.src.includes('&retry=')) {
-            DOM.audioEngine.src = `/api/stream?id=${encodeURIComponent(cur.id)}&retry=${Date.now()}`;
-            if (state.isPlaying) DOM.audioEngine.play().catch(() => {});
-            return;
-          }
-
+          // If still failing, stop cleanly and inform user
           state.isPlaying = false;
           updatePlayPauseBtnUI(false);
-          showToast("Retrying next track...", "⚠️");
-          setTimeout(() => nextTrack(), 1000);
+          showToast("Audio connection issue. Tap play to retry.", "⚠️");
         });
       }
 

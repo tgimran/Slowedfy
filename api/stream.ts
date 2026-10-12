@@ -5,6 +5,9 @@ import fs from "fs";
 import path from "path";
 import { URL } from "url";
 
+// Maximum stream chunk size (2 MB) - perfectly stays below Vercel's 4.5 MB payload limit while ensuring instant buffer playback
+const MAX_CHUNK_BYTES = 2097152;
+
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   // Global CORS & media streaming headers
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -57,7 +60,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
         const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
+        let end = parts[1] ? parseInt(parts[1], 10) : totalSize - 1;
+        if (end - start + 1 > MAX_CHUNK_BYTES) {
+          end = start + MAX_CHUNK_BYTES - 1;
+        }
+        if (end >= totalSize) end = totalSize - 1;
         const chunkSize = end - start + 1;
 
         res.statusCode = 206;
@@ -68,27 +75,41 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         stream.pipe(res);
         return;
       } else {
-        res.statusCode = 200;
-        res.setHeader("Content-Length", totalSize);
-        const stream = fs.createReadStream(cachedPath);
+        // Clamp chunk for initial playback
+        const end = Math.min(MAX_CHUNK_BYTES - 1, totalSize - 1);
+        const chunkSize = end + 1;
+        res.statusCode = 206;
+        res.setHeader("Content-Range", `bytes 0-${end}/${totalSize}`);
+        res.setHeader("Content-Length", chunkSize);
+
+        const stream = fs.createReadStream(cachedPath, { start: 0, end });
         stream.pipe(res);
         return;
       }
     } catch (e) {}
   }
 
-  // 2. Stream directly from Google Drive with redirect resolution & Range support
+  // 2. Stream directly from Google Drive with smart Range chunking & redirect resolution
   const targetUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download`;
-  const rangeHeader = req.headers.range;
+  const rawRange = req.headers.range;
+
+  let requestRange = "bytes=0-2097151"; // Default 2MB initial chunk
+  if (rawRange) {
+    const parts = rawRange.replace(/bytes=/, "").split("-");
+    const start = parseInt(parts[0], 10) || 0;
+    let end = parts[1] ? parseInt(parts[1], 10) : start + MAX_CHUNK_BYTES - 1;
+    if (end - start + 1 > MAX_CHUNK_BYTES) {
+      end = start + MAX_CHUNK_BYTES - 1;
+    }
+    requestRange = `bytes=${start}-${end}`;
+  }
 
   const requestHeaders: Record<string, string> = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
     "Accept": "*/*",
     "Accept-Encoding": "identity",
+    "Range": requestRange,
   };
-  if (rangeHeader) {
-    requestHeaders["Range"] = rangeHeader;
-  }
 
   const streamFromUrl = (currentUrl: string, redirectsRemaining = 5) => {
     try {
@@ -112,7 +133,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           return streamFromUrl(`https://drive.google.com/uc?export=download&id=${fileId}`, redirectsRemaining - 1);
         }
 
-        res.statusCode = statusCode;
+        res.statusCode = statusCode === 200 && driveRes.headers["content-range"] ? 206 : statusCode;
 
         // Forward critical streaming headers from Drive
         const forwardHeaders = ["content-range", "content-length", "accept-ranges", "last-modified", "etag"];
