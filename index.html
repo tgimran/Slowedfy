@@ -5874,6 +5874,22 @@
     /* ==========================================================================
        BACKGROUND ARTWORK SYSTEM (Smooth crossfade, hardware accelerated, zero flicker)
        ========================================================================== */
+    function escapeAttr(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    window.handleThumbError = function(img) {
+      if (!img) return;
+      const trackId = img.dataset.trackId || '';
+      if (!img.dataset.retried) {
+        img.dataset.retried = '1';
+        img.src = '/api/artwork?id=' + encodeURIComponent(trackId) + '&size=thumb';
+      } else if (img.dataset.retried === '1') {
+        img.dataset.retried = '2';
+        img.src = '/assets/logo.png';
+      }
+    };
+
     function updateBackgroundArtwork(imgUrl) {
       if (state.currentTheme !== 'dynamic-art') {
         if (DOM.bgLayer1) DOM.bgLayer1.classList.remove('active');
@@ -5886,17 +5902,26 @@
 
       const img = new Image();
       img.decoding = "async";
-      const onDone = () => {
+      let retried = false;
+      const applyBg = (finalUrl) => {
         img.onload = null;
         img.onerror = null;
         if (state.currentTheme !== 'dynamic-art') return;
-        targetLayer.style.backgroundImage = `url('${imgUrl}')`;
+        targetLayer.style.backgroundImage = `url('${finalUrl}')`;
         targetLayer.classList.add('active');
         currentLayer.classList.remove('active');
         state.activeBgLayer = state.activeBgLayer === 1 ? 2 : 1;
       };
-      img.onload = onDone;
-      img.onerror = onDone;
+
+      img.onload = () => applyBg(img.src);
+      img.onerror = () => {
+        if (!retried && state.playlist && state.playlist[state.currentIndex]) {
+          retried = true;
+          img.src = `/api/artwork?id=${encodeURIComponent(state.playlist[state.currentIndex].id)}`;
+        } else {
+          applyBg('/assets/logo.png');
+        }
+      };
       img.src = imgUrl;
     }
 
@@ -5964,7 +5989,7 @@
         row.innerHTML = `
           <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
           <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
-            <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="if(!this.dataset.t){this.dataset.t='1';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&size=thumb';}else if(this.dataset.t==='1'){this.dataset.t='2';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&title='+encodeURIComponent('${encodeURIComponent(item.title)}');}" />
+            <img class="track-thumb" src="${ytThumb}" data-track-id="${item.id}" alt="${escapeAttr(item.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="window.handleThumbError(this)" />
             <div class="track-playing-eq">
               <div class="eq-bar"></div>
               <div class="eq-bar"></div>
@@ -6173,6 +6198,8 @@
           } else if (DOM.mainArtworkImg.dataset.retried === '1') {
             DOM.mainArtworkImg.dataset.retried = '2';
             DOM.mainArtworkImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&title=${encodeURIComponent(track.title)}`;
+          } else {
+            DOM.mainArtworkImg.src = '/assets/logo.png';
           }
         };
         DOM.dockThumbImg.onerror = () => {
@@ -6182,6 +6209,8 @@
           } else if (DOM.dockThumbImg.dataset.retried === '1') {
             DOM.dockThumbImg.dataset.retried = '2';
             DOM.dockThumbImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&title=${encodeURIComponent(track.title)}`;
+          } else {
+            DOM.dockThumbImg.src = '/assets/logo.png';
           }
         };
         DOM.mainArtworkImg.src = hdThumbUrl;
