@@ -6,7 +6,7 @@ import path from "path";
 import { URL } from "url";
 
 // Fetch byte range from URL with redirect following
-function fetchRange(url: string, maxBytes = 350000, redirectsRemaining = 5): Promise<Buffer> {
+function fetchRange(url: string, maxBytes = 2500000, redirectsRemaining = 5): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let parsed: URL;
     try {
@@ -19,8 +19,7 @@ function fetchRange(url: string, maxBytes = 350000, redirectsRemaining = 5): Pro
       url,
       {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-          "Accept": "*/*",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
           "Range": `bytes=0-${maxBytes}`,
         },
       },
@@ -53,74 +52,43 @@ function fetchRange(url: string, maxBytes = 350000, redirectsRemaining = 5): Pro
   });
 }
 
-// Pure Node.js robust embedded MP3 ID3 APIC picture extractor (zero external binaries required)
+// Pure Node.js embedded MP3 ID3 APIC picture extractor (zero external binaries required)
 export function extractId3Picture(buf: Buffer): { mime: string; data: Buffer } | null {
   if (!buf || buf.length < 32) return null;
 
-  let apicIdx = buf.indexOf("APIC");
-  let isPic = false;
-  if (apicIdx === -1) {
-    apicIdx = buf.indexOf("PIC");
-    isPic = true;
-  }
+  // Search for APIC frame (ID3v2.3, ID3v2.4) or PIC (ID3v2.2)
+  let frameIdx = buf.indexOf("APIC");
+  if (frameIdx === -1) frameIdx = buf.indexOf("PIC");
 
-  if (apicIdx !== -1) {
-    let frameSize = 0;
-    let dataOffset = apicIdx + 10;
-    if (isPic) {
-      frameSize = (buf[apicIdx + 3] << 16) | (buf[apicIdx + 4] << 8) | buf[apicIdx + 5];
-      dataOffset = apicIdx + 6;
-    } else {
-      const isV24 = buf.length > 3 && buf[3] === 4;
-      if (isV24) {
-        frameSize =
-          ((buf[apicIdx + 4] & 0x7f) << 21) |
-          ((buf[apicIdx + 5] & 0x7f) << 14) |
-          ((buf[apicIdx + 6] & 0x7f) << 7) |
-          (buf[apicIdx + 7] & 0x7f);
-      } else {
-        frameSize = buf.readUInt32BE(apicIdx + 4);
-      }
-    }
+  const startSearch = frameIdx !== -1 ? frameIdx : 0;
 
-    if (frameSize > 500 && frameSize < 15000000) {
-      const frameData = buf.slice(dataOffset, Math.min(dataOffset + frameSize, buf.length));
-      // 1. Look for JPEG start marker
-      const jpgStart = frameData.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
-      if (jpgStart !== -1) {
-        const lastJpgEnd = frameData.lastIndexOf(Buffer.from([0xff, 0xd9]));
-        if (lastJpgEnd > jpgStart) {
-          const img = frameData.slice(jpgStart, lastJpgEnd + 2);
-          if (img.length > 2000) return { mime: "image/jpeg", data: img };
-        } else if (frameData.length >= frameSize - 100) {
-          const img = frameData.slice(jpgStart);
-          if (img.length > 2000) return { mime: "image/jpeg", data: img };
-        }
-      }
-      // 2. Look for PNG start marker
-      const pngHeader = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-      const pngStart = frameData.indexOf(pngHeader);
-      if (pngStart !== -1) {
-        const iend = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);
-        const pngEnd = frameData.indexOf(iend, pngStart);
-        if (pngEnd !== -1) {
-          const img = frameData.slice(pngStart, pngEnd + 8);
-          if (img.length > 2000) return { mime: "image/png", data: img };
-        }
-      }
-    }
-  }
-
-  // Generic fallback if APIC header was non-standard
-  const jpgStart = buf.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
-  if (jpgStart !== -1 && jpgStart < 300000) {
+  // Look for JPEG start marker (FF D8 FF)
+  const jpgStart = buf.indexOf(Buffer.from([0xFF, 0xD8, 0xFF]), startSearch);
+  if (jpgStart !== -1) {
     let lastJpgEnd = -1;
     let pos = jpgStart;
-    while ((pos = buf.indexOf(Buffer.from([0xff, 0xd9]), pos + 1)) !== -1 && pos < 5000000) {
+    while ((pos = buf.indexOf(Buffer.from([0xFF, 0xD9]), pos + 1)) !== -1) {
       lastJpgEnd = pos;
     }
-    if (lastJpgEnd > jpgStart && lastJpgEnd - jpgStart > 2000) {
-      return { mime: "image/jpeg", data: buf.slice(jpgStart, lastJpgEnd + 2) };
+    if (lastJpgEnd !== -1 && lastJpgEnd > jpgStart) {
+      const imgData = buf.slice(jpgStart, lastJpgEnd + 2);
+      if (imgData.length > 2000) {
+        return { mime: "image/jpeg", data: imgData };
+      }
+    }
+  }
+
+  // Look for PNG header (89 50 4E 47 0D 0A 1A 0A)
+  const pngHeader = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+  const pngStart = buf.indexOf(pngHeader, startSearch);
+  if (pngStart !== -1) {
+    const iend = Buffer.from([0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
+    const pngEnd = buf.indexOf(iend, pngStart);
+    if (pngEnd !== -1 && pngEnd > pngStart) {
+      const imgData = buf.slice(pngStart, pngEnd + 8);
+      if (imgData.length > 2000) {
+        return { mime: "image/png", data: imgData };
+      }
     }
   }
 
@@ -204,40 +172,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   // 2. Dynamic pure Node.js extraction from Google Drive stream
   try {
     const driveUrl = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
-    let buf = await fetchRange(driveUrl, 350000);
-
-    // If ID3 header indicates a larger metadata block (e.g. 1-3 MB high-res embedded cover), fetch exact bytes
-    if (buf.length > 10 && buf.slice(0, 3).toString() === "ID3") {
-      const tagSize =
-        ((buf[6] & 0x7f) << 21) |
-        ((buf[7] & 0x7f) << 14) |
-        ((buf[8] & 0x7f) << 7) |
-        (buf[9] & 0x7f);
-      if (tagSize > 350000 && tagSize < 12000000) {
-        buf = await fetchRange(driveUrl, tagSize + 2048);
-      }
-    }
-
+    const buf = await fetchRange(driveUrl, 2500000);
     const pic = extractId3Picture(buf);
     if (pic && pic.data && pic.data.length > 2000) {
       // Save to disk if writable
       try {
         const outDir = path.join(process.cwd(), "public", "covers");
         const thumbDir = path.join(outDir, "thumbs");
-        const distOutDir = path.join(process.cwd(), "dist", "covers");
-        const distThumbDir = path.join(distOutDir, "thumbs");
-
         if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
         if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
         fs.writeFileSync(path.join(outDir, `${trackId}.jpg`), pic.data);
         fs.writeFileSync(path.join(thumbDir, `${trackId}.jpg`), pic.data);
-
-        if (fs.existsSync(path.join(process.cwd(), "dist"))) {
-          if (!fs.existsSync(distOutDir)) fs.mkdirSync(distOutDir, { recursive: true });
-          if (!fs.existsSync(distThumbDir)) fs.mkdirSync(distThumbDir, { recursive: true });
-          fs.writeFileSync(path.join(distOutDir, `${trackId}.jpg`), pic.data);
-          fs.writeFileSync(path.join(distThumbDir, `${trackId}.jpg`), pic.data);
-        }
       } catch (e) {}
 
       res.statusCode = 200;
@@ -252,18 +197,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   // 3. Fallback to iTunes Search API for official artwork
   try {
-    let query = reqUrl.searchParams.get("title");
-    if (!query) {
-      try {
-        const cachePath = path.join(process.cwd(), "public", "drive_playlist_cache.json");
-        if (fs.existsSync(cachePath)) {
-          const list = JSON.parse(fs.readFileSync(cachePath, "utf8"));
-          const found = list.find((t: any) => t.id === trackId);
-          if (found) query = found.title;
-        }
-      } catch (e) {}
-    }
-
+    const query = reqUrl.searchParams.get("title");
     if (query) {
       const itunesUrl = await fetchItunesCover(query);
       if (itunesUrl) {

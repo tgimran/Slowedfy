@@ -2708,9 +2708,9 @@
         </button>
 
         <!-- Active Playlist Count -->
-        <div class="glass-btn pill-counter" id="playlist-badge-top" role="status" title="Slowedfy Library (113 Tracks)">
+        <div class="glass-btn pill-counter" id="playlist-badge-top" role="status" title="Slowedfy Library (112 Tracks)">
           <div class="pulse-dot"></div>
-          <span id="header-song-count">113 Tracks</span>
+          <span id="header-song-count">112 Tracks</span>
         </div>
       </div>
     </header>
@@ -2793,7 +2793,7 @@
           <div class="playlist-card-header">
             <div class="playlist-title-wrap">
               <span class="playlist-title" id="playlist-display-title">Slowedfy Playlist</span>
-              <span class="playlist-count-badge" id="playlist-count-label">113 Songs</span>
+              <span class="playlist-count-badge" id="playlist-count-label">112 Songs</span>
             </div>
             <div class="sync-actions-wrap" style="display: flex; align-items: center; gap: 6px;">
               <a href="https://drive.google.com/drive/folders/194R85uwyR_UyKRn6RC9xGsmN87kNC4bF" id="active-yt-playlist-link" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Open Master Google Drive Folder">
@@ -3342,25 +3342,6 @@
     
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
-  {
-    "id": "14y1J7BFxBmFvkp529yi6xoLhhENiuNLO",
-    "originalFilename": "Raat Bhar│Arijit Singh│Shreya Ghoshal│Sajid Wajid│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
-    "title": "Raat Bhar│Arijit Singh│Shreya Ghoshal│Sajid Wajid│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy",
-    "artist": "Beat Badge × Slowedfy",
-    "album": "Slowed & Reverb Master Collection",
-    "duration": "05:39",
-    "seconds": 339,
-    "format": "MP3",
-    "quality": "320 kbps HQ Audio",
-    "size": "6.5 MB",
-    "date": "17 Oct 2026",
-    "uploadTime": 1792248261694,
-    "streamUrl": "/api/stream?id=14y1J7BFxBmFvkp529yi6xoLhhENiuNLO",
-    "driveUrl": "https://drive.usercontent.google.com/download?id=14y1J7BFxBmFvkp529yi6xoLhhENiuNLO&export=download",
-    "thumb": "/covers/thumbs/14y1J7BFxBmFvkp529yi6xoLhhENiuNLO.jpg",
-    "hdThumb": "/covers/14y1J7BFxBmFvkp529yi6xoLhhENiuNLO.jpg",
-    "isPremiere": false
-  },
   {
     "id": "1cicjutdOXsG5wTmKRT0A_FLXhaFR921M",
     "originalFilename": "Tu Jo Mila│Pritam│K.K.│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
@@ -4104,8 +4085,8 @@
   },
   {
     "id": "1WhJR1Vz2MyO-I-rCHGfgOTtwSJCu0cKi",
-    "originalFilename": "Baarish Mein Phir│Saahel��(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
-    "title": "Baarish Mein Phir│Saahel��(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "originalFilename": "Baarish Mein Phir│Saahel│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Baarish Mein Phir│Saahel│(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Beat Badge × Slowedfy",
     "album": "Slowed & Reverb Master Collection",
     "duration": "03:26",
@@ -5893,22 +5874,6 @@
     /* ==========================================================================
        BACKGROUND ARTWORK SYSTEM (Smooth crossfade, hardware accelerated, zero flicker)
        ========================================================================== */
-    function escapeAttr(str) {
-      return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    window.handleThumbError = function(img) {
-      if (!img) return;
-      const trackId = img.dataset.trackId || '';
-      if (!img.dataset.retried) {
-        img.dataset.retried = '1';
-        img.src = '/api/artwork?id=' + encodeURIComponent(trackId) + '&size=thumb';
-      } else if (img.dataset.retried === '1') {
-        img.dataset.retried = '2';
-        img.src = '/assets/logo.png';
-      }
-    };
-
     function updateBackgroundArtwork(imgUrl) {
       if (state.currentTheme !== 'dynamic-art') {
         if (DOM.bgLayer1) DOM.bgLayer1.classList.remove('active');
@@ -5921,26 +5886,17 @@
 
       const img = new Image();
       img.decoding = "async";
-      let retried = false;
-      const applyBg = (finalUrl) => {
+      const onDone = () => {
         img.onload = null;
         img.onerror = null;
         if (state.currentTheme !== 'dynamic-art') return;
-        targetLayer.style.backgroundImage = `url('${finalUrl}')`;
+        targetLayer.style.backgroundImage = `url('${imgUrl}')`;
         targetLayer.classList.add('active');
         currentLayer.classList.remove('active');
         state.activeBgLayer = state.activeBgLayer === 1 ? 2 : 1;
       };
-
-      img.onload = () => applyBg(img.src);
-      img.onerror = () => {
-        if (!retried && state.playlist && state.playlist[state.currentIndex]) {
-          retried = true;
-          img.src = `/api/artwork?id=${encodeURIComponent(state.playlist[state.currentIndex].id)}`;
-        } else {
-          applyBg('/assets/logo.png');
-        }
-      };
+      img.onload = onDone;
+      img.onerror = onDone;
       img.src = imgUrl;
     }
 
@@ -6008,7 +5964,7 @@
         row.innerHTML = `
           <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
           <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
-            <img class="track-thumb" src="${ytThumb}" data-track-id="${item.id}" alt="${escapeAttr(item.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="window.handleThumbError(this)" />
+            <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="if(!this.dataset.t){this.dataset.t='1';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&size=thumb';}else if(this.dataset.t==='1'){this.dataset.t='2';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&title='+encodeURIComponent('${encodeURIComponent(item.title)}');}" />
             <div class="track-playing-eq">
               <div class="eq-bar"></div>
               <div class="eq-bar"></div>
@@ -6158,7 +6114,7 @@
 
         // Persist update so it stays live across sessions
         try {
-          localStorage.setItem('slowedfy_drive_master_v8', JSON.stringify(state.playlist));
+          localStorage.setItem('slowedfy_drive_master_v7', JSON.stringify(state.playlist));
         } catch (e) {}
       }
     }
@@ -6217,8 +6173,6 @@
           } else if (DOM.mainArtworkImg.dataset.retried === '1') {
             DOM.mainArtworkImg.dataset.retried = '2';
             DOM.mainArtworkImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&title=${encodeURIComponent(track.title)}`;
-          } else {
-            DOM.mainArtworkImg.src = '/assets/logo.png';
           }
         };
         DOM.dockThumbImg.onerror = () => {
@@ -6228,8 +6182,6 @@
           } else if (DOM.dockThumbImg.dataset.retried === '1') {
             DOM.dockThumbImg.dataset.retried = '2';
             DOM.dockThumbImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&title=${encodeURIComponent(track.title)}`;
-          } else {
-            DOM.dockThumbImg.src = '/assets/logo.png';
           }
         };
         DOM.mainArtworkImg.src = hdThumbUrl;
@@ -8073,7 +8025,7 @@
             state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_drive_master_v8', JSON.stringify(mergedPlaylist));
+                localStorage.setItem('slowedfy_drive_master_v7', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -8158,7 +8110,7 @@
         state.originalPlaylist = [...latest];
         if (state.activePlaylistId === PLAYLIST_ID) {
           try {
-            localStorage.setItem('slowedfy_drive_master_v8', JSON.stringify(latest));
+            localStorage.setItem('slowedfy_drive_master_v7', JSON.stringify(latest));
           } catch (e) {}
         }
 
@@ -8372,9 +8324,8 @@
         localStorage.removeItem('slowedfy_drive_master_v3');
         localStorage.removeItem('slowedfy_drive_master_v4');
         localStorage.removeItem('slowedfy_drive_master_v5'); // Invalidate old cache to ensure verified embedded artwork
-        localStorage.removeItem('slowedfy_drive_master_v6');
-        localStorage.removeItem('slowedfy_drive_master_v7'); // Invalidate v6 so live users always receive newest synced tracks
-        const saved = localStorage.getItem('slowedfy_drive_master_v8');
+        localStorage.removeItem('slowedfy_drive_master_v6'); // Invalidate v6 so live users always receive newest synced tracks
+        const saved = localStorage.getItem('slowedfy_drive_master_v7');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {

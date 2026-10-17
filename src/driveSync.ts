@@ -313,74 +313,41 @@ export function downloadFileRange(url: string, maxBytes = 2500000, redirectsRema
   });
 }
 
-// Pure Node.js robust embedded MP3 ID3 APIC picture extractor (zero external binaries required)
+// Pure Node.js embedded MP3 ID3 APIC picture extractor (zero external binaries required)
 export function extractId3Picture(buf: Buffer): { mime: string; data: Buffer } | null {
   if (!buf || buf.length < 32) return null;
 
-  let apicIdx = buf.indexOf("APIC");
-  let isPic = false;
-  if (apicIdx === -1) {
-    apicIdx = buf.indexOf("PIC");
-    isPic = true;
-  }
+  let frameIdx = buf.indexOf("APIC");
+  if (frameIdx === -1) frameIdx = buf.indexOf("PIC");
+  const startSearch = frameIdx !== -1 ? frameIdx : 0;
 
-  if (apicIdx !== -1) {
-    let frameSize = 0;
-    let dataOffset = apicIdx + 10;
-    if (isPic) {
-      frameSize = (buf[apicIdx + 3] << 16) | (buf[apicIdx + 4] << 8) | buf[apicIdx + 5];
-      dataOffset = apicIdx + 6;
-    } else {
-      const isV24 = buf.length > 3 && buf[3] === 4;
-      if (isV24) {
-        frameSize =
-          ((buf[apicIdx + 4] & 0x7f) << 21) |
-          ((buf[apicIdx + 5] & 0x7f) << 14) |
-          ((buf[apicIdx + 6] & 0x7f) << 7) |
-          (buf[apicIdx + 7] & 0x7f);
-      } else {
-        frameSize = buf.readUInt32BE(apicIdx + 4);
-      }
-    }
-
-    if (frameSize > 500 && frameSize < 15000000) {
-      const frameData = buf.slice(dataOffset, Math.min(dataOffset + frameSize, buf.length));
-      // 1. Look for JPEG start marker
-      const jpgStart = frameData.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
-      if (jpgStart !== -1) {
-        const lastJpgEnd = frameData.lastIndexOf(Buffer.from([0xff, 0xd9]));
-        if (lastJpgEnd > jpgStart) {
-          const img = frameData.slice(jpgStart, lastJpgEnd + 2);
-          if (img.length > 2000) return { mime: "image/jpeg", data: img };
-        } else if (frameData.length >= frameSize - 100) {
-          const img = frameData.slice(jpgStart);
-          if (img.length > 2000) return { mime: "image/jpeg", data: img };
-        }
-      }
-      // 2. Look for PNG start marker
-      const pngHeader = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-      const pngStart = frameData.indexOf(pngHeader);
-      if (pngStart !== -1) {
-        const iend = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);
-        const pngEnd = frameData.indexOf(iend, pngStart);
-        if (pngEnd !== -1) {
-          const img = frameData.slice(pngStart, pngEnd + 8);
-          if (img.length > 2000) return { mime: "image/png", data: img };
-        }
-      }
-    }
-  }
-
-  // Generic fallback if APIC header was non-standard
-  const jpgStart = buf.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
-  if (jpgStart !== -1 && jpgStart < 300000) {
+  // Look for JPEG start marker (FF D8 FF)
+  const jpgStart = buf.indexOf(Buffer.from([0xFF, 0xD8, 0xFF]), startSearch);
+  if (jpgStart !== -1) {
     let lastJpgEnd = -1;
     let pos = jpgStart;
-    while ((pos = buf.indexOf(Buffer.from([0xff, 0xd9]), pos + 1)) !== -1 && pos < 5000000) {
+    while ((pos = buf.indexOf(Buffer.from([0xFF, 0xD9]), pos + 1)) !== -1) {
       lastJpgEnd = pos;
     }
-    if (lastJpgEnd > jpgStart && lastJpgEnd - jpgStart > 2000) {
-      return { mime: "image/jpeg", data: buf.slice(jpgStart, lastJpgEnd + 2) };
+    if (lastJpgEnd !== -1 && lastJpgEnd > jpgStart) {
+      const imgData = buf.slice(jpgStart, lastJpgEnd + 2);
+      if (imgData.length > 2000) {
+        return { mime: "image/jpeg", data: imgData };
+      }
+    }
+  }
+
+  // Look for PNG header (89 50 4E 47 0D 0A 1A 0A)
+  const pngHeader = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+  const pngStart = buf.indexOf(pngHeader, startSearch);
+  if (pngStart !== -1) {
+    const iend = Buffer.from([0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82]);
+    const pngEnd = buf.indexOf(iend, pngStart);
+    if (pngEnd !== -1 && pngEnd > pngStart) {
+      const imgData = buf.slice(pngStart, pngEnd + 8);
+      if (imgData.length > 2000) {
+        return { mime: "image/png", data: imgData };
+      }
     }
   }
 
@@ -531,19 +498,7 @@ async function doExtractEmbeddedCoverForTrack(
   // 2. Pure Node.js direct ID3 APIC extraction from Google Drive stream (super-fast, zero external binaries)
   const driveAudioUrl = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
   try {
-    let buf = await downloadFileRange(driveAudioUrl, 350000);
-    // If ID3 header indicates a larger metadata block (e.g. 1-3 MB high-res embedded cover), fetch exact bytes
-    if (buf.length > 10 && buf.slice(0, 3).toString() === "ID3") {
-      const tagSize =
-        ((buf[6] & 0x7f) << 21) |
-        ((buf[7] & 0x7f) << 14) |
-        ((buf[8] & 0x7f) << 7) |
-        (buf[9] & 0x7f);
-      if (tagSize > 350000 && tagSize < 12000000) {
-        buf = await downloadFileRange(driveAudioUrl, tagSize + 2048);
-      }
-    }
-
+    const buf = await downloadFileRange(driveAudioUrl, 2500000);
     const pic = extractId3Picture(buf);
     if (pic && pic.data && pic.data.length > 2000) {
       fs.writeFileSync(coverPath, pic.data);
