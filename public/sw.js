@@ -1,5 +1,5 @@
 /* Slowedfy Service Worker - Offline Shell & Fast Asset Caching */
-const CACHE_NAME = 'slowedfy-v4';
+const CACHE_NAME = 'slowedfy-v5';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
