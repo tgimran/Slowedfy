@@ -267,7 +267,7 @@ function downloadFileStream(url: string, destPath: string, maxBytes = 0): Promis
 }
 
 // Fetch byte range from URL directly into Buffer
-export function downloadFileRange(url: string, maxBytes = 2500000, redirectsRemaining = 5): Promise<Buffer> {
+export function downloadFileRange(url: string, maxBytes = 6000000, redirectsRemaining = 5): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let parsed: URL;
     try {
@@ -276,16 +276,27 @@ export function downloadFileRange(url: string, maxBytes = 2500000, redirectsRema
       return reject(e);
     }
     const client = parsed.protocol === "http:" ? http : https;
+    let timer: NodeJS.Timeout | null = null;
+    let resolved = false;
+
+    const cleanup = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+
     const req = client.get(
       url,
       {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
           "Range": `bytes=0-${maxBytes}`,
         },
       },
       (res) => {
         if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location && redirectsRemaining > 0) {
+          cleanup();
           const next = res.headers.location.startsWith("http")
             ? res.headers.location
             : new URL(res.headers.location, parsed.origin).href;
@@ -298,18 +309,40 @@ export function downloadFileRange(url: string, maxBytes = 2500000, redirectsRema
           chunks.push(chunk);
           total += chunk.length;
           if (total >= maxBytes) {
-            res.destroy();
+            if (!resolved) {
+              resolved = true;
+              cleanup();
+              try { req.destroy(); } catch (e) {}
+              try { res.destroy(); } catch (e) {}
+              resolve(Buffer.concat(chunks));
+            }
+          }
+        });
+        res.on("end", () => {
+          if (!resolved) {
+            resolved = true;
+            cleanup();
+            try { req.destroy(); } catch (e) {}
             resolve(Buffer.concat(chunks));
           }
         });
-        res.on("end", () => resolve(Buffer.concat(chunks)));
       }
     );
-    req.on("error", reject);
-    req.setTimeout(12000, () => {
-      req.destroy();
-      reject(new Error("Timeout"));
+    req.on("error", (err) => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        reject(err);
+      }
     });
+    timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        try { req.destroy(); } catch (e) {}
+        reject(new Error("Timeout"));
+      }
+    }, 14000);
   });
 }
 
@@ -373,10 +406,10 @@ export function extractId3Picture(buf: Buffer): { mime: string; data: Buffer } |
 
   // Generic fallback if APIC header was non-standard
   const jpgStart = buf.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
-  if (jpgStart !== -1 && jpgStart < 300000) {
+  if (jpgStart !== -1 && jpgStart < 5000000) {
     let lastJpgEnd = -1;
     let pos = jpgStart;
-    while ((pos = buf.indexOf(Buffer.from([0xff, 0xd9]), pos + 1)) !== -1 && pos < 5000000) {
+    while ((pos = buf.indexOf(Buffer.from([0xff, 0xd9]), pos + 1)) !== -1 && pos < 6000000) {
       lastJpgEnd = pos;
     }
     if (lastJpgEnd > jpgStart && lastJpgEnd - jpgStart > 2000) {
@@ -531,23 +564,16 @@ async function doExtractEmbeddedCoverForTrack(
   // 2. Pure Node.js direct ID3 APIC extraction from Google Drive stream (super-fast, zero external binaries)
   const driveAudioUrl = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
   try {
-    let buf = await downloadFileRange(driveAudioUrl, 350000);
-    // If ID3 header indicates a larger metadata block (e.g. 1-3 MB high-res embedded cover), fetch exact bytes
-    if (buf.length > 10 && buf.slice(0, 3).toString() === "ID3") {
-      const tagSize =
-        ((buf[6] & 0x7f) << 21) |
-        ((buf[7] & 0x7f) << 14) |
-        ((buf[8] & 0x7f) << 7) |
-        (buf[9] & 0x7f);
-      if (tagSize > 350000 && tagSize < 12000000) {
-        buf = await downloadFileRange(driveAudioUrl, tagSize + 2048);
-      }
-    }
-
+    const buf = await downloadFileRange(driveAudioUrl, 4000000);
     const pic = extractId3Picture(buf);
     if (pic && pic.data && pic.data.length > 2000) {
       fs.writeFileSync(coverPath, pic.data);
-      fs.writeFileSync(thumbPath, pic.data);
+      try {
+        const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "crop='min(iw,ih)':'min(iw,ih)',scale=200:200" "${thumbPath}"`;
+        await execPromise(thumbCmd, { timeout: 6000 });
+      } catch (eTh) {
+        fs.writeFileSync(thumbPath, pic.data);
+      }
       syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
       syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
       console.log(`[DriveSync] 🎨 Auto-extracted embedded ID3 artwork for ${trackId} (${(pic.data.length / 1024).toFixed(1)} KB)`);
@@ -663,22 +689,39 @@ function parseDriveItemsFromHtml(html: string): RawDriveFile[] {
         String.fromCharCode(parseInt(hex, 16))
       );
       const parsed = JSON.parse(unescaped);
-      if (Array.isArray(parsed[0])) {
-        for (const row of parsed[0]) {
-          const id = row[0];
-          const name = row[2];
-          const mime = row[3] || "audio/mpeg";
-          const uploadTime = Number(row[9]) || 0;
-          const modTime = Number(row[10]) || 0;
-          const bytes = Number(row[13]) || Number(row[27]) || 0;
-          const isFolder = mime === "application/vnd.google-apps.folder" || mime.includes("folder");
+      const addRow = (node: any) => {
+        if (!node || !Array.isArray(node) || node.length < 4) return;
+        const id = node[0];
+        const name = node[2];
+        const mime = node[3] || "audio/mpeg";
+        const uploadTime = Number(node[9]) || Number(node[10]) || 0;
+        const modTime = Number(node[10]) || 0;
+        const bytes = Number(node[13]) || Number(node[27]) || 0;
+        const isFolder = mime === "application/vnd.google-apps.folder" || String(mime).includes("folder");
 
-          if (id && name && typeof id === "string" && typeof name === "string" && !seenIds.has(id)) {
-            seenIds.add(id);
-            items.push({ id, name, mime, uploadTime, modTime, bytes, isFolder });
+        if (
+          typeof id === "string" &&
+          /^[a-zA-Z0-9_-]{20,}$/.test(id) &&
+          typeof name === "string" &&
+          !seenIds.has(id)
+        ) {
+          seenIds.add(id);
+          items.push({ id, name, mime, uploadTime, modTime, bytes, isFolder });
+        }
+      };
+
+      const walkNode = (node: any) => {
+        if (!node || typeof node !== "object") return;
+        if (Array.isArray(node)) {
+          if (node.length >= 4 && typeof node[0] === "string" && /^[a-zA-Z0-9_-]{20,}$/.test(node[0]) && typeof node[2] === "string") {
+            addRow(node);
+          }
+          for (const child of node) {
+            walkNode(child);
           }
         }
-      }
+      };
+      walkNode(parsed);
     } catch (e) {}
   }
 
@@ -1009,6 +1052,22 @@ async function doSyncGoogleDriveFolder(
       syncedAt: new Date().toISOString(),
     };
 
+    // For newly detected tracks, immediately extract embedded artwork so it is ready on the website
+    if (newlyDetectedTracks.length > 0) {
+      await Promise.allSettled(
+        newlyDetectedTracks.map(async (t) => {
+          try {
+            const companion = imageFiles.find((img) => isCompanionImage(img.name, t.originalFilename || t.title));
+            const artRes = await extractEmbeddedCoverForTrack(t.id, t.title, t.artist, companion?.id);
+            if (artRes.success) {
+              t.thumb = artRes.thumb;
+              t.hdThumb = artRes.cover;
+            }
+          } catch (e) {}
+        })
+      );
+    }
+
     // CRITICAL: IF NEW TRACKS DETECTED, PERSIST & NOTIFY IMMEDIATELY!
     if (totalNew > 0 || totalUpdated > 0) {
       try {
@@ -1026,20 +1085,30 @@ async function doSyncGoogleDriveFolder(
     }
 
     // PROCESS ARTWORK & ACCURATE DURATION ASYNCHRONOUSLY IN BACKGROUND (NEVER BLOCKS LIVE PLAYLIST!)
-    if (newlyDetectedTracks.length > 0) {
+    const tracksNeedingArtwork = updatedPlaylist.filter(t => {
+      const coverP = path.join(COVERS_DIR, `${t.id}.jpg`);
+      return !fs.existsSync(coverP) || fs.statSync(coverP).size < 1000;
+    });
+    const itemsToProcess = Array.from(new Set([...newlyDetectedTracks, ...tracksNeedingArtwork]));
+
+    if (itemsToProcess.length > 0) {
       setImmediate(async () => {
         let metaChanged = false;
-        for (const t of newlyDetectedTracks) {
+        for (const t of itemsToProcess) {
           try {
             const companion = imageFiles.find((img) => isCompanionImage(img.name, t.originalFilename || t.title));
             const artRes = await extractEmbeddedCoverForTrack(t.id, t.title, t.artist, companion?.id);
             if (artRes.success) {
-              t.thumb = artRes.thumb;
-              t.hdThumb = artRes.cover;
+              if (t.thumb !== artRes.thumb || t.hdThumb !== artRes.cover) {
+                t.thumb = artRes.thumb;
+                t.hdThumb = artRes.cover;
+                metaChanged = true;
+              }
+            }
+            if (!t.seconds || t.seconds === 240) {
+              await probeAndSyncTrackDuration(t);
               metaChanged = true;
             }
-            await probeAndSyncTrackDuration(t);
-            metaChanged = true;
           } catch (e) {}
         }
 
@@ -1052,7 +1121,7 @@ async function doSyncGoogleDriveFolder(
               fs.writeFileSync(distCachePath, JSON.stringify(cachedDrivePlaylist, null, 2));
             }
           } catch (e) {}
-          notifySyncListeners(cachedDrivePlaylist, 0, newlyDetectedTracks.length);
+          notifySyncListeners(cachedDrivePlaylist, 0, itemsToProcess.length);
         }
       });
     }
@@ -1151,7 +1220,7 @@ export async function fastCheckNewDriveUploads(): Promise<boolean> {
   if (isFastChecking || activeSyncPromise) return false;
   isFastChecking = true;
   try {
-    const url = `https://drive.google.com/drive/folders/${DEFAULT_DRIVE_FOLDER_ID}?sort=13&dir=d`;
+    const url = `https://drive.google.com/drive/folders/${DEFAULT_DRIVE_FOLDER_ID}?sort=14&dir=d`;
     const html = await fetchHtml(url);
     const items = parseDriveItemsFromHtml(html);
     const currentIds = new Set(cachedDrivePlaylist.map((t) => t.id));

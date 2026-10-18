@@ -1301,6 +1301,9 @@
     }
 
     #publish-playlist-btn {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
       transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
       cursor: pointer;
     }
@@ -1315,6 +1318,45 @@
     }
     #publish-playlist-btn.publishing svg {
       animation: spin-sync 0.8s linear infinite;
+    }
+
+    /* Google Drive Pill Button */
+    .drive-folder-pill-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6.5px;
+      padding: 4px 12px 4px 9px;
+      height: 28px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      color: #e5e7eb;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--font-display, inherit);
+      text-decoration: none;
+      white-space: nowrap;
+      transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .drive-folder-pill-btn:hover {
+      background: rgba(255, 255, 255, 0.11);
+      border-color: rgba(78, 226, 236, 0.5);
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(78, 226, 236, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+      transform: translateY(-1px);
+    }
+    .drive-folder-pill-btn:active {
+      transform: scale(0.97);
+    }
+    .drive-folder-pill-btn .gdrive-pill-logo {
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .drive-folder-pill-btn:hover .gdrive-pill-logo {
+      transform: scale(1.12) rotate(4deg);
     }
 
     .new-track-pill {
@@ -2838,7 +2880,7 @@
               <span class="playlist-count-badge" id="playlist-count-label">113 Songs</span>
             </div>
             <div class="sync-actions-wrap" style="display: flex; align-items: center; gap: 6px;">
-              <button type="button" class="glass-btn" id="publish-playlist-btn" title="Update Playlist & Publish New Songs to Website" style="font-size: 0.73rem; padding: 4px 10px; height: 26px; gap: 5px; color: var(--accent-cyan); border-color: rgba(78, 226, 236, 0.4); background: rgba(78, 226, 236, 0.12);">
+              <button type="button" class="glass-btn" id="publish-playlist-btn" title="Update Playlist & Publish New Songs to Website" style="display: none !important; font-size: 0.73rem; padding: 4px 10px; height: 26px; gap: 5px; color: var(--accent-cyan); border-color: rgba(78, 226, 236, 0.4); background: rgba(78, 226, 236, 0.12);" hidden>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="17 8 12 3 7 8"></polyline>
@@ -2846,9 +2888,17 @@
                 </svg>
                 <span id="publish-btn-text">Update & Publish</span>
               </button>
-              <a href="https://drive.google.com/drive/folders/194R85uwyR_UyKRn6RC9xGsmN87kNC4bF" id="active-yt-playlist-link" target="_blank" rel="noopener noreferrer" style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px;" title="Open Master Google Drive Folder">
+              <a href="https://drive.google.com/drive/folders/194R85uwyR_UyKRn6RC9xGsmN87kNC4bF" id="active-yt-playlist-link" class="drive-folder-pill-btn" target="_blank" rel="noopener noreferrer" title="Open Master Google Drive Folder">
+                <svg viewBox="0 0 87.3 78" width="15" height="13.5" class="gdrive-pill-logo" aria-hidden="true">
+                  <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
+                  <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#00ac47"/>
+                  <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.5l5.85 10.15z" fill="#ea4335"/>
+                  <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
+                  <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
+                  <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
+                </svg>
                 <span>Drive Folder</span>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6; margin-left: 1px;">
                   <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
                   <polyline points="15 3 21 3 21 9"/>
                   <line x1="10" y1="14" x2="21" y2="3"/>

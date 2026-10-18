@@ -19,6 +19,7 @@ import {
   registerSyncUpdateListener,
   extractEmbeddedCoverForTrack,
   downloadAndCacheTrackAudio,
+  fastCheckNewDriveUploads,
 } from "./src/driveSync.ts";
 
 const DEFAULT_PLAYLIST_ID = DEFAULT_DRIVE_FOLDER_ID;
@@ -1011,7 +1012,6 @@ async function startServer() {
     for (const client of sseClients) {
       try {
         client.write(`event: update\ndata: ${payload}\n\n`);
-        client.write(`data: ${payload}\n\n`);
       } catch (e) {
         sseClients.delete(client);
       }
@@ -1042,7 +1042,6 @@ async function startServer() {
       playlist: currentList,
     });
     client.write(`event: init\ndata: ${initPayload}\n\n`);
-    client.write(`data: ${initPayload}\n\n`);
 
     // Keep connection alive with heartbeat every 10s
     const heartbeat = setInterval(() => {
@@ -1061,13 +1060,20 @@ async function startServer() {
   });
 
   // Continuous real-time Drive sync poll:
-  // Check Drive folder every 5 seconds for instant upload detection
+  // Fast-checks Drive folder every 5 seconds for instant new upload detection
   let isDriveSyncing = false;
+  let syncCycle = 0;
   const pollDrive = async () => {
     if (isDriveSyncing) return;
     isDriveSyncing = true;
     try {
-      await syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID);
+      syncCycle++;
+      // Every 30 seconds (every 6th cycle) or on startup, perform full scan; otherwise fast check
+      if (syncCycle % 6 === 1) {
+        await syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID);
+      } else {
+        await fastCheckNewDriveUploads();
+      }
     } catch (e) {
       console.warn("[Background Sync Error]:", e);
     } finally {
