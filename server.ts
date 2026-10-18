@@ -907,19 +907,35 @@ async function startServer() {
     }
   });
 
-  app.all("/api/playlist/sync", async (req, res) => {
+  app.all(["/api/playlist/sync", "/api/playlist/publish"], async (req, res) => {
     try {
+      const isPublish = req.path.includes("publish");
       const playlistId = cleanPlaylistId(String(req.body?.playlistId || req.body?.url || req.query.id || ""));
       const force = req.body?.force !== false;
       const result = await getLatestPlaylist(playlistId, force);
       const summary = getLastSyncSummary();
+      
+      // If publishing, ensure disk caches in both public and dist are fully written
+      if (isPublish) {
+        try {
+          const cachePath = path.join(process.cwd(), "public", "drive_playlist_cache.json");
+          fs.writeFileSync(cachePath, JSON.stringify(result.playlist, null, 2));
+          const distCachePath = path.join(process.cwd(), "dist", "drive_playlist_cache.json");
+          if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+            fs.writeFileSync(distCachePath, JSON.stringify(result.playlist, null, 2));
+          }
+        } catch (e) {}
+      }
+
       res.json({
         success: true,
+        published: isPublish,
         playlistId,
         title: result.title,
         author: result.author,
         count: result.playlist.length,
         lastSync: result.lastFetchTime,
+        newestSong: result.playlist[0] || null,
         playlist: result.playlist,
         summary,
         syncedAt: new Date().toISOString(),

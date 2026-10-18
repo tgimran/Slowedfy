@@ -1,6 +1,6 @@
 // Auto-generated Slowedfy Master Library from Google Drive Folder: 194R85uwyR_UyKRn6RC9xGsmN87kNC4bF
-// Total Tracks: 112 (Newest Uploads First)
-// Verified at: 2026-10-11T14:58:11.243Z
+// Total Tracks: 113 (Newest Uploads First)
+// Verified at: 2026-10-18T00:45:11.537Z
 
 export interface PlaylistItem {
   id: string;
@@ -37,6 +37,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 ];
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
+  {
+    "id": "14y1J7BFxBmFvkp529yi6xoLhhENiuNLO",
+    "originalFilename": "Raat Bhar│Arijit Singh│Shreya Ghoshal│Sajid Wajid│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Raat Bhar│Arijit Singh│Shreya Ghoshal│Sajid Wajid│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge × Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "05:49",
+    "seconds": 349,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "6.5 MB",
+    "date": "17 Oct 2026",
+    "uploadTime": 1792248261694,
+    "streamUrl": "/api/stream?id=14y1J7BFxBmFvkp529yi6xoLhhENiuNLO",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=14y1J7BFxBmFvkp529yi6xoLhhENiuNLO&export=download",
+    "thumb": "/covers/thumbs/14y1J7BFxBmFvkp529yi6xoLhhENiuNLO.jpg",
+    "hdThumb": "/covers/14y1J7BFxBmFvkp529yi6xoLhhENiuNLO.jpg",
+    "isPremiere": false
+  },
   {
     "id": "1cicjutdOXsG5wTmKRT0A_FLXhaFR921M",
     "originalFilename": "Tu Jo Mila│Pritam│K.K.│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
@@ -1426,8 +1445,8 @@ export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   },
   {
     "id": "1ddYs1OEZmSefz7p4bccSO-jeCC6QfljG",
-    "originalFilename": "Sunn Raha Hai Na Tu│Shreya Ghoshal��(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
-    "title": "Sunn Raha Hai Na Tu│Shreya Ghoshal��(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "originalFilename": "Sunn Raha Hai Na Tu│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Sunn Raha Hai Na Tu│Shreya Ghoshal│(Slowed + Reverb) By Beat Badge × Slowedfy",
     "artist": "Beat Badge × Slowedfy",
     "album": "Slowed & Reverb Master Collection",
     "duration": "06:04",
