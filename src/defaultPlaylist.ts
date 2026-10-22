@@ -38,6 +38,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "1Wju-7RAsN_yxLA7Zgg4l16X5jPyk9L9s",
+    "originalFilename": "Laal Dupatta│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Laal Dupatta│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge × Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "05:11",
+    "seconds": 311,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "5.9 MB",
+    "date": "19 Oct 2026",
+    "uploadTime": 1792371948624,
+    "streamUrl": "/api/stream?id=1Wju-7RAsN_yxLA7Zgg4l16X5jPyk9L9s",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=1Wju-7RAsN_yxLA7Zgg4l16X5jPyk9L9s&export=download",
+    "thumb": "/covers/thumbs/1Wju-7RAsN_yxLA7Zgg4l16X5jPyk9L9s.jpg",
+    "hdThumb": "/covers/1Wju-7RAsN_yxLA7Zgg4l16X5jPyk9L9s.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "14y1J7BFxBmFvkp529yi6xoLhhENiuNLO",
     "originalFilename": "Raat Bhar│Arijit Singh│Shreya Ghoshal│Sajid Wajid│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
     "title": "Raat Bhar│Arijit Singh│Shreya Ghoshal│Sajid Wajid│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy",
