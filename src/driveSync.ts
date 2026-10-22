@@ -266,8 +266,8 @@ function downloadFileStream(url: string, destPath: string, maxBytes = 0): Promis
   });
 }
 
-// Fetch byte range from URL directly into Buffer
-export function downloadFileRange(url: string, maxBytes = 6000000, redirectsRemaining = 5): Promise<Buffer> {
+// Fetch byte range from URL directly into Buffer (defaults to 10MB to cover high-res 3264x3264 embedded art)
+export function downloadFileRange(url: string, maxBytes = 10000000, redirectsRemaining = 5): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     let parsed: URL;
     try {
@@ -342,7 +342,7 @@ export function downloadFileRange(url: string, maxBytes = 6000000, redirectsRema
         try { req.destroy(); } catch (e) {}
         reject(new Error("Timeout"));
       }
-    }, 14000);
+    }, 15000);
   });
 }
 
@@ -376,18 +376,15 @@ export function extractId3Picture(buf: Buffer): { mime: string; data: Buffer } |
       }
     }
 
-    if (frameSize > 500 && frameSize < 15000000) {
+    if (frameSize > 500 && frameSize < 20000000) {
       const frameData = buf.slice(dataOffset, Math.min(dataOffset + frameSize, buf.length));
       // 1. Look for JPEG start marker
       const jpgStart = frameData.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
       if (jpgStart !== -1) {
         const lastJpgEnd = frameData.lastIndexOf(Buffer.from([0xff, 0xd9]));
-        if (lastJpgEnd > jpgStart) {
+        if (lastJpgEnd > jpgStart && lastJpgEnd - jpgStart > 2000) {
           const img = frameData.slice(jpgStart, lastJpgEnd + 2);
-          if (img.length > 2000) return { mime: "image/jpeg", data: img };
-        } else if (frameData.length >= frameSize - 100) {
-          const img = frameData.slice(jpgStart);
-          if (img.length > 2000) return { mime: "image/jpeg", data: img };
+          return { mime: "image/jpeg", data: img };
         }
       }
       // 2. Look for PNG start marker
@@ -396,24 +393,31 @@ export function extractId3Picture(buf: Buffer): { mime: string; data: Buffer } |
       if (pngStart !== -1) {
         const iend = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);
         const pngEnd = frameData.indexOf(iend, pngStart);
-        if (pngEnd !== -1) {
+        if (pngEnd !== -1 && pngEnd - pngStart > 2000) {
           const img = frameData.slice(pngStart, pngEnd + 8);
-          if (img.length > 2000) return { mime: "image/png", data: img };
+          return { mime: "image/png", data: img };
         }
       }
     }
   }
 
-  // Generic fallback if APIC header was non-standard
+  // Generic fallback if APIC header was non-standard: find JPEG magic bytes anywhere in buffer
   const jpgStart = buf.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
-  if (jpgStart !== -1 && jpgStart < 5000000) {
-    let lastJpgEnd = -1;
-    let pos = jpgStart;
-    while ((pos = buf.indexOf(Buffer.from([0xff, 0xd9]), pos + 1)) !== -1 && pos < 6000000) {
-      lastJpgEnd = pos;
-    }
+  if (jpgStart !== -1 && jpgStart < buf.length - 2000) {
+    const lastJpgEnd = buf.lastIndexOf(Buffer.from([0xff, 0xd9]));
     if (lastJpgEnd > jpgStart && lastJpgEnd - jpgStart > 2000) {
       return { mime: "image/jpeg", data: buf.slice(jpgStart, lastJpgEnd + 2) };
+    }
+  }
+
+  // Generic fallback for PNG magic bytes
+  const pngHeader = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const pngStart = buf.indexOf(pngHeader);
+  if (pngStart !== -1 && pngStart < buf.length - 2000) {
+    const iend = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);
+    const pngEnd = buf.lastIndexOf(iend);
+    if (pngEnd > pngStart && pngEnd - pngStart > 2000) {
+      return { mime: "image/png", data: buf.slice(pngStart, pngEnd + 8) };
     }
   }
 
@@ -540,7 +544,66 @@ async function doExtractEmbeddedCoverForTrack(
     };
   }
 
-  // 1. If companion image uploaded in Google Drive folder, download directly
+  // 1. FAST LOCAL EXTRACTION: If audio file exists on disk, extract embedded art via ffmpeg with 0ms network latency
+  const localAudioPath = path.join(AUDIO_CACHE_DIR, `${trackId}.mp3`);
+  const distAudioPath = path.join(process.cwd(), "dist", "audio_cache", `${trackId}.mp3`);
+  const existingAudio = (fs.existsSync(localAudioPath) && fs.statSync(localAudioPath).size > 50000)
+    ? localAudioPath
+    : ((fs.existsSync(distAudioPath) && fs.statSync(distAudioPath).size > 50000) ? distAudioPath : null);
+
+  if (existingAudio) {
+    try {
+      const cmd = `ffmpeg -y -v error -i "${existingAudio}" -an -vcodec copy "${coverPath}"`;
+      await execPromise(cmd, { timeout: 10000 });
+      if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
+        try {
+          const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "crop='min(iw,ih)':'min(iw,ih)',scale=200:200:flags=lanczos" "${thumbPath}"`;
+          await execPromise(thumbCmd, { timeout: 8000 });
+        } catch (eTh) {
+          fs.copyFileSync(coverPath, thumbPath);
+        }
+        syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+        syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+        console.log(`[DriveSync] 🎨 Fast ffmpeg extraction from cached MP3 for ${trackId}`);
+        return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+      }
+    } catch (eFfmpeg) {
+      try {
+        const transcodeCmd = `ffmpeg -y -v error -i "${existingAudio}" -an -vf "crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080:flags=lanczos" "${coverPath}"`;
+        await execPromise(transcodeCmd, { timeout: 10000 });
+        if (fs.existsSync(coverPath) && fs.statSync(coverPath).size > 1000) {
+          try {
+            const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "crop='min(iw,ih)':'min(iw,ih)',scale=200:200:flags=lanczos" "${thumbPath}"`;
+            await execPromise(thumbCmd, { timeout: 8000 });
+          } catch (eTh) {
+            fs.copyFileSync(coverPath, thumbPath);
+          }
+          syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+          syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+          return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+        }
+      } catch (eTrans) {}
+    }
+
+    try {
+      const buf = fs.readFileSync(existingAudio);
+      const pic = extractId3Picture(buf);
+      if (pic && pic.data && pic.data.length > 2000) {
+        fs.writeFileSync(coverPath, pic.data);
+        try {
+          const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "crop='min(iw,ih)':'min(iw,ih)',scale=200:200:flags=lanczos" "${thumbPath}"`;
+          await execPromise(thumbCmd, { timeout: 6000 });
+        } catch (eTh) {
+          fs.writeFileSync(thumbPath, pic.data);
+        }
+        syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
+        syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
+        return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
+      }
+    } catch (eBuf) {}
+  }
+
+  // 2. If companion image uploaded in Google Drive folder, download directly
   if (companionImageId) {
     const driveImgUrl = `https://drive.usercontent.google.com/download?id=${companionImageId}&export=download`;
     const tempImg = path.join(COVERS_DIR, `temp_${trackId}.img`);
@@ -561,15 +624,15 @@ async function doExtractEmbeddedCoverForTrack(
     }
   }
 
-  // 2. Pure Node.js direct ID3 APIC extraction from Google Drive stream (super-fast, zero external binaries)
+  // 3. Pure Node.js direct ID3 APIC extraction from Google Drive stream (downloads up to 10MB to cover high-res art)
   const driveAudioUrl = `https://drive.usercontent.google.com/download?id=${trackId}&export=download`;
   try {
-    const buf = await downloadFileRange(driveAudioUrl, 4000000);
+    const buf = await downloadFileRange(driveAudioUrl, 10000000);
     const pic = extractId3Picture(buf);
     if (pic && pic.data && pic.data.length > 2000) {
       fs.writeFileSync(coverPath, pic.data);
       try {
-        const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "crop='min(iw,ih)':'min(iw,ih)',scale=200:200" "${thumbPath}"`;
+        const thumbCmd = `ffmpeg -y -v error -i "${coverPath}" -vf "crop='min(iw,ih)':'min(iw,ih)',scale=200:200:flags=lanczos" "${thumbPath}"`;
         await execPromise(thumbCmd, { timeout: 6000 });
       } catch (eTh) {
         fs.writeFileSync(thumbPath, pic.data);
@@ -581,30 +644,9 @@ async function doExtractEmbeddedCoverForTrack(
     }
   } catch (eAp) {}
 
-  // 3. Try extracting attached picture (ID3 APIC) from local cached audio if available
-  const localAudioPath = path.join(AUDIO_CACHE_DIR, `${trackId}.mp3`);
-  const distAudioPath = path.join(process.cwd(), "dist", "audio_cache", `${trackId}.mp3`);
-  const existingAudio = (fs.existsSync(localAudioPath) && fs.statSync(localAudioPath).size > 50000)
-    ? localAudioPath
-    : ((fs.existsSync(distAudioPath) && fs.statSync(distAudioPath).size > 50000) ? distAudioPath : null);
-
-  if (existingAudio) {
-    try {
-      const buf = fs.readFileSync(existingAudio);
-      const pic = extractId3Picture(buf);
-      if (pic && pic.data && pic.data.length > 2000) {
-        fs.writeFileSync(coverPath, pic.data);
-        fs.writeFileSync(thumbPath, pic.data);
-        syncFileToDist(coverPath, DIST_COVERS_DIR, `${trackId}.jpg`);
-        syncFileToDist(thumbPath, DIST_THUMBS_DIR, `${trackId}.jpg`);
-        return { success: true, cover: `/covers/${trackId}.jpg`, thumb: `/covers/thumbs/${trackId}.jpg` };
-      }
-    } catch (e) {}
-  }
-
-  // 4. Download first 2.5MB of audio file from Drive and extract embedded cover
+  // 4. Download first 10MB of audio file from Drive and extract embedded cover with ffmpeg
   const tempAudioPath = path.join(AUDIO_CACHE_DIR, `part_${trackId}.mp3`);
-  const gotPartial = await downloadFileStream(driveAudioUrl, tempAudioPath, 2500000);
+  const gotPartial = await downloadFileStream(driveAudioUrl, tempAudioPath, 10000000);
 
   if (gotPartial) {
     try {

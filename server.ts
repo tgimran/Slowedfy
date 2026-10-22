@@ -854,7 +854,11 @@ async function startServer() {
     try {
       const playlist = getCachedDrivePlaylist();
       const track = playlist.find((t) => t.id === trackId);
-      const extRes = await extractEmbeddedCoverForTrack(trackId, track?.title || "", track?.artist || "");
+      const queryTitle = typeof req.query.title === "string" ? req.query.title : "";
+      const queryArtist = typeof req.query.artist === "string" ? req.query.artist : "";
+      const titleToUse = queryTitle || track?.title || "";
+      const artistToUse = queryArtist || track?.artist || "";
+      const extRes = await extractEmbeddedCoverForTrack(trackId, titleToUse, artistToUse);
       if (extRes.success) {
         const fileToSend = wantThumb && fs.existsSync(thumbPath) ? thumbPath : (fs.existsSync(fullPath) ? fullPath : thumbPath);
         if (fs.existsSync(fileToSend)) {

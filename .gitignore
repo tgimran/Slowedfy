@@ -6,3 +6,13 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Runtime caches and large binary media (auto-streamed/cached on-the-fly)
+public/audio_cache/
+public/covers/
+*.mp3
+*.wav
+*.m4a
+*.flac
+*.ogg
+public/drive_playlist_cache.json

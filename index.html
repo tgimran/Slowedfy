@@ -8,7 +8,7 @@
   <meta name="description" content="A liquid glass music player and nostalgic slowed + reverb experience with high-fidelity Google Drive master audio streaming and dynamic artwork atmosphere." />
   <meta property="og:title" content="Slowedfy" />
   <meta property="og:description" content="A liquid glass music player and nostalgic slowed + reverb experience with high-fidelity Google Drive master audio streaming and dynamic artwork atmosphere." />
-  <meta name="theme-color" content="#110707" />
+  <meta name="theme-color" content="#120609" />
   <link rel="manifest" href="/manifest.json" />
   <script>
     // Early global hook so YouTube IFrame API callback is never missed regardless of script timing or browser cache
@@ -125,18 +125,22 @@
       --accent-glow: rgba(16, 185, 129, 0.4);
     }
 
-    /* Theme 4: Sunset Velvet */
+    /* Theme: Sunset Velvet (Golden Hour Warmth) */
     [data-theme="sunset"] {
-      --bg-base: #110707;
-      --bg-surface: rgba(38, 18, 18, 0.68);
-      --bg-surface-elevated: rgba(54, 26, 26, 0.8);
-      --glass-border: rgba(245, 158, 11, 0.24);
+      --bg-base: #120609;
+      --bg-surface: rgba(36, 16, 20, 0.72);
+      --bg-surface-elevated: rgba(52, 24, 30, 0.84);
+      --glass-border: rgba(245, 158, 11, 0.28);
+      --glass-border-subtle: rgba(251, 146, 60, 0.14);
+      --glass-highlight: rgba(254, 215, 170, 0.28);
+      --glass-shadow: 0 12px 40px -10px rgba(0, 0, 0, 0.7), 0 0 1px 1px rgba(245, 158, 11, 0.12);
+      --glass-shadow-active: 0 18px 50px -8px rgba(0, 0, 0, 0.85), 0 0 25px rgba(245, 158, 11, 0.35);
       --accent-cyan: #fb923c;
       --accent-violet: #f43f5e;
       --accent-magenta: #e11d48;
       --accent-blue: #f59e0b;
       --accent-gradient: linear-gradient(135deg, #f59e0b 0%, #f43f5e 50%, #fb923c 100%);
-      --accent-glow: rgba(245, 158, 11, 0.4);
+      --accent-glow: rgba(245, 158, 11, 0.45);
     }
 
     /* Theme 5: Cosmic Lavender */
@@ -348,7 +352,7 @@
     }
 
     html[data-theme="sunset"] .bg-art-system {
-      background: radial-gradient(circle at 50% 22%, rgba(245, 158, 11, 0.18) 0%, rgba(244, 63, 94, 0.15) 45%, rgba(251, 146, 60, 0.08) 75%, #110707 95%), #110707;
+      background: radial-gradient(circle at 50% 20%, rgba(245, 158, 11, 0.24) 0%, rgba(244, 63, 94, 0.18) 42%, rgba(251, 146, 60, 0.10) 70%, #120609 95%), #120609;
     }
 
     html[data-theme="cosmic"] .bg-art-system {
@@ -2733,7 +2737,7 @@
        BACKGROUND THUMBNAIL ARTWORK SYSTEM (~15px Blur, Crossfade, Ambient Vignette)
        ========================================================================== -->
   <div class="bg-art-system" aria-hidden="true">
-    <div id="bg-layer-1" class="bg-layer active" style="background-image: url('https://i.ytimg.com/vi/CLnBx-V5lS4/hqdefault.jpg');"></div>
+    <div id="bg-layer-1" class="bg-layer active" style="background-image: url('/covers/14y1J7BFxBmFvkp529yi6xoLhhENiuNLO.jpg');"></div>
     <div id="bg-layer-2" class="bg-layer"></div>
     <div class="bg-vignette"></div>
   </div>
@@ -3134,6 +3138,13 @@
       <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">Select a visual atmospheric color scheme for your music experience:</p>
       
       <div class="theme-grid">
+        <!-- Theme: Sunset Velvet (Default) -->
+        <div class="theme-card-option active" data-theme-id="sunset">
+          <div class="theme-swatch-circle" style="background: linear-gradient(135deg, #f59e0b, #f43f5e, #fb923c);"></div>
+          <div class="theme-name-label">Sunset Velvet</div>
+          <div class="theme-desc-sub">Golden hour warmth (Default)</div>
+        </div>
+
         <!-- Theme: Dynamic Album Art (Playing Track Artwork) -->
         <div class="theme-card-option" data-theme-id="dynamic-art">
           <div class="theme-swatch-circle" style="background: linear-gradient(135deg, #ff007a 0%, #a855f7 33%, #00f0ff 66%, #10b981 100%);"></div>
@@ -3160,13 +3171,6 @@
           <div class="theme-swatch-circle" style="background: linear-gradient(135deg, #10b981, #06b6d4, #34d399);"></div>
           <div class="theme-name-label">Emerald Aurora</div>
           <div class="theme-desc-sub">Lush forest lo-fi</div>
-        </div>
-
-        <!-- Theme 4: Sunset Velvet (Default) -->
-        <div class="theme-card-option active" data-theme-id="sunset">
-          <div class="theme-swatch-circle" style="background: linear-gradient(135deg, #f59e0b, #f43f5e, #fb923c);"></div>
-          <div class="theme-name-label">Sunset Velvet</div>
-          <div class="theme-desc-sub">Golden hour warmth</div>
         </div>
 
         <!-- Theme 5: Cosmic Lavender -->
@@ -5607,7 +5611,7 @@
       buffered: 0,
       userInitiatedPause: false,
       isVideoMode: false,
-      currentTheme: 'sunset',
+      currentTheme: 'dynamic-art',
       dynamicBlur: 31,
       dynamicDarkness: 0,
       activeBgLayer: 1,
@@ -6000,12 +6004,14 @@
         return;
       }
 
+      if (!imgUrl) return;
+
       const targetLayer = state.activeBgLayer === 1 ? DOM.bgLayer2 : DOM.bgLayer1;
       const currentLayer = state.activeBgLayer === 1 ? DOM.bgLayer1 : DOM.bgLayer2;
 
       const img = new Image();
       img.decoding = "async";
-      const onDone = () => {
+      img.onload = () => {
         img.onload = null;
         img.onerror = null;
         if (state.currentTheme !== 'dynamic-art') return;
@@ -6014,8 +6020,19 @@
         currentLayer.classList.remove('active');
         state.activeBgLayer = state.activeBgLayer === 1 ? 2 : 1;
       };
-      img.onload = onDone;
-      img.onerror = onDone;
+      img.onerror = () => {
+        img.onload = null;
+        img.onerror = null;
+        if (state.currentTheme !== 'dynamic-art') return;
+        // If image failed and wasn't already calling the artwork API, try API route
+        const currentTrack = state.playlist && state.playlist[state.currentIndex];
+        if (currentTrack && !imgUrl.includes('/api/artwork')) {
+          const apiFallback = `/api/artwork?id=${encodeURIComponent(currentTrack.id)}`;
+          if (apiFallback !== imgUrl) {
+            updateBackgroundArtwork(apiFallback);
+          }
+        }
+      };
       img.src = imgUrl;
     }
 
@@ -6083,7 +6100,7 @@
         row.innerHTML = `
           <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
           <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
-            <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="if(!this.dataset.t){this.dataset.t='1';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&size=thumb';}else if(this.dataset.t==='1'){this.dataset.t='2';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&title='+encodeURIComponent('${encodeURIComponent(item.title)}');}" />
+            <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="if(!this.dataset.t){this.dataset.t='1';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&size=thumb';}else if(this.dataset.t==='1'){this.dataset.t='2';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&title='+encodeURIComponent('${encodeURIComponent(item.title)}');}else if(this.dataset.t==='2'){this.dataset.t='3';this.src='/assets/logo.png';}" />
             <div class="track-playing-eq">
               <div class="eq-bar"></div>
               <div class="eq-bar"></div>
@@ -6292,6 +6309,9 @@
           } else if (DOM.mainArtworkImg.dataset.retried === '1') {
             DOM.mainArtworkImg.dataset.retried = '2';
             DOM.mainArtworkImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&title=${encodeURIComponent(track.title)}`;
+          } else if (DOM.mainArtworkImg.dataset.retried === '2') {
+            DOM.mainArtworkImg.dataset.retried = '3';
+            DOM.mainArtworkImg.src = '/assets/logo.png';
           }
         };
         DOM.dockThumbImg.onerror = () => {
@@ -6301,6 +6321,9 @@
           } else if (DOM.dockThumbImg.dataset.retried === '1') {
             DOM.dockThumbImg.dataset.retried = '2';
             DOM.dockThumbImg.src = `/api/artwork?id=${encodeURIComponent(track.id)}&title=${encodeURIComponent(track.title)}`;
+          } else if (DOM.dockThumbImg.dataset.retried === '2') {
+            DOM.dockThumbImg.dataset.retried = '3';
+            DOM.dockThumbImg.src = '/assets/logo.png';
           }
         };
         DOM.mainArtworkImg.src = hdThumbUrl;
@@ -7289,11 +7312,11 @@
        DYNAMIC THEME ATMOSPHERE CONTROLLER
        ========================================================================== */
     const THEMES = [
+      { id: 'sunset', name: 'Sunset Velvet', icon: '🌅' },
       { id: 'dynamic-art', name: 'Dynamic Album Art', icon: '🎨' },
       { id: 'midnight', name: 'Midnight Cyan', icon: '🌌' },
       { id: 'cyberpunk', name: 'Cyberpunk Neon', icon: '⚡' },
       { id: 'emerald', name: 'Emerald Aurora', icon: '🌿' },
-      { id: 'sunset', name: 'Sunset Velvet', icon: '🌅' },
       { id: 'cosmic', name: 'Cosmic Dream', icon: '🔮' },
       { id: 'obsidian', name: 'Obsidian Silver', icon: '🪙' },
       { id: 'crimson', name: 'Crimson Rose', icon: '🌹' }
@@ -7326,7 +7349,7 @@
       const metaThemeColor = document.querySelector('meta[name="theme-color"]');
       if (metaThemeColor) {
         const themeColors = {
-          'sunset': '#110707',
+          'sunset': '#120609',
           'midnight': '#06080e',
           'cyberpunk': '#0d021a',
           'emerald': '#040e0b',
@@ -7335,7 +7358,7 @@
           'crimson': '#140307',
           'dynamic-art': '#06080e'
         };
-        metaThemeColor.setAttribute('content', themeColors[selected.id] || '#110707');
+        metaThemeColor.setAttribute('content', themeColors[selected.id] || '#120609');
       }
       
       if (selected.id === 'dynamic-art') {
@@ -7371,6 +7394,7 @@
       }
 
       try {
+        localStorage.setItem('slowedfy_theme_v3', selected.id);
         localStorage.setItem('slowedfy_theme_v2', selected.id);
         localStorage.setItem('slowedfy_theme', selected.id);
       } catch (e) {}
@@ -7403,15 +7427,15 @@
       applyDynamicSettings(savedBlur, savedDarkness, false);
 
       try {
-        let savedTheme = localStorage.getItem('slowedfy_theme_v2');
+        let savedTheme = localStorage.getItem('slowedfy_theme_v3');
         if (!savedTheme) {
-          const legacy = localStorage.getItem('slowedfy_theme');
-          if (legacy && legacy !== 'dynamic-art' && THEMES.some(t => t.id === legacy)) {
-            savedTheme = legacy;
+          const previousTheme = localStorage.getItem('slowedfy_theme_v2');
+          if (previousTheme && previousTheme !== 'dynamic-art' && THEMES.some(t => t.id === previousTheme)) {
+            savedTheme = previousTheme;
           } else {
             savedTheme = 'sunset';
           }
-          localStorage.setItem('slowedfy_theme_v2', savedTheme);
+          localStorage.setItem('slowedfy_theme_v3', savedTheme);
         }
         if (savedTheme && THEMES.some(t => t.id === savedTheme)) {
           applyTheme(savedTheme, false);
