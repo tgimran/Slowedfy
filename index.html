@@ -842,15 +842,114 @@
     .hero-tagline {
       font-size: 0.82rem;
       text-transform: uppercase;
-      letter-spacing: 0.15em;
+      letter-spacing: 0.16em;
       color: var(--accent-cyan);
       font-weight: 700;
-      margin-bottom: 0.35rem;
+      margin-bottom: 0.45rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
       opacity: 1;
+    }
+
+    .hero-tagline-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.24rem 0.85rem;
+      border-radius: 9999px;
+      background: rgba(78, 226, 236, 0.08);
+      border: 1px solid rgba(78, 226, 236, 0.24);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25), inset 0 0 12px rgba(78, 226, 236, 0.06);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tagline-prefix,
+    .tagline-suffix {
+      letter-spacing: 0.18em;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .tagline-dot {
+      display: inline-block;
+      width: 7.5px;
+      height: 7.5px;
+      border-radius: 50%;
+      background-color: var(--accent-cyan);
+      position: relative;
+      box-shadow: 0 0 8px var(--accent-cyan);
+      flex-shrink: 0;
+      vertical-align: middle;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+    }
+
+    .tagline-dot::before,
+    .tagline-dot::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 50%;
+      border: 1.5px solid var(--accent-cyan);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* Animated Dot: Active playing pulsation and expanding sonar waves */
+    body.is-playing .tagline-dot,
+    .hero-tagline.is-playing .tagline-dot {
+      animation: nowPlayingPulse 1.25s infinite ease-in-out;
+    }
+
+    body.is-playing .tagline-dot::before,
+    .hero-tagline.is-playing .tagline-dot::before {
+      animation: nowPlayingRadar 1.4s infinite cubic-bezier(0.15, 0.85, 0.35, 1);
+    }
+
+    body.is-playing .tagline-dot::after,
+    .hero-tagline.is-playing .tagline-dot::after {
+      animation: nowPlayingRadar 1.4s infinite cubic-bezier(0.15, 0.85, 0.35, 1) 0.7s;
+    }
+
+    body.is-playing .hero-tagline-badge,
+    .hero-tagline.is-playing .hero-tagline-badge {
+      background: rgba(78, 226, 236, 0.14);
+      border-color: rgba(78, 226, 236, 0.45);
+      box-shadow: 0 0 18px rgba(78, 226, 236, 0.25), inset 0 0 14px rgba(78, 226, 236, 0.12);
+    }
+
+    /* Paused: Soft resting state */
+    body:not(.is-playing) .tagline-dot {
+      opacity: 0.75;
+      transform: scale(0.95);
+      box-shadow: 0 0 5px var(--accent-cyan);
+    }
+
+    @keyframes nowPlayingPulse {
+      0%, 100% {
+        transform: scale(0.9);
+        box-shadow: 0 0 6px var(--accent-cyan);
+        opacity: 0.85;
+      }
+      50% {
+        transform: scale(1.4);
+        box-shadow: 0 0 14px var(--accent-cyan), 0 0 24px rgba(78, 226, 236, 0.75);
+        opacity: 1;
+      }
+    }
+
+    @keyframes nowPlayingRadar {
+      0% {
+        transform: scale(0.8);
+        opacity: 0.95;
+      }
+      65%, 100% {
+        transform: scale(2.8);
+        opacity: 0;
+      }
     }
 
     .hero-song-title {
@@ -2863,10 +2962,14 @@
         </div>
 
         <div class="track-hero-info">
-          <div class="hero-tagline">
-            <span>● NOW PLAYING</span>
+          <div class="hero-tagline" id="hero-tagline">
+            <span class="hero-tagline-badge" id="hero-tagline-badge">
+              <span class="tagline-prefix">NOW</span>
+              <span class="tagline-dot" id="hero-tagline-dot" aria-hidden="true"></span>
+              <span class="tagline-suffix">PLAYING</span>
+            </span>
           </div>
-          <h1 class="hero-song-title" id="hero-title">Raat Bhar│Arijit Singh│Shreya Ghoshal│Sajid Wajid│Kausar Munir│(Slowed + Reverb) By Beat Badge × Slowedfy</h1>
+          <h1 class="hero-song-title" id="hero-title">Laal Dupatta│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy</h1>
           <div class="hero-headphone-tip">
             <strong>🎧 Use Headphone For Better Experience 🎧</strong>
           </div>
@@ -6258,19 +6361,49 @@
           if (DOM.heroPremiereBadge) {
             DOM.heroPremiereBadge.style.display = 'none';
           }
-          if (DOM.heroTagline) {
-            const span = DOM.heroTagline.querySelector('span');
-            if (span) {
-              span.textContent = '● NOW PLAYING';
-              span.style.color = 'var(--accent-cyan)';
-            }
-          }
+          updateHeroTagline(false);
         }
 
         // Persist update so it stays live across sessions
         try {
           localStorage.setItem('slowedfy_drive_master_v9', JSON.stringify(state.playlist));
         } catch (e) {}
+      }
+    }
+
+    function updateHeroTagline(isPremiere = false) {
+      if (!DOM.heroTagline) return;
+      const badge = DOM.heroTagline.querySelector('.hero-tagline-badge') || DOM.heroTagline;
+      const prefix = DOM.heroTagline.querySelector('.tagline-prefix');
+      const suffix = DOM.heroTagline.querySelector('.tagline-suffix');
+      const dot = DOM.heroTagline.querySelector('.tagline-dot');
+
+      if (isPremiere) {
+        if (prefix) prefix.textContent = 'UPCOMING';
+        if (suffix) suffix.textContent = 'PREMIERE';
+        if (badge) {
+          badge.style.borderColor = 'rgba(248, 113, 113, 0.4)';
+          badge.style.background = 'rgba(248, 113, 113, 0.12)';
+          badge.style.color = '#f87171';
+          badge.style.boxShadow = '0 0 14px rgba(248, 113, 113, 0.2)';
+        }
+        if (dot) {
+          dot.style.background = '#f87171';
+          dot.style.boxShadow = '0 0 8px #f87171';
+        }
+      } else {
+        if (prefix) prefix.textContent = 'NOW';
+        if (suffix) suffix.textContent = 'PLAYING';
+        if (badge) {
+          badge.style.borderColor = '';
+          badge.style.background = '';
+          badge.style.color = 'var(--accent-cyan)';
+          badge.style.boxShadow = '';
+        }
+        if (dot) {
+          dot.style.background = 'var(--accent-cyan)';
+          dot.style.boxShadow = '0 0 8px var(--accent-cyan)';
+        }
       }
     }
 
@@ -6302,18 +6435,7 @@
         }
       }
 
-      if (DOM.heroTagline) {
-        const span = DOM.heroTagline.querySelector('span');
-        if (span) {
-          if (track.isPremiere) {
-            span.textContent = '● UPCOMING PREMIERE';
-            span.style.color = '#f87171';
-          } else {
-            span.textContent = '● NOW PLAYING';
-            span.style.color = 'var(--accent-cyan)';
-          }
-        }
-      }
+      updateHeroTagline(Boolean(track.isPremiere));
 
       // Resolve and apply high-res artwork with request ID check to prevent race conditions
       const reqId = ++currentArtworkRequestId;
@@ -6605,6 +6727,9 @@
     }
 
     function updatePlayPauseBtnUI(playing) {
+      if (DOM.heroTagline) {
+        DOM.heroTagline.classList.toggle('is-playing', playing);
+      }
       if (playing) {
         DOM.playIcon.style.display = 'none';
         DOM.pauseIcon.style.display = 'block';
