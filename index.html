@@ -867,11 +867,11 @@
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .tagline-prefix,
-    .tagline-suffix {
-      letter-spacing: 0.18em;
+    .tagline-text {
+      letter-spacing: 0.16em;
       font-weight: 800;
       line-height: 1;
+      transition: color 0.3s ease;
     }
 
     .tagline-dot {
@@ -921,11 +921,39 @@
       box-shadow: 0 0 18px rgba(78, 226, 236, 0.25), inset 0 0 14px rgba(78, 226, 236, 0.12);
     }
 
+    /* Paused: Soft amber/gold resting pill state */
+    .hero-tagline-badge.is-paused {
+      background: rgba(251, 191, 36, 0.1) !important;
+      border-color: rgba(251, 191, 36, 0.35) !important;
+      color: #fbbf24 !important;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.28), inset 0 0 10px rgba(251, 191, 36, 0.08) !important;
+    }
+
+    .hero-tagline-badge.is-paused .tagline-dot {
+      background-color: #fbbf24 !important;
+      box-shadow: 0 0 7px rgba(251, 191, 36, 0.85) !important;
+      opacity: 0.9;
+      transform: scale(0.95);
+      animation: none !important;
+    }
+
+    .hero-tagline-badge.is-paused .tagline-dot::before,
+    .hero-tagline-badge.is-paused .tagline-dot::after {
+      animation: none !important;
+      opacity: 0 !important;
+    }
+
     /* Paused: Soft resting state */
     body:not(.is-playing) .tagline-dot {
       opacity: 0.75;
       transform: scale(0.95);
       box-shadow: 0 0 5px var(--accent-cyan);
+    }
+
+    body:not(.is-playing) .tagline-dot::before,
+    body:not(.is-playing) .tagline-dot::after {
+      animation: none;
+      opacity: 0;
     }
 
     @keyframes nowPlayingPulse {
@@ -2964,9 +2992,8 @@
         <div class="track-hero-info">
           <div class="hero-tagline" id="hero-tagline">
             <span class="hero-tagline-badge" id="hero-tagline-badge">
-              <span class="tagline-prefix">NOW</span>
               <span class="tagline-dot" id="hero-tagline-dot" aria-hidden="true"></span>
-              <span class="tagline-suffix">PLAYING</span>
+              <span class="tagline-text" id="hero-tagline-text">NOW PLAYING</span>
             </span>
           </div>
           <h1 class="hero-song-title" id="hero-title">Laal Dupatta│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy</h1>
@@ -5724,6 +5751,7 @@
       filteredPlaylist: [...CURATED_PLAYLIST],
       currentIndex: 0,
       isPlaying: false,
+      hasUserInteracted: false,
       isMuted: false,
       volume: 85,
       isLooping: false,
@@ -6192,6 +6220,27 @@
     /* ==========================================================================
        OPTIMIZED PLAYLIST DOM MANAGEMENT (Built once, DOM pooled, event delegated)
        ========================================================================== */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    window.handleThumbError = function(img, id) {
+      if (!img || !id) return;
+      if (!img.dataset.t) {
+        img.dataset.t = '1';
+        img.src = '/api/artwork?id=' + encodeURIComponent(id) + '&size=thumb';
+      } else if (img.dataset.t === '1') {
+        img.dataset.t = '2';
+        img.src = '/assets/logo.png';
+      }
+    };
+
     const playlistItemElements = new Map();
     let currentActiveItemRow = null;
 
@@ -6217,12 +6266,16 @@
         row.setAttribute('role', 'listitem');
         row.setAttribute('tabindex', '0');
 
+        const safeTitle = escapeHtml(item.title);
+        const safeArtist = escapeHtml(item.artist);
+        const safeId = encodeURIComponent(item.id);
+        const safeDate = item.date ? escapeHtml(item.date) : '';
         const durDisplay = item.isPremiere ? 'PREMIERE' : (item.duration && !item.duration.includes(':60') ? item.duration : formatTime(item.seconds || 240));
 
         row.innerHTML = `
           <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
           <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
-            <img class="track-thumb" src="${ytThumb}" alt="${item.title}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="if(!this.dataset.t){this.dataset.t='1';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&size=thumb';}else if(this.dataset.t==='1'){this.dataset.t='2';this.src='/api/artwork?id='+encodeURIComponent('${item.id}')+'&title='+encodeURIComponent('${encodeURIComponent(item.title)}');}else if(this.dataset.t==='2'){this.dataset.t='3';this.src='/assets/logo.png';}" />
+            <img class="track-thumb" src="${ytThumb}" alt="${safeTitle}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="window.handleThumbError(this, '${safeId}')" />
             <div class="track-playing-eq">
               <div class="eq-bar"></div>
               <div class="eq-bar"></div>
@@ -6230,8 +6283,8 @@
             </div>
           </div>
           <div class="track-text-details">
-            <div class="track-item-title">${item.title} ${index === 0 ? '<span class="new-track-pill">NEW RELEASE</span>' : ''}</div>
-            <div class="track-item-artist">${item.artist} ${item.date ? `• <span class="track-date-subtle">${item.date}</span>` : ''}</div>
+            <div class="track-item-title">${safeTitle} ${index === 0 ? '<span class="new-track-pill">NEW RELEASE</span>' : ''}</div>
+            <div class="track-item-artist">${safeArtist} ${safeDate ? `• <span class="track-date-subtle">${safeDate}</span>` : ''}</div>
           </div>
           <div class="track-duration ${item.isPremiere ? 'track-premiere-duration' : ''}">${durDisplay}</div>
         `;
@@ -6366,22 +6419,22 @@
 
         // Persist update so it stays live across sessions
         try {
-          localStorage.setItem('slowedfy_drive_master_v9', JSON.stringify(state.playlist));
+          localStorage.setItem('slowedfy_drive_master_v10', JSON.stringify(state.playlist));
         } catch (e) {}
       }
     }
 
-    function updateHeroTagline(isPremiere = false) {
+    function updateHeroTagline(isPremiere = false, isPlaying = state.isPlaying) {
       if (!DOM.heroTagline) return;
+      DOM.heroTagline.classList.toggle('is-playing', Boolean(isPlaying));
       const badge = DOM.heroTagline.querySelector('.hero-tagline-badge') || DOM.heroTagline;
-      const prefix = DOM.heroTagline.querySelector('.tagline-prefix');
-      const suffix = DOM.heroTagline.querySelector('.tagline-suffix');
+      const textElem = DOM.heroTagline.querySelector('.tagline-text') || DOM.heroTagline.querySelector('span:not(.tagline-dot)');
       const dot = DOM.heroTagline.querySelector('.tagline-dot');
 
       if (isPremiere) {
-        if (prefix) prefix.textContent = 'UPCOMING';
-        if (suffix) suffix.textContent = 'PREMIERE';
+        if (textElem) textElem.textContent = 'UPCOMING PREMIERE';
         if (badge) {
+          badge.classList.remove('is-paused');
           badge.style.borderColor = 'rgba(248, 113, 113, 0.4)';
           badge.style.background = 'rgba(248, 113, 113, 0.12)';
           badge.style.color = '#f87171';
@@ -6391,10 +6444,25 @@
           dot.style.background = '#f87171';
           dot.style.boxShadow = '0 0 8px #f87171';
         }
-      } else {
-        if (prefix) prefix.textContent = 'NOW';
-        if (suffix) suffix.textContent = 'PLAYING';
+      } else if (!isPlaying && state.hasUserInteracted) {
+        // Paused state: Displays "PAUSED" inside the same pill shape
+        if (textElem) textElem.textContent = 'PAUSED';
         if (badge) {
+          badge.classList.add('is-paused');
+          badge.style.borderColor = '';
+          badge.style.background = '';
+          badge.style.color = '';
+          badge.style.boxShadow = '';
+        }
+        if (dot) {
+          dot.style.background = '';
+          dot.style.boxShadow = '';
+        }
+      } else {
+        // Playing state or initial load: Displays "NOW PLAYING" with animated pulsing dot
+        if (textElem) textElem.textContent = 'NOW PLAYING';
+        if (badge) {
+          badge.classList.remove('is-paused');
           badge.style.borderColor = '';
           badge.style.background = '';
           badge.style.color = 'var(--accent-cyan)';
@@ -6435,7 +6503,7 @@
         }
       }
 
-      updateHeroTagline(Boolean(track.isPremiere));
+      updateHeroTagline(Boolean(track.isPremiere), state.isPlaying);
 
       // Resolve and apply high-res artwork with request ID check to prevent race conditions
       const reqId = ++currentArtworkRequestId;
@@ -6727,9 +6795,10 @@
     }
 
     function updatePlayPauseBtnUI(playing) {
-      if (DOM.heroTagline) {
-        DOM.heroTagline.classList.toggle('is-playing', playing);
-      }
+      state.hasUserInteracted = true;
+      const curTrack = state.playlist && state.playlist[state.currentIndex];
+      updateHeroTagline(Boolean(curTrack && curTrack.isPremiere), playing);
+
       if (playing) {
         DOM.playIcon.style.display = 'none';
         DOM.pauseIcon.style.display = 'block';
@@ -8312,7 +8381,7 @@
             state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_drive_master_v9', JSON.stringify(mergedPlaylist));
+                localStorage.setItem('slowedfy_drive_master_v10', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -8437,7 +8506,7 @@
         state.originalPlaylist = [...latest];
         if (state.activePlaylistId === PLAYLIST_ID) {
           try {
-            localStorage.setItem('slowedfy_drive_master_v9', JSON.stringify(latest));
+            localStorage.setItem('slowedfy_drive_master_v10', JSON.stringify(latest));
           } catch (e) {}
         }
 
@@ -8652,9 +8721,9 @@
         localStorage.removeItem('slowedfy_drive_master_v4');
         localStorage.removeItem('slowedfy_drive_master_v5'); // Invalidate old cache to ensure verified embedded artwork
         localStorage.removeItem('slowedfy_drive_master_v6'); // Invalidate v6 so live users always receive newest synced tracks
-        localStorage.removeItem('slowedfy_drive_master_v7'); // Invalidate v7 to ensure brand new added songs publish immediately
-        localStorage.removeItem('slowedfy_drive_master_v8'); // Invalidate v8 so newly added song appears immediately
-        const saved = localStorage.getItem('slowedfy_drive_master_v9');
+        localStorage.removeItem('slowedfy_drive_master_v8');
+        localStorage.removeItem('slowedfy_drive_master_v9'); // Invalidate v9 so all users immediately get the newest release
+        const saved = localStorage.getItem('slowedfy_drive_master_v10');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {

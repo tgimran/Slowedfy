@@ -671,7 +671,27 @@ async function startServer() {
       requestHeaders["Range"] = rangeHeader;
     }
 
-    const streamFromUrl = (currentUrl: string, redirectsRemaining = 5) => {
+    let activeTmpPath: string | null = null;
+    let activeFileStream: fs.WriteStream | null = null;
+
+    const cleanupActiveStream = () => {
+      if (activeFileStream) {
+        try { activeFileStream.end(); } catch (e) {}
+        activeFileStream = null;
+      }
+      if (activeTmpPath) {
+        try {
+          if (fs.existsSync(activeTmpPath)) fs.unlinkSync(activeTmpPath);
+        } catch (e) {}
+        activeTmpPath = null;
+      }
+    };
+
+    req.on("close", () => {
+      cleanupActiveStream();
+    });
+
+    const streamFromUrl = (currentUrl: string, redirectsRemaining = 4) => {
       const parsedUrl = new URL(currentUrl);
       const isHttps = parsedUrl.protocol === "https:";
       const transport = isHttps ? https : http;
@@ -715,7 +735,10 @@ async function startServer() {
         const isFromStart = !rangeHeader || rangeHeader === "bytes=0-" || rangeHeader.startsWith("bytes=0-");
         if (isFromStart && (statusCode === 200 || statusCode === 206)) {
           const tmpPath = localCachePath + ".tmp_" + Date.now();
+          activeTmpPath = tmpPath;
           const fileStream = fs.createWriteStream(tmpPath);
+          activeFileStream = fileStream;
+
           driveRes.on("data", (chunk) => {
             fileStream.write(chunk);
           });
@@ -731,11 +754,12 @@ async function startServer() {
                   fs.unlinkSync(tmpPath);
                 }
               } catch (e) {}
+              activeTmpPath = null;
+              activeFileStream = null;
             });
           });
           driveRes.on("error", () => {
-            fileStream.end();
-            try { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); } catch (e) {}
+            cleanupActiveStream();
           });
         }
 
@@ -743,6 +767,7 @@ async function startServer() {
       });
 
       driveReq.setTimeout(15000, () => {
+        cleanupActiveStream();
         driveReq.destroy();
         if (!res.headersSent) {
           res.status(504).send("Stream Gateway Timeout");
@@ -750,6 +775,7 @@ async function startServer() {
       });
 
       driveReq.on("error", (err) => {
+        cleanupActiveStream();
         console.error(`[Stream Proxy] Error streaming file ${fileId}:`, err.message);
         if (!res.headersSent) {
           res.status(502).send("Streaming error");
@@ -757,6 +783,7 @@ async function startServer() {
       });
 
       req.on("close", () => {
+        cleanupActiveStream();
         driveReq.destroy();
       });
     };
@@ -1084,6 +1111,19 @@ async function startServer() {
       isDriveSyncing = false;
     }
   };
+
+  // Clean any leftover orphaned tmp files on startup
+  try {
+    const audioCacheDir = path.join(process.cwd(), "public", "audio_cache");
+    if (fs.existsSync(audioCacheDir)) {
+      const files = fs.readdirSync(audioCacheDir);
+      for (const f of files) {
+        if (f.includes(".tmp_")) {
+          try { fs.unlinkSync(path.join(audioCacheDir, f)); } catch (e) {}
+        }
+      }
+    }
+  } catch (e) {}
 
   // Immediate sync on startup
   pollDrive();
