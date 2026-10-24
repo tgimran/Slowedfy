@@ -38,6 +38,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "12lptwYLXVw2z4y4mNaRtCDLwMuuryj_g",
+    "originalFilename": "Har Kisike Dil Mein│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Har Kisike Dil Mein│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge × Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "06:06",
+    "seconds": 366,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "7.0 MB",
+    "date": "24 Oct 2026",
+    "uploadTime": 1792812275317,
+    "streamUrl": "/api/stream?id=12lptwYLXVw2z4y4mNaRtCDLwMuuryj_g",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=12lptwYLXVw2z4y4mNaRtCDLwMuuryj_g&export=download",
+    "thumb": "/covers/thumbs/12lptwYLXVw2z4y4mNaRtCDLwMuuryj_g.jpg",
+    "hdThumb": "/covers/12lptwYLXVw2z4y4mNaRtCDLwMuuryj_g.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "1Wju-7RAsN_yxLA7Zgg4l16X5jPyk9L9s",
     "originalFilename": "Laal Dupatta│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
     "title": "Laal Dupatta│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy",
