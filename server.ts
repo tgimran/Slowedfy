@@ -598,7 +598,7 @@ async function getLatestPlaylist(
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
 
@@ -1125,11 +1125,6 @@ async function startServer() {
     }
   } catch (e) {}
 
-  // Immediate sync on startup
-  pollDrive();
-  // Continuous automated sync every 5 seconds!
-  setInterval(pollDrive, 5000);
-
   // Serve static public assets (manifest, sw, icons, logo)
   app.use(express.static(path.join(process.cwd(), "public")));
 
@@ -1147,10 +1142,10 @@ async function startServer() {
     res.sendFile(swPath);
   });
 
-  // Vite middleware for development
+  // Vite middleware for development (with HMR disabled per environment guidelines)
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: "spa",
     });
     app.use(vite.middlewares);
@@ -1164,6 +1159,11 @@ async function startServer() {
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Slowedfy Server running on http://0.0.0.0:${PORT}`);
+    // Start background Drive sync asynchronously after server is ready
+    setTimeout(() => {
+      pollDrive();
+      setInterval(pollDrive, 60000);
+    }, 3000);
   });
 }
 

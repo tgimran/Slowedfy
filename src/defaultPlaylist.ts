@@ -38,6 +38,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "1-DNj4f5ySMMB0W1Ouz3Ec31aUQUbUEk6",
+    "originalFilename": "Kabhi Kabhi by AUR│کبھی کبھی│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Kabhi Kabhi by AUR│کبھی کبھی│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "AUR│کبھی کبھی│",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "03:56",
+    "seconds": 236,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "4.5 MB",
+    "date": "27 Oct 2026",
+    "uploadTime": 1793096853497,
+    "streamUrl": "/api/stream?id=1-DNj4f5ySMMB0W1Ouz3Ec31aUQUbUEk6",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=1-DNj4f5ySMMB0W1Ouz3Ec31aUQUbUEk6&export=download",
+    "thumb": "/covers/thumbs/1-DNj4f5ySMMB0W1Ouz3Ec31aUQUbUEk6.jpg",
+    "hdThumb": "/covers/1-DNj4f5ySMMB0W1Ouz3Ec31aUQUbUEk6.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "12lptwYLXVw2z4y4mNaRtCDLwMuuryj_g",
     "originalFilename": "Har Kisike Dil Mein│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
     "title": "Har Kisike Dil Mein│Udit Narayan│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy",
