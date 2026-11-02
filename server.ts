@@ -252,10 +252,7 @@ function parseVideoRenderer(pvr: any, seenIds: Set<string>): PlaylistItem | null
     isPremiere = false;
   }
 
-  let artist = "Slowedfy";
-  if (title.includes("By Beat Badge × GW IMRAN") || title.includes("GW IMRAN")) {
-    artist = "GW IMRAN";
-  }
+  const artist = "Beat Badge x Slowedfy";
 
   let sec = lengthSec;
   if (!sec && lengthText && lengthText.includes(":")) {
@@ -460,10 +457,7 @@ async function fetchYouTubeRssVideos(playlistId: string): Promise<PlaylistItem[]
 
       seen.add(vid);
 
-      let artist = "Slowedfy";
-      if (title.includes("By Beat Badge × GW IMRAN") || title.includes("GW IMRAN")) {
-        artist = "GW IMRAN";
-      }
+      const artist = "Beat Badge x Slowedfy";
 
       videos.push({
         id: vid,
@@ -495,9 +489,13 @@ async function getLatestPlaylist(
       await syncGoogleDriveFolder(DEFAULT_DRIVE_FOLDER_ID).catch(() => {});
     }
     const driveList = getCachedDrivePlaylist();
+    const mapped = (driveList.length > 0 ? driveList : OFFICIAL_PLAYLIST).map((t) => ({
+      ...t,
+      artist: "Beat Badge x Slowedfy",
+    }));
     return {
-      playlist: (driveList.length > 0 ? driveList : OFFICIAL_PLAYLIST) as PlaylistItem[],
-      title: "Slowedfy Master Library (Beat Badge × Slowedfy)",
+      playlist: mapped as PlaylistItem[],
+      title: "Slowedfy Master Library (Beat Badge x Slowedfy)",
       author: "Slowedfy",
       lastFetchTime: getLastSyncTime(),
     };
@@ -589,8 +587,8 @@ async function getLatestPlaylist(
   }
 
   return {
-    playlist: OFFICIAL_PLAYLIST as PlaylistItem[],
-    title: "Slowedfy Master Library (Beat Badge × Slowedfy)",
+    playlist: (OFFICIAL_PLAYLIST as PlaylistItem[]).map((t) => ({ ...t, artist: "Beat Badge x Slowedfy" })),
+    title: "Slowedfy Master Library (Beat Badge x Slowedfy)",
     author: "Slowedfy",
     lastFetchTime: now,
   };
@@ -993,7 +991,7 @@ async function startServer() {
       presets: [
         {
           id: DEFAULT_DRIVE_FOLDER_ID,
-          title: "Slowedfy Master Library (Beat Badge × Slowedfy)",
+          title: "Slowedfy Master Library (Beat Badge x Slowedfy)",
           genre: "Slowed + Reverb Google Drive Master Audio",
           isDefault: true,
           badge: "Drive Master",

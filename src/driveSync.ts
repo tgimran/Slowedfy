@@ -49,18 +49,8 @@ export function getDisplayedTitle(rawName: string): string {
 /**
  * Extract artist information from the filename when present, or fallback to "Slowedfy".
  */
-export function extractArtist(rawName: string): string {
-  const clean = getDisplayedTitle(rawName);
-  const byMatch = clean.match(/By\s+([^()]+)/i);
-  if (byMatch) return byMatch[1].trim();
-
-  const pipeParts = clean.split(/[│｜|]/).map((s) => s.trim());
-  if (pipeParts.length >= 2) return pipeParts[1];
-
-  const dashMatch = clean.match(/^([^-]+?)\s*-\s*(.+)$/);
-  if (dashMatch) return dashMatch[1].trim();
-
-  return "Slowedfy";
+export function extractArtist(_rawName?: string): string {
+  return "Beat Badge x Slowedfy";
 }
 
 export interface SkippedFileDetail {
@@ -83,14 +73,17 @@ export interface SyncSummary {
   syncedAt: string;
 }
 
-let cachedDrivePlaylist: PlaylistItem[] = [...OFFICIAL_PLAYLIST];
+let cachedDrivePlaylist: PlaylistItem[] = OFFICIAL_PLAYLIST.map((t) => ({ ...t, artist: "Beat Badge x Slowedfy" }));
 try {
   const diskCacheFile = path.join(process.cwd(), "public", "drive_playlist_cache.json");
   if (fs.existsSync(diskCacheFile)) {
     const raw = fs.readFileSync(diskCacheFile, "utf-8");
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
-      cachedDrivePlaylist = parsed;
+      cachedDrivePlaylist = parsed.map((t: PlaylistItem) => ({
+        ...t,
+        artist: "Beat Badge x Slowedfy",
+      }));
     }
   }
 } catch (e) {}
@@ -111,7 +104,10 @@ let lastSyncSummary: SyncSummary = {
 };
 
 export function getCachedDrivePlaylist(): PlaylistItem[] {
-  return cachedDrivePlaylist;
+  return cachedDrivePlaylist.map((t) => ({
+    ...t,
+    artist: "Beat Badge x Slowedfy",
+  }));
 }
 
 export function getLastSyncTime(): number {
@@ -1039,7 +1035,7 @@ async function doSyncGoogleDriveFolder(
         id: f.id,
         originalFilename: f.name,
         title,
-        artist,
+        artist: "Beat Badge x Slowedfy",
         album: "Slowed & Reverb Master Collection",
         duration: durationFormatted,
         seconds: durationSec,
