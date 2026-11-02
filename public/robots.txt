@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /favicon.ico
+Allow: /favicon*.png
+Allow: /apple-touch-icon*.png
+Allow: /logo*.png
+Allow: /og-*.jpg
+Allow: /og-*.png
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Favicon
+Allow: /

@@ -1123,6 +1123,20 @@ async function startServer() {
     }
   } catch (e) {}
 
+  // Googlebot & YouTube crawler explicit routes for favicon and robots.txt
+  app.get("/favicon.ico", (_req, res) => {
+    res.setHeader("Content-Type", "image/x-icon");
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.sendFile(path.join(process.cwd(), "public", "favicon.ico"));
+  });
+
+  app.get("/robots.txt", (_req, res) => {
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.sendFile(path.join(process.cwd(), "public", "robots.txt"));
+  });
+
   // Serve static public assets (manifest, sw, icons, logo)
   app.use(express.static(path.join(process.cwd(), "public")));
 
