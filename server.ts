@@ -1140,18 +1140,55 @@ async function startServer() {
     res.sendFile(swPath);
   });
 
+  // Dynamic origin resolver so WhatsApp, Facebook, Instagram, Twitter/X scrapers receive absolute preview URLs
+  const getHtmlWithDynamicOrigin = (req: express.Request, rawHtml: string): string => {
+    const forwardedProto = req.headers["x-forwarded-proto"];
+    const proto = typeof forwardedProto === "string" ? forwardedProto.split(",")[0].trim() : (req.secure ? "https" : "https");
+    const host = req.get("host") || "slowedfy.com";
+    const origin = `${proto}://${host}`;
+    return rawHtml
+      .replace(/https:\/\/slowedfy\.com\//g, `${origin}/`)
+      .replace(/https:\/\/slowedfy\.com/g, origin);
+  };
+
   // Vite middleware for development (with HMR disabled per environment guidelines)
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { middlewareMode: true, hmr: false },
-      appType: "spa",
+      server: { middlewareMode: true, hmr: false, allowedHosts: true },
+      appType: "custom",
     });
     app.use(vite.middlewares);
+
+    app.get("*", async (req, res, next) => {
+      if (req.path.startsWith("/api/") || path.extname(req.path)) {
+        return next();
+      }
+      try {
+        const templatePath = path.join(process.cwd(), "index.html");
+        let template = fs.readFileSync(templatePath, "utf-8");
+        template = await vite.transformIndexHtml(req.originalUrl, template);
+        const finalHtml = getHtmlWithDynamicOrigin(req, template);
+        res.status(200).set({ "Content-Type": "text/html; charset=utf-8" }).send(finalHtml);
+      } catch (e: any) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+    app.use(express.static(distPath, { index: false }));
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api/") || path.extname(req.path)) {
+        return next();
+      }
+      try {
+        const distIndexPath = path.join(distPath, "index.html");
+        let template = fs.readFileSync(distIndexPath, "utf-8");
+        const finalHtml = getHtmlWithDynamicOrigin(req, template);
+        res.status(200).set({ "Content-Type": "text/html; charset=utf-8" }).send(finalHtml);
+      } catch (e) {
+        next(e);
+      }
     });
   }
 
