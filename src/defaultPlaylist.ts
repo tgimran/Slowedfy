@@ -38,6 +38,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "1trR7PTnvrPwcJDXdU3dEWSYe2-O973PW",
+    "originalFilename": "Raastah by AUR ft. Taimour Baig │راستہ │(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Raastah by AUR ft. Taimour Baig │راستہ │(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge x Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "03:46",
+    "seconds": 226,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "4.3 MB",
+    "date": "2 Nov 2026",
+    "uploadTime": 1793629453773,
+    "streamUrl": "/api/stream?id=1trR7PTnvrPwcJDXdU3dEWSYe2-O973PW",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=1trR7PTnvrPwcJDXdU3dEWSYe2-O973PW&export=download",
+    "thumb": "/covers/thumbs/1trR7PTnvrPwcJDXdU3dEWSYe2-O973PW.jpg",
+    "hdThumb": "/covers/1trR7PTnvrPwcJDXdU3dEWSYe2-O973PW.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "1-DNj4f5ySMMB0W1Ouz3Ec31aUQUbUEk6",
     "originalFilename": "Kabhi Kabhi by AUR│کبھی کبھی│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
     "title": "Kabhi Kabhi by AUR│کبھی کبھی│(Slowed + Reverb) By Beat Badge × Slowedfy",
