@@ -1520,43 +1520,224 @@
       animation: spin-sync 0.8s linear infinite;
     }
 
-    /* Google Drive Pill Button */
-    .drive-folder-pill-btn {
+    /* ==========================================================================
+       SLOWEDFY AUDIENCE & REAL-TIME PRESENCE PILL CLUSTER
+       ========================================================================== */
+    .audience-stats-cluster {
       display: inline-flex;
       align-items: center;
-      gap: 6.5px;
-      padding: 4px 12px 4px 9px;
-      height: 28px;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+
+    /* Monthly Audience Pill */
+    .monthly-audience-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3.5px 11px 3.5px 9px;
+      height: 29px;
       border-radius: 9999px;
       background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.15);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       color: #e5e7eb;
-      font-size: 0.72rem;
-      font-weight: 600;
       font-family: var(--font-display, inherit);
-      text-decoration: none;
       white-space: nowrap;
-      transition: all 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: all 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      user-select: none;
+      cursor: default;
     }
-    .drive-folder-pill-btn:hover {
-      background: rgba(255, 255, 255, 0.11);
-      border-color: rgba(78, 226, 236, 0.5);
-      color: #ffffff;
-      box-shadow: 0 0 14px rgba(78, 226, 236, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+    .monthly-audience-pill:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(255, 75, 120, 0.45);
+      box-shadow: 0 0 16px rgba(255, 75, 120, 0.2), 0 4px 12px rgba(0, 0, 0, 0.35);
       transform: translateY(-1px);
     }
-    .drive-folder-pill-btn:active {
-      transform: scale(0.97);
+    .monthly-audience-icon {
+      width: 14px;
+      height: 14px;
+      color: #ff5e85;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 6px rgba(255, 94, 133, 0.5));
     }
-    .drive-folder-pill-btn .gdrive-pill-logo {
-      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
-      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    .monthly-audience-info {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 4.5px;
     }
-    .drive-folder-pill-btn:hover .gdrive-pill-logo {
-      transform: scale(1.12) rotate(4deg);
+    .monthly-audience-number {
+      font-size: 0.82rem;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+    }
+    .monthly-audience-caption {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: rgba(229, 231, 235, 0.78);
+      letter-spacing: 0.01em;
+      text-transform: capitalize;
+    }
+
+    /* Active Users Pill & Toggle */
+    .active-users-pill-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 6px 3px 8px;
+      height: 29px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: all 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+      user-select: none;
+    }
+    .active-users-pill-toggle:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(16, 185, 129, 0.4);
+    }
+    .active-users-pill-toggle.is-off {
+      padding: 3px 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.09);
+    }
+    .active-users-pill-toggle.is-off:hover {
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Active users live badge */
+    .active-users-data-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: opacity 0.2s ease, max-width 0.25s ease;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .active-users-pill-toggle.is-off .active-users-data-badge {
+      display: none !important;
+    }
+
+    /* Beacon pulse */
+    .active-pulse-beacon {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 7.5px;
+      height: 7.5px;
+      margin-right: 1px;
+    }
+    .active-beacon-dot {
+      width: 6.5px;
+      height: 6.5px;
+      border-radius: 9999px;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+    .active-beacon-ring {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.7);
+      animation: beacon-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    @keyframes beacon-ping {
+      0% {
+        transform: scale(0.9);
+        opacity: 0.8;
+      }
+      75%, 100% {
+        transform: scale(2.8);
+        opacity: 0;
+      }
+    }
+
+    .active-users-num {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #34d399;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.01em;
+    }
+    .active-users-txt {
+      font-size: 0.66rem;
+      font-weight: 600;
+      color: rgba(229, 231, 235, 0.75);
+      margin-right: 1px;
+    }
+
+    /* Pill-shaped ON/OFF Toggle Switch */
+    .active-toggle-switch-btn {
+      background: transparent;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      outline: none;
+    }
+    .active-toggle-track {
+      position: relative;
+      display: inline-block;
+      width: 28px;
+      height: 15px;
+      border-radius: 9999px;
+      background: rgba(16, 185, 129, 0.35);
+      border: 1px solid rgba(16, 185, 129, 0.6);
+      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+    .active-toggle-thumb {
+      position: absolute;
+      top: 1.5px;
+      left: 14.5px;
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      background: #10b981;
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.8), 0 1px 2px rgba(0, 0, 0, 0.4);
+      transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .active-users-pill-toggle.is-off .active-toggle-track {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .active-users-pill-toggle.is-off .active-toggle-thumb {
+      left: 2px;
+      background: rgba(255, 255, 255, 0.4);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+
+    @media (max-width: 480px) {
+      .audience-stats-cluster {
+        gap: 4px;
+      }
+      .monthly-audience-pill {
+        padding: 3px 8px 3px 7px;
+        height: 26px;
+      }
+      .monthly-audience-caption {
+        display: none;
+      }
+      .active-users-pill-toggle {
+        height: 26px;
+        padding: 2.5px 5px 2.5px 7px;
+      }
+      .active-users-txt {
+        display: none;
+      }
     }
 
     .new-track-pill {
@@ -3091,22 +3272,44 @@
                 </svg>
                 <span id="publish-btn-text">Update & Publish</span>
               </button>
-              <a href="https://drive.google.com/drive/folders/194R85uwyR_UyKRn6RC9xGsmN87kNC4bF" id="active-yt-playlist-link" class="drive-folder-pill-btn" target="_blank" rel="noopener noreferrer" title="Open Master Google Drive Folder">
-                <svg viewBox="0 0 87.3 78" width="15" height="13.5" class="gdrive-pill-logo" aria-hidden="true">
-                  <path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/>
-                  <path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44c-.8 1.4-1.2 2.95-1.2 4.5h27.5z" fill="#00ac47"/>
-                  <path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.5l5.85 10.15z" fill="#ea4335"/>
-                  <path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/>
-                  <path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/>
-                  <path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/>
-                </svg>
-                <span>Drive Folder</span>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6; margin-left: 1px;">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                  <polyline points="15 3 21 3 21 9"/>
-                  <line x1="10" y1="14" x2="21" y2="3"/>
-                </svg>
-              </a>
+              <!-- Slowedfy Live Audience & Active Users Cluster -->
+              <div class="audience-stats-cluster" id="audience-stats-cluster">
+                
+                <!-- Pill-shaped Active Users ON/OFF Toggle & Live Counter -->
+                <div class="active-users-pill-toggle active" id="active-users-pill-toggle" title="Active Users: ON (Click switch to hide)">
+                  <!-- Live indicator dot & count (visible when ON) -->
+                  <div class="active-users-data-badge" id="active-users-data-badge">
+                    <span class="active-pulse-beacon" aria-hidden="true">
+                      <span class="active-beacon-dot"></span>
+                      <span class="active-beacon-ring"></span>
+                    </span>
+                    <span class="active-users-num" id="active-users-display-num">1</span>
+                    <span class="active-users-txt">Active</span>
+                  </div>
+
+                  <!-- ON/OFF Switch Pill -->
+                  <button type="button" class="active-toggle-switch-btn" id="active-toggle-switch-btn" role="switch" aria-checked="true" aria-label="Toggle active users count visibility" title="Toggle Active Users Count (Currently ON)">
+                    <span class="active-toggle-track">
+                      <span class="active-toggle-thumb"></span>
+                    </span>
+                  </button>
+                </div>
+
+                <!-- Monthly Audience Counter Pill -->
+                <div class="monthly-audience-pill" id="monthly-audience-pill" title="Unique listeners this month (Auto-resets each calendar month)">
+                  <svg class="monthly-audience-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  <div class="monthly-audience-info">
+                    <span class="monthly-audience-number" id="monthly-audience-display-num">1</span>
+                    <span class="monthly-audience-caption">Monthly Audience</span>
+                  </div>
+                </div>
+
+              </div>
             </div>
           </div>
 
@@ -8719,6 +8922,14 @@
 
           eventSource.addEventListener('update', (e) => handleIncomingPayload(e.data));
           eventSource.addEventListener('init', (e) => handleIncomingPayload(e.data));
+          eventSource.addEventListener('analytics', (e) => {
+            try {
+              const data = JSON.parse(e.data);
+              if (data && typeof data.monthlyAudience === 'number' && window.Analytics) {
+                window.Analytics.updateUI(data.monthlyAudience, data.activeUsers);
+              }
+            } catch (err) {}
+          });
           eventSource.onmessage = (e) => handleIncomingPayload(e.data);
 
           eventSource.onerror = () => {
@@ -8793,6 +9004,199 @@
         console.warn('Could not load presets list:', e);
       }
     }
+
+    /* ==========================================================================
+       SLOWEDFY REAL-TIME AUDIENCE & ACTIVE USERS CLIENT
+       ========================================================================== */
+    const Analytics = {
+      visitorId: '',
+      sessionId: '',
+      isActiveUsersVisible: true,
+      heartbeatInterval: null,
+      lastStats: { monthlyAudience: 0, activeUsers: 0 },
+
+      getOrCreateVisitorId() {
+        try {
+          let vid = localStorage.getItem('slowedfy_vid');
+          if (!vid || typeof vid !== 'string' || vid.length < 8) {
+            vid = 'svid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 11) + Math.random().toString(36).slice(2, 11);
+            localStorage.setItem('slowedfy_vid', vid);
+          }
+          return vid;
+        } catch (e) {
+          return 'svid_mem_' + Date.now().toString(36);
+        }
+      },
+
+      getOrCreateSessionId() {
+        try {
+          let sid = sessionStorage.getItem('slowedfy_sid');
+          if (!sid || typeof sid !== 'string' || sid.length < 8) {
+            sid = 'ssid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 11);
+            sessionStorage.setItem('slowedfy_sid', sid);
+          }
+          return sid;
+        } catch (e) {
+          return 'ssid_mem_' + Date.now().toString(36);
+        }
+      },
+
+      init() {
+        this.visitorId = this.getOrCreateVisitorId();
+        this.sessionId = this.getOrCreateSessionId();
+
+        // Restore saved toggle preference (default ON)
+        try {
+          const savedToggle = localStorage.getItem('slowedfy_active_users_toggle');
+          this.isActiveUsersVisible = savedToggle !== 'off';
+        } catch (e) {
+          this.isActiveUsersVisible = true;
+        }
+        this.applyToggleUI(this.isActiveUsersVisible);
+
+        // Setup toggle button event listener
+        const toggleBtn = document.getElementById('active-toggle-switch-btn');
+        const toggleContainer = document.getElementById('active-users-pill-toggle');
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleActiveUsers();
+          });
+        }
+        if (toggleContainer) {
+          // Clicking the pill also toggles when off or on
+          toggleContainer.addEventListener('click', (e) => {
+            if (e.target !== toggleBtn && !toggleBtn.contains(e.target)) {
+              this.toggleActiveUsers();
+            }
+          });
+        }
+
+        // Fire immediate initial heartbeat to register visitor & session
+        this.sendHeartbeat();
+
+        // Heartbeat every 15 seconds while page is active
+        this.heartbeatInterval = setInterval(() => {
+          if (!document.hidden) {
+            this.sendHeartbeat();
+          }
+        }, 15000);
+
+        // Immediate heartbeat when user switches back to this tab
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) {
+            this.sendHeartbeat();
+          }
+        });
+
+        window.addEventListener('focus', () => {
+          this.sendHeartbeat();
+        });
+
+        // Reliable leave beacon to cleanly remove active session when closing or navigating away
+        const leaveHandler = () => {
+          this.sendLeaveBeacon();
+        };
+        window.addEventListener('pagehide', leaveHandler);
+        window.addEventListener('beforeunload', leaveHandler);
+      },
+
+      toggleActiveUsers() {
+        this.isActiveUsersVisible = !this.isActiveUsersVisible;
+        try {
+          localStorage.setItem('slowedfy_active_users_toggle', this.isActiveUsersVisible ? 'on' : 'off');
+        } catch (e) {}
+        this.applyToggleUI(this.isActiveUsersVisible);
+      },
+
+      applyToggleUI(isVisible) {
+        const container = document.getElementById('active-users-pill-toggle');
+        const toggleBtn = document.getElementById('active-toggle-switch-btn');
+        if (container) {
+          if (isVisible) {
+            container.classList.remove('is-off');
+            container.classList.add('active');
+            container.setAttribute('title', 'Active Users: ON (Click switch to hide)');
+          } else {
+            container.classList.add('is-off');
+            container.classList.remove('active');
+            container.setAttribute('title', 'Active Users: OFF (Click switch to show)');
+          }
+        }
+        if (toggleBtn) {
+          toggleBtn.setAttribute('aria-checked', isVisible ? 'true' : 'false');
+          toggleBtn.setAttribute('title', isVisible ? 'Turn OFF active users display' : 'Turn ON active users display');
+        }
+      },
+
+      async sendHeartbeat() {
+        try {
+          const res = await fetch('/api/analytics/heartbeat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              visitorId: this.visitorId,
+              sessionId: this.sessionId
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && typeof data.monthlyAudience === 'number') {
+              this.updateUI(data.monthlyAudience, data.activeUsers);
+            }
+          }
+        } catch (e) {
+          // Network hiccup - silent fallback
+        }
+      },
+
+      sendLeaveBeacon() {
+        try {
+          const payload = JSON.stringify({ sessionId: this.sessionId });
+          if (navigator.sendBeacon) {
+            const blob = new Blob([payload], { type: 'application/json' });
+            navigator.sendBeacon('/api/analytics/leave', blob);
+          } else {
+            fetch('/api/analytics/leave', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: payload,
+              keepalive: true
+            }).catch(() => {});
+          }
+        } catch (e) {}
+      },
+
+      updateUI(monthlyAudience, activeUsers) {
+        if (typeof monthlyAudience === 'number') {
+          this.lastStats.monthlyAudience = monthlyAudience;
+          const monthlyEl = document.getElementById('monthly-audience-display-num');
+          if (monthlyEl) {
+            monthlyEl.textContent = this.formatNumber(monthlyAudience);
+          }
+        }
+        if (typeof activeUsers === 'number') {
+          this.lastStats.activeUsers = activeUsers;
+          const activeEl = document.getElementById('active-users-display-num');
+          if (activeEl) {
+            // Guarantee at least 1 since current user is browsing
+            const displayVal = Math.max(1, activeUsers);
+            activeEl.textContent = this.formatNumber(displayVal);
+          }
+        }
+      },
+
+      formatNumber(num) {
+        if (num >= 1000000) {
+          return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+        }
+        if (num >= 10000) {
+          return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+        }
+        return new Intl.NumberFormat('en-US').format(num);
+      }
+    };
+    window.Analytics = Analytics;
 
     /* ==========================================================================
        INITIALIZATION BOOTSTRAP
@@ -8942,6 +9346,9 @@
 
       // Start real-time Server-Sent Events (SSE) stream for instant Drive sync
       initRealtimeSync();
+
+      // Initialize Slowedfy Real-Time Audience & Active Users analytics
+      Analytics.init();
 
       const publishBtn = document.getElementById('publish-playlist-btn');
       if (publishBtn) {

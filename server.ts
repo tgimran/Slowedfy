@@ -21,6 +21,11 @@ import {
   downloadAndCacheTrackAudio,
   fastCheckNewDriveUploads,
 } from "./src/driveSync.ts";
+import {
+  recordHeartbeat,
+  recordSessionLeave,
+  getAnalyticsStats,
+} from "./src/analyticsStore.ts";
 
 const DEFAULT_PLAYLIST_ID = DEFAULT_DRIVE_FOLDER_ID;
 
@@ -1024,7 +1029,60 @@ async function startServer() {
     });
   });
 
-  // Server-Sent Events (SSE) subscribers for real-time Drive sync
+  // Analytics Endpoints: Monthly Audience & Real-Time Active Users
+  app.post("/api/analytics/heartbeat", (req, res) => {
+    try {
+      const visitorId = String(req.body?.visitorId || "").trim();
+      const sessionId = String(req.body?.sessionId || "").trim();
+
+      if (!visitorId || visitorId.length < 5) {
+        return res.status(400).json({ success: false, error: "Invalid visitor ID" });
+      }
+
+      const stats = recordHeartbeat(visitorId, sessionId);
+      res.json({
+        success: true,
+        monthlyAudience: stats.monthlyAudience,
+        activeUsers: stats.activeUsers,
+        month: stats.month,
+        isNewVisitor: stats.isNewMonthlyVisitor,
+      });
+
+      if (stats.isNewMonthlyVisitor) {
+        broadcastAnalyticsUpdate();
+      }
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post("/api/analytics/leave", (req, res) => {
+    try {
+      const sessionId = String(req.body?.sessionId || "").trim();
+      const activeCount = recordSessionLeave(sessionId);
+      res.json({ success: true, activeUsers: activeCount });
+      broadcastAnalyticsUpdate();
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get("/api/analytics/stats", (_req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      const stats = getAnalyticsStats();
+      res.json({
+        success: true,
+        monthlyAudience: stats.monthlyAudience,
+        activeUsers: stats.activeUsers,
+        month: stats.month,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Server-Sent Events (SSE) subscribers for real-time Drive sync & Analytics
   const sseClients = new Set<express.Response>();
 
   function broadcastPlaylistUpdate(latestPlaylist: PlaylistItem[], totalNew = 0, totalUpdated = 0) {
@@ -1047,12 +1105,28 @@ async function startServer() {
     }
   }
 
+  function broadcastAnalyticsUpdate() {
+    if (sseClients.size === 0) return;
+    const stats = getAnalyticsStats();
+    const payload = JSON.stringify({
+      type: "analytics:updated",
+      ...stats,
+    });
+    for (const client of sseClients) {
+      try {
+        client.write(`event: analytics\ndata: ${payload}\n\n`);
+      } catch (e) {
+        sseClients.delete(client);
+      }
+    }
+  }
+
   // Hook up driveSync listener to SSE broadcaster
   registerSyncUpdateListener((playlist, totalNew, totalUpdated) => {
     broadcastPlaylistUpdate(playlist as PlaylistItem[], totalNew, totalUpdated);
   });
 
-  // Real-Time Server-Sent Events (SSE) for instant Drive sync without manual refresh
+  // Real-Time Server-Sent Events (SSE) for instant Drive sync & Analytics
   app.get("/api/playlist/events", (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -1063,7 +1137,7 @@ async function startServer() {
     const client = res;
     sseClients.add(client);
 
-    // Initial message
+    // Initial playlist state
     const currentList = getCachedDrivePlaylist();
     const initPayload = JSON.stringify({
       count: currentList.length,
@@ -1072,10 +1146,16 @@ async function startServer() {
     });
     client.write(`event: init\ndata: ${initPayload}\n\n`);
 
-    // Keep connection alive with heartbeat every 10s
+    // Initial analytics state
+    const currentStats = getAnalyticsStats();
+    client.write(`event: analytics\ndata: ${JSON.stringify({ type: "analytics:init", ...currentStats })}\n\n`);
+
+    // Keep connection alive with heartbeat and real-time analytics sync every 10s
     const heartbeat = setInterval(() => {
       try {
         client.write(": ping\n\n");
+        const stats = getAnalyticsStats();
+        client.write(`event: analytics\ndata: ${JSON.stringify({ type: "analytics:updated", ...stats })}\n\n`);
       } catch (e) {
         clearInterval(heartbeat);
         sseClients.delete(client);
