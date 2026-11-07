@@ -17,10 +17,12 @@ const THUMBS_DIR = path.join(COVERS_DIR, "thumbs");
 const AUDIO_CACHE_DIR = path.join(process.cwd(), "public", "audio_cache");
 const DIST_COVERS_DIR = path.join(process.cwd(), "dist", "covers");
 const DIST_THUMBS_DIR = path.join(DIST_COVERS_DIR, "thumbs");
+const TEMP_DIR = path.join(process.cwd(), ".tmp");
 
 if (!fs.existsSync(COVERS_DIR)) fs.mkdirSync(COVERS_DIR, { recursive: true });
 if (!fs.existsSync(THUMBS_DIR)) fs.mkdirSync(THUMBS_DIR, { recursive: true });
 if (!fs.existsSync(AUDIO_CACHE_DIR)) fs.mkdirSync(AUDIO_CACHE_DIR, { recursive: true });
+if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
 if (fs.existsSync(path.join(process.cwd(), "dist"))) {
   if (!fs.existsSync(DIST_COVERS_DIR)) fs.mkdirSync(DIST_COVERS_DIR, { recursive: true });
   if (!fs.existsSync(DIST_THUMBS_DIR)) fs.mkdirSync(DIST_THUMBS_DIR, { recursive: true });
@@ -191,7 +193,8 @@ export function fetchHtml(url: string, redirectsRemaining = 5): Promise<string> 
  */
 function downloadFileStream(url: string, destPath: string, maxBytes = 0): Promise<boolean> {
   return new Promise((resolve) => {
-    const tmpPath = destPath + ".tmp_" + Date.now();
+    const tmpName = path.basename(destPath) + ".tmp_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6);
+    const tmpPath = path.join(TEMP_DIR, tmpName);
     const fileStream = fs.createWriteStream(tmpPath);
     let bytesWritten = 0;
 
@@ -234,7 +237,12 @@ function downloadFileStream(url: string, destPath: string, maxBytes = 0): Promis
           fileStream.close(() => {
             try {
               if (fs.existsSync(tmpPath) && fs.statSync(tmpPath).size > 1000) {
-                fs.renameSync(tmpPath, destPath);
+                try {
+                  fs.renameSync(tmpPath, destPath);
+                } catch (eRen) {
+                  fs.copyFileSync(tmpPath, destPath);
+                  try { fs.unlinkSync(tmpPath); } catch (eUn) {}
+                }
                 resolve(true);
               } else {
                 if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);

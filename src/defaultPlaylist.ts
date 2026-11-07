@@ -38,6 +38,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "1cI24Xe1ABt6t8pkzuR-WSfARNT481szH",
+    "originalFilename": "JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge x Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "05:15",
+    "seconds": 315,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "5.9 MB",
+    "date": "7 Nov 2026",
+    "uploadTime": 1794051493312,
+    "streamUrl": "/api/stream?id=1cI24Xe1ABt6t8pkzuR-WSfARNT481szH",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=1cI24Xe1ABt6t8pkzuR-WSfARNT481szH&export=download",
+    "thumb": "/covers/thumbs/1cI24Xe1ABt6t8pkzuR-WSfARNT481szH.jpg",
+    "hdThumb": "/covers/1cI24Xe1ABt6t8pkzuR-WSfARNT481szH.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "1trR7PTnvrPwcJDXdU3dEWSYe2-O973PW",
     "originalFilename": "Raastah by AUR ft. Taimour Baig │راستہ │(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
     "title": "Raastah by AUR ft. Taimour Baig │راستہ │(Slowed + Reverb) By Beat Badge × Slowedfy",

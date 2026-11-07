@@ -3202,7 +3202,7 @@
               <span class="pulse-live-dot"></span>
               <span id="hero-premiere-text">PREMIERE</span>
             </div>
-            <img id="main-artwork-img" class="artwork-img" src="/covers/1trR7PTnvrPwcJDXdU3dEWSYe2-O973PW.jpg" alt="Raastah by AUR ft. Taimour Baig" width="440" height="440" loading="eager" decoding="async" />
+            <img id="main-artwork-img" class="artwork-img" src="/covers/1cI24Xe1ABt6t8pkzuR-WSfARNT481szH.jpg" alt="JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI" width="440" height="440" loading="eager" decoding="async" />
             
             <!-- Minimal Compact Media Mode Toggle (Audio / Video) -->
             <div class="artwork-top-bar" id="artwork-top-bar" style="display: none !important;">
@@ -3246,7 +3246,7 @@
               <span class="tagline-text" id="hero-tagline-text">NOW PLAYING</span>
             </span>
           </div>
-          <h1 class="hero-song-title" id="hero-title">Raastah by AUR ft. Taimour Baig │راستہ │(Slowed + Reverb) By Beat Badge × Slowedfy</h1>
+          <h1 class="hero-song-title" id="hero-title">JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI│(Slowed + Reverb) By Beat Badge × Slowedfy</h1>
           <div class="hero-headphone-tip">
             <strong>🎧 Use Headphone For Better Experience 🎧</strong>
           </div>
@@ -3261,7 +3261,7 @@
           <div class="playlist-card-header">
             <div class="playlist-title-wrap">
               <span class="playlist-title" id="playlist-display-title">Slowedfy Playlist</span>
-              <span class="playlist-count-badge" id="playlist-count-label">117 Songs</span>
+              <span class="playlist-count-badge" id="playlist-count-label">118 Songs</span>
             </div>
             <div class="sync-actions-wrap" style="display: flex; align-items: center; gap: 6px;">
               <button type="button" class="glass-btn" id="publish-playlist-btn" title="Update Playlist & Publish New Songs to Website" style="display: none !important; font-size: 0.73rem; padding: 4px 10px; height: 26px; gap: 5px; color: var(--accent-cyan); border-color: rgba(78, 226, 236, 0.4); background: rgba(78, 226, 236, 0.12);" hidden>
@@ -3434,10 +3434,10 @@
         <!-- Left: Mini metadata -->
         <div class="dock-track-info">
           <div class="dock-thumb-box">
-            <img id="dock-thumb-img" class="dock-thumb" src="/covers/thumbs/1trR7PTnvrPwcJDXdU3dEWSYe2-O973PW.jpg" alt="Raastah by AUR ft. Taimour Baig" width="46" height="46" loading="eager" decoding="async" />
+            <img id="dock-thumb-img" class="dock-thumb" src="/covers/thumbs/1cI24Xe1ABt6t8pkzuR-WSfARNT481szH.jpg" alt="JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI" width="46" height="46" loading="eager" decoding="async" />
           </div>
           <div class="dock-text">
-            <div class="dock-title" id="dock-song-title">Raastah by AUR ft. Taimour Baig │راستہ │(Slowed + Reverb) By Beat Badge × Slowedfy</div>
+            <div class="dock-title" id="dock-song-title">JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI│(Slowed + Reverb) By Beat Badge × Slowedfy</div>
             <div class="dock-artist" id="dock-song-artist">Beat Badge x Slowedfy</div>
           </div>
         </div>
@@ -3848,6 +3848,25 @@
     
     // Curated rich fallback collection representing the Slowed & Reverb genre with real YouTube video IDs & high-res artwork
     const OFFICIAL_PLAYLIST = [
+  {
+    "id": "1cI24Xe1ABt6t8pkzuR-WSfARNT481szH",
+    "originalFilename": "JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge x Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "05:15",
+    "seconds": 315,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "5.9 MB",
+    "date": "7 Nov 2026",
+    "uploadTime": 1794051493312,
+    "streamUrl": "/api/stream?id=1cI24Xe1ABt6t8pkzuR-WSfARNT481szH",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=1cI24Xe1ABt6t8pkzuR-WSfARNT481szH&export=download",
+    "thumb": "/covers/thumbs/1cI24Xe1ABt6t8pkzuR-WSfARNT481szH.jpg",
+    "hdThumb": "/covers/1cI24Xe1ABt6t8pkzuR-WSfARNT481szH.jpg",
+    "isPremiere": false
+  },
   {
     "id": "1trR7PTnvrPwcJDXdU3dEWSYe2-O973PW",
     "originalFilename": "Raastah by AUR ft. Taimour Baig │راستہ │(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
@@ -8710,7 +8729,7 @@
             state.playlist = mergedPlaylist;
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
-                localStorage.setItem('slowedfy_drive_master_v14', JSON.stringify(mergedPlaylist));
+                localStorage.setItem('slowedfy_drive_master_v15', JSON.stringify(mergedPlaylist));
               } catch (e) {}
             }
 
@@ -8836,7 +8855,7 @@
         state.originalPlaylist = [...latest];
         if (state.activePlaylistId === PLAYLIST_ID) {
           try {
-            localStorage.setItem('slowedfy_drive_master_v14', JSON.stringify(latest));
+            localStorage.setItem('slowedfy_drive_master_v15', JSON.stringify(latest));
           } catch (e) {}
         }
 
@@ -9257,7 +9276,8 @@
         localStorage.removeItem('slowedfy_drive_master_v11');
         localStorage.removeItem('slowedfy_drive_master_v12');
         localStorage.removeItem('slowedfy_drive_master_v13'); // Invalidate v13 so all users receive newly added Raastah song
-        const saved = localStorage.getItem('slowedfy_drive_master_v14');
+        localStorage.removeItem('slowedfy_drive_master_v14'); // Invalidate v14 so all users receive newly added Jalte Diye song
+        const saved = localStorage.getItem('slowedfy_drive_master_v15');
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length >= OFFICIAL_PLAYLIST.length) {
