@@ -38,6 +38,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "1e9rtGabpnOnyr2xJdeOgMwoNwTDZVbZK",
+    "originalFilename": "Kisise Tum Pyaar Karo│Kumar Sanu│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Kisise Tum Pyaar Karo│Kumar Sanu│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge x Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "05:24",
+    "seconds": 324,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "5.6 MB",
+    "date": "8 Nov 2026",
+    "uploadTime": 1794136978473,
+    "streamUrl": "/api/stream?id=1e9rtGabpnOnyr2xJdeOgMwoNwTDZVbZK",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=1e9rtGabpnOnyr2xJdeOgMwoNwTDZVbZK&export=download",
+    "thumb": "/covers/thumbs/1e9rtGabpnOnyr2xJdeOgMwoNwTDZVbZK.jpg",
+    "hdThumb": "/covers/1e9rtGabpnOnyr2xJdeOgMwoNwTDZVbZK.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "1cI24Xe1ABt6t8pkzuR-WSfARNT481szH",
     "originalFilename": "JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
     "title": "JALTE DIYE│Himesh Reshammiya│ANWESHAA│Vineet Singh│SHABAB SABRI│(Slowed + Reverb) By Beat Badge × Slowedfy",
