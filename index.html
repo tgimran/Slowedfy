@@ -1521,7 +1521,7 @@
     }
 
     /* ==========================================================================
-       SLOWEDFY AUDIENCE & REAL-TIME PRESENCE PILL CLUSTER
+       SLOWEDFY WEBSITE VISITORS & REAL-TIME PRESENCE PILL CLUSTER
        ========================================================================== */
     .audience-stats-cluster {
       display: inline-flex;
@@ -1530,8 +1530,8 @@
       flex-wrap: nowrap;
     }
 
-    /* Monthly Audience Pill */
-    .monthly-audience-pill {
+    /* Website Visitors Pill */
+    .website-visitors-pill {
       display: inline-flex;
       align-items: center;
       gap: 6px;
@@ -1550,32 +1550,48 @@
       user-select: none;
       cursor: default;
     }
-    .monthly-audience-pill:hover {
+    .website-visitors-pill:hover {
       background: rgba(255, 255, 255, 0.09);
       border-color: rgba(255, 75, 120, 0.45);
       box-shadow: 0 0 16px rgba(255, 75, 120, 0.2), 0 4px 12px rgba(0, 0, 0, 0.35);
       transform: translateY(-1px);
     }
-    .monthly-audience-icon {
+    .website-visitors-icon {
       width: 14px;
       height: 14px;
       color: #ff5e85;
       flex-shrink: 0;
       filter: drop-shadow(0 0 6px rgba(255, 94, 133, 0.5));
     }
-    .monthly-audience-info {
+    .website-visitors-info {
       display: inline-flex;
       align-items: baseline;
       gap: 4.5px;
     }
-    .monthly-audience-number {
+    .website-visitors-number {
       font-size: 0.82rem;
       font-weight: 800;
       color: #ffffff;
       letter-spacing: -0.01em;
       font-variant-numeric: tabular-nums;
+      min-width: 12px;
+      text-align: center;
     }
-    .monthly-audience-caption {
+    .website-visitors-number.is-loading,
+    .active-users-num.is-loading {
+      opacity: 0.65;
+      animation: analytics-pulse 1.2s ease-in-out infinite;
+    }
+    .website-visitors-number.is-unavailable,
+    .active-users-num.is-unavailable {
+      color: rgba(229, 231, 235, 0.55);
+      font-weight: 600;
+    }
+    @keyframes analytics-pulse {
+      0%, 100% { opacity: 0.45; }
+      50% { opacity: 0.9; }
+    }
+    .website-visitors-caption {
       font-size: 0.68rem;
       font-weight: 600;
       color: rgba(229, 231, 235, 0.78);
@@ -1669,6 +1685,8 @@
       color: #34d399;
       font-variant-numeric: tabular-nums;
       letter-spacing: -0.01em;
+      min-width: 10px;
+      text-align: center;
     }
     .active-users-txt {
       font-size: 0.66rem;
@@ -1724,11 +1742,11 @@
       .audience-stats-cluster {
         gap: 4px;
       }
-      .monthly-audience-pill {
+      .website-visitors-pill {
         padding: 3px 8px 3px 7px;
         height: 26px;
       }
-      .monthly-audience-caption {
+      .website-visitors-caption {
         display: none;
       }
       .active-users-pill-toggle {
@@ -3272,7 +3290,7 @@
                 </svg>
                 <span id="publish-btn-text">Update & Publish</span>
               </button>
-              <!-- Slowedfy Live Audience & Active Users Cluster -->
+              <!-- Slowedfy Live Website Visitors & Active Users Cluster -->
               <div class="audience-stats-cluster" id="audience-stats-cluster">
                 
                 <!-- Pill-shaped Active Users ON/OFF Toggle & Live Counter -->
@@ -3283,7 +3301,7 @@
                       <span class="active-beacon-dot"></span>
                       <span class="active-beacon-ring"></span>
                     </span>
-                    <span class="active-users-num" id="active-users-display-num">1</span>
+                    <span class="active-users-num is-loading" id="active-users-display-num" aria-live="polite">...</span>
                     <span class="active-users-txt">Active</span>
                   </div>
 
@@ -3295,17 +3313,17 @@
                   </button>
                 </div>
 
-                <!-- Monthly Audience Counter Pill -->
-                <div class="monthly-audience-pill" id="monthly-audience-pill" title="Unique listeners this month (Auto-resets each calendar month)">
-                  <svg class="monthly-audience-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <!-- Website Visitors Counter Pill -->
+                <div class="website-visitors-pill" id="website-visitors-pill" title="Total unique website visitors">
+                  <svg class="website-visitors-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                     <circle cx="9" cy="7" r="4"/>
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
                     <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                   </svg>
-                  <div class="monthly-audience-info">
-                    <span class="monthly-audience-number" id="monthly-audience-display-num">1</span>
-                    <span class="monthly-audience-caption">Monthly Audience</span>
+                  <div class="website-visitors-info">
+                    <span class="website-visitors-number is-loading" id="website-visitors-display-num" aria-live="polite">...</span>
+                    <span class="website-visitors-caption">Website Visitors</span>
                   </div>
                 </div>
 
@@ -8966,7 +8984,15 @@
         }
 
         try {
-          eventSource = new EventSource('/api/playlist/events');
+          const sseParams = new URLSearchParams();
+          if (window.Analytics && window.Analytics.sessionId) {
+            sseParams.set('sessionId', window.Analytics.sessionId);
+          }
+          if (window.Analytics && window.Analytics.visitorId) {
+            sseParams.set('visitorId', window.Analytics.visitorId);
+          }
+          const sseQuery = sseParams.toString();
+          eventSource = new EventSource('/api/playlist/events' + (sseQuery ? '?' + sseQuery : ''));
 
           const handleIncomingPayload = (rawData) => {
             try {
@@ -8982,8 +9008,8 @@
           eventSource.addEventListener('analytics', (e) => {
             try {
               const data = JSON.parse(e.data);
-              if (data && typeof data.monthlyAudience === 'number' && window.Analytics) {
-                window.Analytics.updateUI(data.monthlyAudience, data.activeUsers);
+              if (data && data.verified === true && typeof data.websiteVisitors === 'number' && window.Analytics) {
+                window.Analytics.updateUI(data.websiteVisitors, data.activeUsers, true);
               }
             } catch (err) {}
           });
@@ -9063,44 +9089,75 @@
     }
 
     /* ==========================================================================
-       SLOWEDFY REAL-TIME AUDIENCE & ACTIVE USERS CLIENT
+       SLOWEDFY REAL-TIME WEBSITE VISITORS & ACTIVE USERS CLIENT
        ========================================================================== */
     const Analytics = {
       visitorId: '',
       sessionId: '',
       isActiveUsersVisible: true,
       heartbeatInterval: null,
-      lastStats: { monthlyAudience: 0, activeUsers: 0 },
+      hasVerifiedData: false,
+      lastStats: { websiteVisitors: null, activeUsers: null },
 
-      getOrCreateVisitorId() {
+      readCookie(name) {
         try {
-          let vid = localStorage.getItem('slowedfy_vid');
-          if (!vid || typeof vid !== 'string' || vid.length < 8) {
-            vid = 'svid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 11) + Math.random().toString(36).slice(2, 11);
-            localStorage.setItem('slowedfy_vid', vid);
+          const prefix = name + '=';
+          const parts = document.cookie ? document.cookie.split(';') : [];
+          for (let i = 0; i < parts.length; i++) {
+            const c = parts[i].trim();
+            if (c.indexOf(prefix) === 0) {
+              return decodeURIComponent(c.slice(prefix.length));
+            }
           }
-          return vid;
-        } catch (e) {
-          return 'svid_mem_' + Date.now().toString(36);
-        }
+        } catch (e) {}
+        return '';
       },
 
-      getOrCreateSessionId() {
+      writeCookie(name, value) {
         try {
-          let sid = sessionStorage.getItem('slowedfy_sid');
-          if (!sid || typeof sid !== 'string' || sid.length < 8) {
-            sid = 'ssid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 11);
-            sessionStorage.setItem('slowedfy_sid', sid);
+          const maxAge = 60 * 60 * 24 * 365 * 10; // 10 years
+          const secureFlag = window.location.protocol === 'https:' ? '; Secure' : '';
+          document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAge}; SameSite=Lax${secureFlag}`;
+        } catch (e) {}
+      },
+
+      generateStrongId(prefix) {
+        try {
+          if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+            return `${prefix}_${crypto.randomUUID().replace(/-/g, '')}`;
           }
-          return sid;
-        } catch (e) {
-          return 'ssid_mem_' + Date.now().toString(36);
+        } catch (e) {}
+        return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 11)}${Math.random().toString(36).slice(2, 11)}`;
+      },
+
+      getOrCreateVisitorId() {
+        const isValid = (v) => typeof v === 'string' && /^[a-zA-Z0-9_-]{8,128}$/.test(v);
+        let lsVid = '';
+        let ckVid = '';
+        try {
+          lsVid = localStorage.getItem('slowedfy_vid') || '';
+        } catch (e) {}
+        ckVid = this.readCookie('slowedfy_vid');
+
+        let vid = isValid(lsVid) ? lsVid : (isValid(ckVid) ? ckVid : '');
+        if (!vid) {
+          vid = this.generateStrongId('svid');
         }
+        try {
+          localStorage.setItem('slowedfy_vid', vid);
+        } catch (e) {}
+        this.writeCookie('slowedfy_vid', vid);
+        return vid;
+      },
+
+      createTabSessionId() {
+        // Fresh unique session ID per open tab/page instance; backend deduplicates active visitors by visitorId
+        return this.generateStrongId('ssid');
       },
 
       init() {
         this.visitorId = this.getOrCreateVisitorId();
-        this.sessionId = this.getOrCreateSessionId();
+        this.sessionId = this.createTabSessionId();
 
         // Restore saved toggle preference (default ON)
         try {
@@ -9121,25 +9178,21 @@
           });
         }
         if (toggleContainer) {
-          // Clicking the pill also toggles when off or on
           toggleContainer.addEventListener('click', (e) => {
-            if (e.target !== toggleBtn && !toggleBtn.contains(e.target)) {
+            if (e.target !== toggleBtn && !toggleBtn?.contains(e.target)) {
               this.toggleActiveUsers();
             }
           });
         }
 
-        // Fire immediate initial heartbeat to register visitor & session
+        // Fire immediate initial heartbeat to register verified visitor & session
         this.sendHeartbeat();
 
-        // Heartbeat every 15 seconds while page is active
+        // Keep session alive every 15s (even when playing audio in a background tab)
         this.heartbeatInterval = setInterval(() => {
-          if (!document.hidden) {
-            this.sendHeartbeat();
-          }
+          this.sendHeartbeat();
         }, 15000);
 
-        // Immediate heartbeat when user switches back to this tab
         document.addEventListener('visibilitychange', () => {
           if (!document.hidden) {
             this.sendHeartbeat();
@@ -9150,7 +9203,11 @@
           this.sendHeartbeat();
         });
 
-        // Reliable leave beacon to cleanly remove active session when closing or navigating away
+        window.addEventListener('online', () => {
+          this.sendHeartbeat();
+        });
+
+        // Cleanly expire session when tab closes or navigates away
         const leaveHandler = () => {
           this.sendLeaveBeacon();
         };
@@ -9164,6 +9221,9 @@
           localStorage.setItem('slowedfy_active_users_toggle', this.isActiveUsersVisible ? 'on' : 'off');
         } catch (e) {}
         this.applyToggleUI(this.isActiveUsersVisible);
+        if (this.isActiveUsersVisible) {
+          this.sendHeartbeat();
+        }
       },
 
       applyToggleUI(isVisible) {
@@ -9191,6 +9251,7 @@
           const res = await fetch('/api/analytics/heartbeat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
             body: JSON.stringify({
               visitorId: this.visitorId,
               sessionId: this.sessionId
@@ -9198,12 +9259,49 @@
           });
           if (res.ok) {
             const data = await res.json();
-            if (data && typeof data.monthlyAudience === 'number') {
-              this.updateUI(data.monthlyAudience, data.activeUsers);
+            if (data && data.verified === true && typeof data.websiteVisitors === 'number') {
+              this.updateUI(data.websiteVisitors, data.activeUsers, true);
+              return;
             }
           }
+          await this.fetchStatsFallback();
         } catch (e) {
-          // Network hiccup - silent fallback
+          await this.fetchStatsFallback();
+        }
+      },
+
+      async fetchStatsFallback() {
+        try {
+          const res = await fetch('/api/analytics/stats', { cache: 'no-store' });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.verified === true && typeof data.websiteVisitors === 'number') {
+              this.updateUI(data.websiteVisitors, data.activeUsers, true);
+              return;
+            }
+          }
+        } catch (e) {}
+        if (!this.hasVerifiedData) {
+          this.setUnavailableState();
+        }
+      },
+
+      setUnavailableState() {
+        const visitorsEl = document.getElementById('website-visitors-display-num');
+        const activeEl = document.getElementById('active-users-display-num');
+        const visitorsPill = document.getElementById('website-visitors-pill');
+        if (visitorsEl) {
+          visitorsEl.classList.remove('is-loading');
+          visitorsEl.classList.add('is-unavailable');
+          visitorsEl.textContent = '--';
+        }
+        if (activeEl) {
+          activeEl.classList.remove('is-loading');
+          activeEl.classList.add('is-unavailable');
+          activeEl.textContent = '--';
+        }
+        if (visitorsPill) {
+          visitorsPill.setAttribute('title', 'Analytics temporarily unavailable');
         }
       },
 
@@ -9224,21 +9322,29 @@
         } catch (e) {}
       },
 
-      updateUI(monthlyAudience, activeUsers) {
-        if (typeof monthlyAudience === 'number') {
-          this.lastStats.monthlyAudience = monthlyAudience;
-          const monthlyEl = document.getElementById('monthly-audience-display-num');
-          if (monthlyEl) {
-            monthlyEl.textContent = this.formatNumber(monthlyAudience);
+      updateUI(websiteVisitors, activeUsers, verified = false) {
+        if (!verified) return;
+        this.hasVerifiedData = true;
+
+        const visitorsEl = document.getElementById('website-visitors-display-num');
+        const visitorsPill = document.getElementById('website-visitors-pill');
+        if (typeof websiteVisitors === 'number' && Number.isFinite(websiteVisitors) && websiteVisitors >= 0) {
+          this.lastStats.websiteVisitors = websiteVisitors;
+          if (visitorsEl) {
+            visitorsEl.classList.remove('is-loading', 'is-unavailable');
+            visitorsEl.textContent = this.formatNumber(websiteVisitors);
+          }
+          if (visitorsPill) {
+            visitorsPill.setAttribute('title', 'Total unique website visitors');
           }
         }
-        if (typeof activeUsers === 'number') {
+
+        const activeEl = document.getElementById('active-users-display-num');
+        if (typeof activeUsers === 'number' && Number.isFinite(activeUsers) && activeUsers >= 0) {
           this.lastStats.activeUsers = activeUsers;
-          const activeEl = document.getElementById('active-users-display-num');
           if (activeEl) {
-            // Guarantee at least 1 since current user is browsing
-            const displayVal = Math.max(1, activeUsers);
-            activeEl.textContent = this.formatNumber(displayVal);
+            activeEl.classList.remove('is-loading', 'is-unavailable');
+            activeEl.textContent = this.formatNumber(activeUsers);
           }
         }
       },
@@ -9404,11 +9510,11 @@
       // Start periodic auto-sync (12s interval for instant detection)
       setAutoSyncInterval(12000);
 
-      // Start real-time Server-Sent Events (SSE) stream for instant Drive sync
-      initRealtimeSync();
-
-      // Initialize Slowedfy Real-Time Audience & Active Users analytics
+      // Initialize Slowedfy Real-Time Website Visitors & Active Users analytics (before SSE connects)
       Analytics.init();
+
+      // Start real-time Server-Sent Events (SSE) stream for instant Drive sync & Analytics
+      initRealtimeSync();
 
       const publishBtn = document.getElementById('publish-playlist-btn');
       if (publishBtn) {

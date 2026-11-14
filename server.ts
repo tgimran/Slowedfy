@@ -25,6 +25,11 @@ import {
   recordHeartbeat,
   recordSessionLeave,
   getAnalyticsStats,
+  registerSseSession,
+  touchSseSession,
+  unregisterSseSession,
+  registerAnalyticsChangeListener,
+  isValidAnalyticsId,
 } from "./src/analyticsStore.ts";
 
 const DEFAULT_PLAYLIST_ID = DEFAULT_DRIVE_FOLDER_ID;
@@ -604,6 +609,7 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json());
+  app.use(express.text({ type: "text/plain" }));
 
   // Global CORS & Referrer Policy Middleware for cross-browser YouTube iframe streaming
   app.use((req, res, next) => {
@@ -1029,41 +1035,59 @@ async function startServer() {
     });
   });
 
-  // Analytics Endpoints: Monthly Audience & Real-Time Active Users
+  function parseAnalyticsBody(rawBody: any): Record<string, any> {
+    if (!rawBody) return {};
+    if (typeof rawBody === "string") {
+      try {
+        return JSON.parse(rawBody);
+      } catch {
+        return {};
+      }
+    }
+    return typeof rawBody === "object" ? rawBody : {};
+  }
+
+  // Analytics Endpoints: Total Unique Website Visitors & Real-Time Active Users
   app.post("/api/analytics/heartbeat", (req, res) => {
     try {
-      const visitorId = String(req.body?.visitorId || "").trim();
-      const sessionId = String(req.body?.sessionId || "").trim();
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      const body = parseAnalyticsBody(req.body);
+      const visitorId = String(body.visitorId || "").trim();
+      const sessionId = String(body.sessionId || "").trim();
 
-      if (!visitorId || visitorId.length < 5) {
-        return res.status(400).json({ success: false, error: "Invalid visitor ID" });
+      if (!isValidAnalyticsId(visitorId)) {
+        return res.status(400).json({ success: false, verified: false, error: "Invalid visitor ID" });
       }
 
       const stats = recordHeartbeat(visitorId, sessionId);
       res.json({
         success: true,
-        monthlyAudience: stats.monthlyAudience,
+        verified: true,
+        websiteVisitors: stats.websiteVisitors,
         activeUsers: stats.activeUsers,
-        month: stats.month,
-        isNewVisitor: stats.isNewMonthlyVisitor,
+        isNewVisitor: stats.isNewVisitor,
+        updatedAt: stats.updatedAt,
       });
 
-      if (stats.isNewMonthlyVisitor) {
+      if (stats.isNewVisitor || stats.activeCountChanged) {
         broadcastAnalyticsUpdate();
       }
     } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
+      res.status(500).json({ success: false, verified: false, error: err.message });
     }
   });
 
   app.post("/api/analytics/leave", (req, res) => {
     try {
-      const sessionId = String(req.body?.sessionId || "").trim();
-      const activeCount = recordSessionLeave(sessionId);
-      res.json({ success: true, activeUsers: activeCount });
-      broadcastAnalyticsUpdate();
+      const body = parseAnalyticsBody(req.body);
+      const sessionId = String(body.sessionId || "").trim();
+      const result = recordSessionLeave(sessionId);
+      res.json({ success: true, verified: true, activeUsers: result.activeUsers });
+      if (result.changed) {
+        broadcastAnalyticsUpdate();
+      }
     } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
+      res.status(500).json({ success: false, verified: false, error: err.message });
     }
   });
 
@@ -1073,12 +1097,10 @@ async function startServer() {
       const stats = getAnalyticsStats();
       res.json({
         success: true,
-        monthlyAudience: stats.monthlyAudience,
-        activeUsers: stats.activeUsers,
-        month: stats.month,
+        ...stats,
       });
     } catch (err: any) {
-      res.status(500).json({ success: false, error: err.message });
+      res.status(500).json({ success: false, verified: false, error: err.message });
     }
   });
 
@@ -1121,6 +1143,11 @@ async function startServer() {
     }
   }
 
+  // Broadcast immediately when background session expiry or SSE grace cleanup updates activeUsers
+  registerAnalyticsChangeListener(() => {
+    broadcastAnalyticsUpdate();
+  });
+
   // Hook up driveSync listener to SSE broadcaster
   registerSyncUpdateListener((playlist, totalNew, totalUpdated) => {
     broadcastPlaylistUpdate(playlist as PlaylistItem[], totalNew, totalUpdated);
@@ -1134,8 +1161,14 @@ async function startServer() {
     res.setHeader("X-Accel-Buffering", "no");
     res.flushHeaders?.();
 
+    const sessionId = typeof req.query.sessionId === "string" ? req.query.sessionId.trim() : "";
+    const visitorId = typeof req.query.visitorId === "string" ? req.query.visitorId.trim() : "";
+
     const client = res;
     sseClients.add(client);
+
+    // Link SSE connection to active session presence if valid IDs provided
+    const sseChangedCounts = registerSseSession(sessionId, visitorId);
 
     // Initial playlist state
     const currentList = getCachedDrivePlaylist();
@@ -1150,21 +1183,32 @@ async function startServer() {
     const currentStats = getAnalyticsStats();
     client.write(`event: analytics\ndata: ${JSON.stringify({ type: "analytics:init", ...currentStats })}\n\n`);
 
+    if (sseChangedCounts) {
+      broadcastAnalyticsUpdate();
+    }
+
     // Keep connection alive with heartbeat and real-time analytics sync every 10s
     const heartbeat = setInterval(() => {
       try {
+        if (sessionId) {
+          touchSseSession(sessionId);
+        }
         client.write(": ping\n\n");
         const stats = getAnalyticsStats();
         client.write(`event: analytics\ndata: ${JSON.stringify({ type: "analytics:updated", ...stats })}\n\n`);
       } catch (e) {
         clearInterval(heartbeat);
         sseClients.delete(client);
+        if (sessionId) unregisterSseSession(sessionId);
       }
     }, 10000);
 
     req.on("close", () => {
       clearInterval(heartbeat);
       sseClients.delete(client);
+      if (sessionId) {
+        unregisterSseSession(sessionId);
+      }
     });
   });
 

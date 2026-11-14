@@ -1,4 +1,10 @@
 {
-  "months": {},
-  "totalAllTimeUnique": 0
+  "visitors": {
+    "svid_mw3a14w9_c0fpjkivwywvmsho4e": {
+      "firstSeen": 1794657908830,
+      "lastSeen": 1794657908830,
+      "visitCount": 1
+    }
+  },
+  "totalUniqueVisitors": 1
 }
