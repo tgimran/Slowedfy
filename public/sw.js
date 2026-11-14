@@ -1,5 +1,5 @@
 /* Slowedfy Service Worker - Offline Shell & Fast Asset Caching */
-const CACHE_NAME = 'slowedfy-v5';
+const CACHE_NAME = 'slowedfy-v6';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -43,11 +43,12 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // Do NOT intercept heavy media/audio streams, Google Drive proxy, Range requests, YouTube, dynamic playlist sync, or covers
+  // Do NOT intercept heavy media/audio streams, Google Drive proxy, Range requests, YouTube, dynamic playlist sync, analytics, or covers
   if (
     url.pathname.startsWith('/api/stream') ||
     url.pathname.startsWith('/api/artwork') ||
     url.pathname.startsWith('/api/playlist') ||
+    url.pathname.startsWith('/api/analytics') ||
     url.pathname.startsWith('/covers/') ||
     url.pathname.includes('/audio_cache/') ||
     url.hostname.includes('drive.google.com') ||

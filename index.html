@@ -80,6 +80,7 @@
     };
   </script>
   <script src="https://www.youtube.com/iframe_api" async></script>
+  <script type="module" src="/src/firebaseClientAnalytics.ts"></script>
   <!-- Standard Favicons for Google, YouTube, Chrome, Safari & Edge -->
   <link rel="shortcut icon" href="/favicon.ico" />
   <link rel="icon" type="image/x-icon" sizes="16x16 24x24 32x32 48x48 64x64 96x96 128x128 256x256" href="/favicon.ico" />
@@ -9012,7 +9013,11 @@
               if (data && data.verified === true && typeof data.websiteVisitors === 'number') {
                 window.Analytics.updateUI(data.websiteVisitors, data.activeUsers, true);
               } else if (data && data.unavailable === true) {
-                window.Analytics.setUnavailableState();
+                window.Analytics.syncViaDirectFirestore().then((ok) => {
+                  if (!ok && !window.Analytics.hasVerifiedData) {
+                    window.Analytics.setUnavailableState();
+                  }
+                });
               }
             } catch (err) {}
           });
@@ -9249,6 +9254,67 @@
         }
       },
 
+      retryTimer: null,
+      directFallbackActive: false,
+
+      waitForDirectClient(timeoutMs = 3000) {
+        if (window.FirebaseClientAnalytics) return Promise.resolve(window.FirebaseClientAnalytics);
+        return new Promise((resolve) => {
+          const started = Date.now();
+          const check = () => {
+            if (window.FirebaseClientAnalytics) {
+              return resolve(window.FirebaseClientAnalytics);
+            }
+            if (Date.now() - started >= timeoutMs) {
+              return resolve(null);
+            }
+            setTimeout(check, 60);
+          };
+          check();
+        });
+      },
+
+      scheduleRetry(delayMs = 3500) {
+        if (this.retryTimer) return;
+        this.retryTimer = setTimeout(() => {
+          this.retryTimer = null;
+          this.sendHeartbeat();
+        }, delayMs);
+      },
+
+      async syncViaDirectFirestore() {
+        try {
+          const client = await this.waitForDirectClient(3000);
+          if (!client || typeof client.syncDirect !== 'function') {
+            return false;
+          }
+          const stats = await client.syncDirect(
+            this.visitorId,
+            this.sessionId,
+            (liveStats) => {
+              if (liveStats && liveStats.verified && typeof liveStats.websiteVisitors === 'number') {
+                this.directFallbackActive = true;
+                this.updateUI(liveStats.websiteVisitors, liveStats.activeUsers, true);
+              }
+            },
+            () => {
+              if (!this.hasVerifiedData) {
+                this.setUnavailableState();
+              }
+              this.scheduleRetry(4000);
+            }
+          );
+          if (stats && stats.verified && typeof stats.websiteVisitors === 'number') {
+            this.directFallbackActive = true;
+            this.updateUI(stats.websiteVisitors, stats.activeUsers, true);
+            return true;
+          }
+        } catch (err) {
+          console.warn('[Analytics] Direct Firestore fallback failed:', err);
+        }
+        return false;
+      },
+
       async sendHeartbeat() {
         try {
           const res = await fetch('/api/analytics/heartbeat', {
@@ -9264,31 +9330,51 @@
             const data = await res.json();
             if (data && data.verified === true && typeof data.websiteVisitors === 'number') {
               this.updateUI(data.websiteVisitors, data.activeUsers, true);
+              if (!this.hasDirectRealtimeSub && window.FirebaseClientAnalytics && typeof window.FirebaseClientAnalytics.subscribeRealtimeOnly === 'function') {
+                this.hasDirectRealtimeSub = true;
+                window.FirebaseClientAnalytics.subscribeRealtimeOnly((liveStats) => {
+                  if (liveStats && liveStats.verified && typeof liveStats.websiteVisitors === 'number') {
+                    this.updateUI(liveStats.websiteVisitors, liveStats.activeUsers, true);
+                  }
+                });
+              }
               return;
             }
           }
-          await this.fetchStatsFallback();
+          await this.fetchStatsFallback(res.status === 404);
         } catch (e) {
-          await this.fetchStatsFallback();
+          await this.fetchStatsFallback(false);
         }
       },
 
-      async fetchStatsFallback() {
-        try {
-          const res = await fetch('/api/analytics/stats', { cache: 'no-store' });
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.verified === true && typeof data.websiteVisitors === 'number') {
-              this.updateUI(data.websiteVisitors, data.activeUsers, true);
-              return;
+      async fetchStatsFallback(skipStatsEndpoint = false) {
+        if (!skipStatsEndpoint) {
+          try {
+            const res = await fetch('/api/analytics/stats', { cache: 'no-store' });
+            if (res.ok) {
+              const data = await res.json();
+              if (data && data.verified === true && typeof data.websiteVisitors === 'number') {
+                this.updateUI(data.websiteVisitors, data.activeUsers, true);
+                return;
+              }
+              if (data && data.loading === true && !this.hasVerifiedData) {
+                this.setLoadingState();
+                this.scheduleRetry(1200);
+                return;
+              }
             }
-            if (data && data.loading === true && !this.hasVerifiedData) {
-              this.setLoadingState();
-              return;
-            }
-          }
-        } catch (e) {}
-        this.setUnavailableState();
+          } catch (e) {}
+        }
+
+        const directOk = await this.syncViaDirectFirestore();
+        if (directOk) {
+          return;
+        }
+
+        if (!this.hasVerifiedData) {
+          this.setUnavailableState();
+        }
+        this.scheduleRetry(4000);
       },
 
       setLoadingState() {
@@ -9328,6 +9414,9 @@
 
       sendLeaveBeacon() {
         try {
+          if (this.directFallbackActive && window.FirebaseClientAnalytics && typeof window.FirebaseClientAnalytics.leaveSessionDirect === 'function') {
+            window.FirebaseClientAnalytics.leaveSessionDirect(this.sessionId);
+          }
           const payload = JSON.stringify({ sessionId: this.sessionId });
           if (navigator.sendBeacon) {
             const blob = new Blob([payload], { type: 'application/json' });
@@ -9346,6 +9435,10 @@
       updateUI(websiteVisitors, activeUsers, verified = false) {
         if (!verified) return;
         this.hasVerifiedData = true;
+        if (this.retryTimer) {
+          clearTimeout(this.retryTimer);
+          this.retryTimer = null;
+        }
 
         const visitorsEl = document.getElementById('website-visitors-display-num');
         const visitorsPill = document.getElementById('website-visitors-pill');

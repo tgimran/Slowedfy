@@ -7,6 +7,7 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { initializeApp, type FirebaseOptions } from "firebase/app";
 import {
   getFirestore,
@@ -27,14 +28,15 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 
-export enum OperationType {
-  CREATE = "create",
-  UPDATE = "update",
-  DELETE = "delete",
-  LIST = "list",
-  GET = "get",
-  WRITE = "write",
-}
+export const OperationType = {
+  CREATE: "create",
+  UPDATE: "update",
+  DELETE: "delete",
+  LIST: "list",
+  GET: "get",
+  WRITE: "write",
+} as const;
+export type OperationType = (typeof OperationType)[keyof typeof OperationType];
 
 export interface FirestoreErrorInfo {
   error: string;
@@ -75,7 +77,18 @@ interface ActiveSession {
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const LEGACY_DB_FILE = path.join(DATA_DIR, "analytics.json");
-const CONFIG_FILE = path.join(process.cwd(), "firebase-applet-config.json");
+
+function resolveConfigFilePath(): string {
+  const cwdCandidate = path.join(process.cwd(), "firebase-applet-config.json");
+  if (fs.existsSync(cwdCandidate)) return cwdCandidate;
+  try {
+    const relativeCandidate = fileURLToPath(new URL("../firebase-applet-config.json", import.meta.url));
+    if (fs.existsSync(relativeCandidate)) return relativeCandidate;
+  } catch {
+    // ignore
+  }
+  return cwdCandidate;
+}
 
 // 45 seconds without heartbeat or active SSE ping = session expired
 const ACTIVE_TIMEOUT_MS = 45 * 1000;
@@ -83,10 +96,13 @@ const ACTIVE_TIMEOUT_MS = 45 * 1000;
 const SSE_DISCONNECT_GRACE_MS = 3 * 1000;
 // Minimum interval between Firestore writes for an already-registered active session
 const SESSION_WRITE_THROTTLE_MS = 15 * 1000;
+// Minimum cooldown before retrying failed Firestore initialization
+const INIT_RETRY_COOLDOWN_MS = 2000;
 
 let db: Firestore | null = null;
 let firestoreReady = false;
 let firestoreUnavailable = false;
+let lastInitFailureMs = 0;
 let initPromise: Promise<boolean> | null = null;
 
 let totalUniqueVisitorsCache: number | null = null;
@@ -148,10 +164,11 @@ function handleFirestoreError(
 
 function initFirebaseClient(): Firestore {
   if (db) return db;
-  if (!fs.existsSync(CONFIG_FILE)) {
+  const configPath = resolveConfigFilePath();
+  if (!fs.existsSync(configPath)) {
     throw new Error("Missing firebase-applet-config.json");
   }
-  const raw = fs.readFileSync(CONFIG_FILE, "utf-8");
+  const raw = fs.readFileSync(configPath, "utf-8");
   const firebaseConfig = JSON.parse(raw) as FirebaseAppletConfig;
   const app = initializeApp(firebaseConfig);
   db = firebaseConfig.firestoreDatabaseId
@@ -379,12 +396,14 @@ async function performInitialSync(): Promise<boolean> {
     attachRealtimeListeners(firestore);
     firestoreReady = true;
     firestoreUnavailable = false;
+    lastInitFailureMs = 0;
     notifyAnalyticsChange();
     return true;
   } catch (err) {
     console.error("[Analytics] Failed to initialize Firestore analytics store:", err);
     firestoreReady = false;
     firestoreUnavailable = true;
+    lastInitFailureMs = Date.now();
     initPromise = null; // allow recovery attempt on subsequent requests
     notifyAnalyticsChange();
     return false;
@@ -392,12 +411,16 @@ async function performInitialSync(): Promise<boolean> {
 }
 
 export async function ensureAnalyticsReady(): Promise<boolean> {
-  if (firestoreReady && !firestoreUnavailable && db) {
+  if (firestoreReady && !firestoreUnavailable && db && totalUniqueVisitorsCache !== null) {
     return true;
   }
-  if (!initPromise) {
-    initPromise = performInitialSync();
+  if (initPromise) {
+    return initPromise;
   }
+  if (firestoreUnavailable && Date.now() - lastInitFailureMs < INIT_RETRY_COOLDOWN_MS) {
+    return false;
+  }
+  initPromise = performInitialSync();
   return initPromise;
 }
 
@@ -652,6 +675,8 @@ export async function recordHeartbeat(
     const activeUsers = getActiveUniqueUsersCount();
     const activeCountChanged = activeUsers !== prevActiveCount;
     lastBroadcastActiveCount = activeUsers;
+    firestoreUnavailable = false;
+    firestoreReady = true;
 
     return {
       websiteVisitors: totalUniqueVisitorsCache,
@@ -664,6 +689,8 @@ export async function recordHeartbeat(
   } catch (err) {
     console.error("[Analytics] Heartbeat persistence error:", err);
     firestoreUnavailable = true;
+    lastInitFailureMs = Date.now();
+    initPromise = null;
     return {
       websiteVisitors: null,
       activeUsers: null,
@@ -809,9 +836,7 @@ export async function recordSessionLeave(sessionId: string): Promise<{
 
 export async function getAnalyticsStats(): Promise<AnalyticsStatsResult> {
   const now = Date.now();
-  if (!firestoreReady && !firestoreUnavailable) {
-    await ensureAnalyticsReady();
-  }
+  await ensureAnalyticsReady();
 
   if (!firestoreReady || firestoreUnavailable || totalUniqueVisitorsCache === null) {
     return {
