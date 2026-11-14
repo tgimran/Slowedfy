@@ -12,13 +12,16 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@firebase/eslint-plugin-security-rules": "^0.0.2",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "dotenv": "^17.2.3",
+    "eslint": "^10.15.0",
+    "express": "^4.21.2",
+    "firebase": "^13.3.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3",
-    "express": "^4.21.2",
-    "dotenv": "^17.2.3"
+    "vite": "^6.2.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

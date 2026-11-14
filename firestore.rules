@@ -1,0 +1,104 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 8 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidVisitorRecord(data, visitorId) {
+      return data.keys().hasAll(['visitorId', 'firstSeen', 'lastSeen', 'visitCount'])
+        && data.keys().hasOnly(['visitorId', 'firstSeen', 'lastSeen', 'visitCount'])
+        && isValidId(data.visitorId)
+        && data.visitorId == visitorId
+        && data.firstSeen is timestamp
+        && data.lastSeen is timestamp
+        && data.visitCount is int
+        && data.visitCount >= 1;
+    }
+
+    function isValidGlobalStats(data) {
+      return data.keys().hasAll(['totalUniqueVisitors', 'updatedAt'])
+        && data.keys().hasOnly(['totalUniqueVisitors', 'updatedAt'])
+        && data.totalUniqueVisitors is int
+        && data.totalUniqueVisitors >= 0
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidActiveSession(data, sessionId) {
+      return data.keys().hasAll(['sessionId', 'visitorId', 'lastSeen', 'expiresAtMs'])
+        && data.keys().hasOnly(['sessionId', 'visitorId', 'lastSeen', 'expiresAtMs'])
+        && isValidId(data.sessionId)
+        && data.sessionId == sessionId
+        && isValidId(data.visitorId)
+        && data.lastSeen is timestamp
+        && data.expiresAtMs is int
+        && data.expiresAtMs > 0;
+    }
+
+    // Permanent deduplicated unique visitor registry (no PII stored)
+    match /analytics_visitors/{visitorId} {
+      allow get: if isValidId(visitorId);
+      allow list: if false;
+      allow create: if isValidId(visitorId)
+        && isValidVisitorRecord(incoming(), visitorId)
+        && incoming().firstSeen == request.time
+        && incoming().lastSeen == request.time
+        && incoming().visitCount == 1;
+      allow update: if isValidId(visitorId)
+        && isValidVisitorRecord(incoming(), visitorId)
+        && incoming().visitorId == existing().visitorId
+        && incoming().firstSeen == existing().firstSeen
+        && incoming().lastSeen == request.time
+        && incoming().visitCount >= existing().visitCount
+        && incoming().visitCount <= existing().visitCount + 1
+        && incoming().diff(existing()).affectedKeys().hasOnly(['lastSeen', 'visitCount']);
+      allow delete: if false;
+    }
+
+    // Permanent global aggregate counter (single doc: global)
+    match /analytics_meta/{docId} {
+      allow get: if docId == 'global';
+      allow list: if false;
+      allow create: if docId == 'global'
+        && isValidGlobalStats(incoming())
+        && incoming().totalUniqueVisitors >= 0
+        && incoming().updatedAt == request.time;
+      allow update: if docId == 'global'
+        && isValidGlobalStats(incoming())
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['totalUniqueVisitors', 'updatedAt'])
+        && incoming().totalUniqueVisitors == existing().totalUniqueVisitors + 1;
+      allow delete: if false;
+    }
+
+    // Real-time active presence sessions with automatic expiry
+    match /analytics_sessions/{sessionId} {
+      allow get: if isValidId(sessionId);
+      allow list: if resource.data.expiresAtMs > 0;
+      allow create: if isValidId(sessionId)
+        && isValidActiveSession(incoming(), sessionId)
+        && incoming().lastSeen == request.time;
+      allow update: if isValidId(sessionId)
+        && isValidActiveSession(incoming(), sessionId)
+        && incoming().sessionId == existing().sessionId
+        && incoming().visitorId == existing().visitorId
+        && incoming().lastSeen == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['lastSeen', 'expiresAtMs']);
+      allow delete: if isValidId(sessionId);
+    }
+  }
+}

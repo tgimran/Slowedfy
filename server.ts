@@ -25,6 +25,7 @@ import {
   recordHeartbeat,
   recordSessionLeave,
   getAnalyticsStats,
+  getCachedAnalyticsStatsSync,
   registerSseSession,
   touchSseSession,
   unregisterSseSession,
@@ -1048,7 +1049,7 @@ async function startServer() {
   }
 
   // Analytics Endpoints: Total Unique Website Visitors & Real-Time Active Users
-  app.post("/api/analytics/heartbeat", (req, res) => {
+  app.post("/api/analytics/heartbeat", async (req, res) => {
     try {
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       const body = parseAnalyticsBody(req.body);
@@ -1056,13 +1057,25 @@ async function startServer() {
       const sessionId = String(body.sessionId || "").trim();
 
       if (!isValidAnalyticsId(visitorId)) {
-        return res.status(400).json({ success: false, verified: false, error: "Invalid visitor ID" });
+        return res.status(400).json({ success: false, verified: false, unavailable: false, error: "Invalid visitor ID" });
       }
 
-      const stats = recordHeartbeat(visitorId, sessionId);
+      const stats = await recordHeartbeat(visitorId, sessionId);
+      if (!stats.verified) {
+        return res.status(503).json({
+          success: false,
+          verified: false,
+          unavailable: true,
+          websiteVisitors: null,
+          activeUsers: null,
+          updatedAt: stats.updatedAt,
+        });
+      }
+
       res.json({
         success: true,
         verified: true,
+        unavailable: false,
         websiteVisitors: stats.websiteVisitors,
         activeUsers: stats.activeUsers,
         isNewVisitor: stats.isNewVisitor,
@@ -1073,34 +1086,40 @@ async function startServer() {
         broadcastAnalyticsUpdate();
       }
     } catch (err: any) {
-      res.status(500).json({ success: false, verified: false, error: err.message });
+      res.status(500).json({ success: false, verified: false, unavailable: true, error: err.message });
     }
   });
 
-  app.post("/api/analytics/leave", (req, res) => {
+  app.post("/api/analytics/leave", async (req, res) => {
     try {
       const body = parseAnalyticsBody(req.body);
       const sessionId = String(body.sessionId || "").trim();
-      const result = recordSessionLeave(sessionId);
-      res.json({ success: true, verified: true, activeUsers: result.activeUsers });
+      const result = await recordSessionLeave(sessionId);
+      res.json({ success: result.verified, verified: result.verified, activeUsers: result.activeUsers });
       if (result.changed) {
         broadcastAnalyticsUpdate();
       }
     } catch (err: any) {
-      res.status(500).json({ success: false, verified: false, error: err.message });
+      res.status(500).json({ success: false, verified: false, unavailable: true, error: err.message });
     }
   });
 
-  app.get("/api/analytics/stats", (_req, res) => {
+  app.get("/api/analytics/stats", async (_req, res) => {
     try {
       res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-      const stats = getAnalyticsStats();
+      const stats = await getAnalyticsStats();
+      if (!stats.verified) {
+        return res.status(stats.unavailable ? 503 : 200).json({
+          success: false,
+          ...stats,
+        });
+      }
       res.json({
         success: true,
         ...stats,
       });
     } catch (err: any) {
-      res.status(500).json({ success: false, verified: false, error: err.message });
+      res.status(500).json({ success: false, verified: false, unavailable: true, error: err.message });
     }
   });
 
@@ -1129,7 +1148,7 @@ async function startServer() {
 
   function broadcastAnalyticsUpdate() {
     if (sseClients.size === 0) return;
-    const stats = getAnalyticsStats();
+    const stats = getCachedAnalyticsStatsSync();
     const payload = JSON.stringify({
       type: "analytics:updated",
       ...stats,
@@ -1143,7 +1162,7 @@ async function startServer() {
     }
   }
 
-  // Broadcast immediately when background session expiry or SSE grace cleanup updates activeUsers
+  // Broadcast immediately when background session expiry, Firestore snapshot, or SSE grace cleanup updates counts
   registerAnalyticsChangeListener(() => {
     broadcastAnalyticsUpdate();
   });
@@ -1154,7 +1173,7 @@ async function startServer() {
   });
 
   // Real-Time Server-Sent Events (SSE) for instant Drive sync & Analytics
-  app.get("/api/playlist/events", (req, res) => {
+  app.get("/api/playlist/events", async (req, res) => {
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache, no-transform");
     res.setHeader("Connection", "keep-alive");
@@ -1164,13 +1183,11 @@ async function startServer() {
     const sessionId = typeof req.query.sessionId === "string" ? req.query.sessionId.trim() : "";
     const visitorId = typeof req.query.visitorId === "string" ? req.query.visitorId.trim() : "";
 
+    let closed = false;
     const client = res;
     sseClients.add(client);
 
-    // Link SSE connection to active session presence if valid IDs provided
-    const sseChangedCounts = registerSseSession(sessionId, visitorId);
-
-    // Initial playlist state
+    // Send initial playlist state immediately
     const currentList = getCachedDrivePlaylist();
     const initPayload = JSON.stringify({
       count: currentList.length,
@@ -1179,14 +1196,6 @@ async function startServer() {
     });
     client.write(`event: init\ndata: ${initPayload}\n\n`);
 
-    // Initial analytics state
-    const currentStats = getAnalyticsStats();
-    client.write(`event: analytics\ndata: ${JSON.stringify({ type: "analytics:init", ...currentStats })}\n\n`);
-
-    if (sseChangedCounts) {
-      broadcastAnalyticsUpdate();
-    }
-
     // Keep connection alive with heartbeat and real-time analytics sync every 10s
     const heartbeat = setInterval(() => {
       try {
@@ -1194,7 +1203,7 @@ async function startServer() {
           touchSseSession(sessionId);
         }
         client.write(": ping\n\n");
-        const stats = getAnalyticsStats();
+        const stats = getCachedAnalyticsStatsSync();
         client.write(`event: analytics\ndata: ${JSON.stringify({ type: "analytics:updated", ...stats })}\n\n`);
       } catch (e) {
         clearInterval(heartbeat);
@@ -1204,12 +1213,28 @@ async function startServer() {
     }, 10000);
 
     req.on("close", () => {
+      closed = true;
       clearInterval(heartbeat);
       sseClients.delete(client);
       if (sessionId) {
         unregisterSseSession(sessionId);
       }
     });
+
+    // Link SSE connection to active Firestore session presence & send initial verified analytics state
+    const sseChangedCounts = await registerSseSession(sessionId, visitorId);
+    if (closed) {
+      if (sessionId) unregisterSseSession(sessionId);
+      return;
+    }
+
+    const currentStats = await getAnalyticsStats();
+    if (!closed) {
+      client.write(`event: analytics\ndata: ${JSON.stringify({ type: "analytics:init", ...currentStats })}\n\n`);
+      if (sseChangedCounts) {
+        broadcastAnalyticsUpdate();
+      }
+    }
   });
 
   // Continuous real-time Drive sync poll:

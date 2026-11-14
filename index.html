@@ -9008,8 +9008,11 @@
           eventSource.addEventListener('analytics', (e) => {
             try {
               const data = JSON.parse(e.data);
-              if (data && data.verified === true && typeof data.websiteVisitors === 'number' && window.Analytics) {
+              if (!window.Analytics) return;
+              if (data && data.verified === true && typeof data.websiteVisitors === 'number') {
                 window.Analytics.updateUI(data.websiteVisitors, data.activeUsers, true);
+              } else if (data && data.unavailable === true) {
+                window.Analytics.setUnavailableState();
               }
             } catch (err) {}
           });
@@ -9279,14 +9282,32 @@
               this.updateUI(data.websiteVisitors, data.activeUsers, true);
               return;
             }
+            if (data && data.loading === true && !this.hasVerifiedData) {
+              this.setLoadingState();
+              return;
+            }
           }
         } catch (e) {}
-        if (!this.hasVerifiedData) {
-          this.setUnavailableState();
+        this.setUnavailableState();
+      },
+
+      setLoadingState() {
+        const visitorsEl = document.getElementById('website-visitors-display-num');
+        const activeEl = document.getElementById('active-users-display-num');
+        if (visitorsEl) {
+          visitorsEl.classList.remove('is-unavailable');
+          visitorsEl.classList.add('is-loading');
+          visitorsEl.textContent = '...';
+        }
+        if (activeEl) {
+          activeEl.classList.remove('is-unavailable');
+          activeEl.classList.add('is-loading');
+          activeEl.textContent = '...';
         }
       },
 
       setUnavailableState() {
+        this.hasVerifiedData = false;
         const visitorsEl = document.getElementById('website-visitors-display-num');
         const activeEl = document.getElementById('active-users-display-num');
         const visitorsPill = document.getElementById('website-visitors-pill');

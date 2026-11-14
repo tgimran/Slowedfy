@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "Visitor": {
+      "title": "Visitor",
+      "description": "A unique website visitor persisted across updates, deployments, and server restarts.",
+      "type": "object",
+      "properties": {
+        "visitorId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique persistent visitor identifier."
+        },
+        "firstSeen": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the visitor's first recorded visit."
+        },
+        "lastSeen": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the visitor's most recent heartbeat."
+        },
+        "visitCount": {
+          "type": "integer",
+          "description": "Total number of recorded sessions for this visitor."
+        }
+      },
+      "required": ["visitorId", "firstSeen", "lastSeen", "visitCount"]
+    },
+    "SiteStats": {
+      "title": "SiteStats",
+      "description": "Global persistent aggregate count of unique website visitors.",
+      "type": "object",
+      "properties": {
+        "totalUniqueVisitors": {
+          "type": "integer",
+          "description": "Permanent all-time count of unique visitors."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last stats update."
+        }
+      },
+      "required": ["totalUniqueVisitors", "updatedAt"]
+    },
+    "ActiveSession": {
+      "title": "ActiveSession",
+      "description": "Real-time active session heartbeat record with automatic expiry timestamp.",
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique per-tab session identifier."
+        },
+        "visitorId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Associated persistent visitor identifier for deduplication."
+        },
+        "lastSeen": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last heartbeat."
+        },
+        "expiresAtMs": {
+          "type": "integer",
+          "description": "Epoch milliseconds timestamp after which this session is considered expired."
+        }
+      },
+      "required": ["sessionId", "visitorId", "lastSeen", "expiresAtMs"]
+    }
+  },
+  "firestore": {
+    "/analytics_visitors/{visitorId}": {
+      "schema": { "$ref": "#/entities/Visitor" },
+      "description": "Permanent deduplicated registry of unique website visitors."
+    },
+    "/analytics_meta/{docId}": {
+      "schema": { "$ref": "#/entities/SiteStats" },
+      "description": "Global aggregate counter document (global)."
+    },
+    "/analytics_sessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/ActiveSession" },
+      "description": "Real-time active visitor sessions with automatic expiry."
+    }
+  }
+}
