@@ -38,6 +38,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
   {
+    "id": "12Ipw4FQWEQUG3iRieuDRL-DHRwnVPWxh",
+    "originalFilename": "Juda Kar Diya│Stebin Ben│Sanjeev Chaturvedi│Ajay│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Juda Kar Diya│Stebin Ben│Sanjeev Chaturvedi│Ajay│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge x Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "04:24",
+    "seconds": 264,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "4.5 MB",
+    "date": "14 Nov 2026",
+    "uploadTime": 1794656531333,
+    "streamUrl": "/api/stream?id=12Ipw4FQWEQUG3iRieuDRL-DHRwnVPWxh",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=12Ipw4FQWEQUG3iRieuDRL-DHRwnVPWxh&export=download",
+    "thumb": "/covers/thumbs/12Ipw4FQWEQUG3iRieuDRL-DHRwnVPWxh.jpg",
+    "hdThumb": "/covers/12Ipw4FQWEQUG3iRieuDRL-DHRwnVPWxh.jpg",
+    "isPremiere": false
+  },
+  {
     "id": "1e9rtGabpnOnyr2xJdeOgMwoNwTDZVbZK",
     "originalFilename": "Kisise Tum Pyaar Karo│Kumar Sanu│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
     "title": "Kisise Tum Pyaar Karo│Kumar Sanu│Alka Yagnik│(Slowed + Reverb) By Beat Badge × Slowedfy",
