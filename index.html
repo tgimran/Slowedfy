@@ -3313,8 +3313,8 @@
                   </button>
                 </div>
 
-                <!-- Website Visitors Counter Pill -->
-                <div class="website-visitors-pill" id="website-visitors-pill" title="Total unique website visitors">
+                <!-- Total Visitors Counter Pill -->
+                <div class="website-visitors-pill" id="website-visitors-pill" title="Total Visitors (all-time unique visitors)">
                   <svg class="website-visitors-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                     <circle cx="9" cy="7" r="4"/>
@@ -3323,7 +3323,7 @@
                   </svg>
                   <div class="website-visitors-info">
                     <span class="website-visitors-number is-loading" id="website-visitors-display-num" aria-live="polite">...</span>
-                    <span class="website-visitors-caption">Website Visitors</span>
+                    <span class="website-visitors-caption">Total Visitors</span>
                   </div>
                 </div>
 
@@ -9356,7 +9356,7 @@
             visitorsEl.textContent = this.formatNumber(websiteVisitors);
           }
           if (visitorsPill) {
-            visitorsPill.setAttribute('title', 'Total unique website visitors');
+            visitorsPill.setAttribute('title', 'Total Visitors (all-time unique visitors)');
           }
         }
 
