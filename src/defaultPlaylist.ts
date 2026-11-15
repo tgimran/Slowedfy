@@ -1,6 +1,6 @@
 // Auto-generated Slowedfy Master Library from Google Drive Folder: 194R85uwyR_UyKRn6RC9xGsmN87kNC4bF
-// Total Tracks: 113 (Newest Uploads First)
-// Verified at: 2026-10-18T00:45:11.537Z
+// Total Tracks: 121 (Newest Uploads First)
+// Verified at: 2026-11-15T11:37:30.565Z
 
 export interface PlaylistItem {
   id: string;
@@ -37,6 +37,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 ];
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
+  {
+    "id": "1m-t7iflQ4p_IGV0D2B4jlLFjqi8jr2Rk",
+    "originalFilename": "I Met Her Again│Maan Panu│tav│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "I Met Her Again│Maan Panu│tav│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge x Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "03:37",
+    "seconds": 217,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "4.1 MB",
+    "date": "15 Nov 2026",
+    "uploadTime": 1794742472494,
+    "streamUrl": "/api/stream?id=1m-t7iflQ4p_IGV0D2B4jlLFjqi8jr2Rk",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=1m-t7iflQ4p_IGV0D2B4jlLFjqi8jr2Rk&export=download",
+    "thumb": "/covers/thumbs/1m-t7iflQ4p_IGV0D2B4jlLFjqi8jr2Rk.jpg",
+    "hdThumb": "/covers/1m-t7iflQ4p_IGV0D2B4jlLFjqi8jr2Rk.jpg",
+    "isPremiere": false
+  },
   {
     "id": "12Ipw4FQWEQUG3iRieuDRL-DHRwnVPWxh",
     "originalFilename": "Juda Kar Diya│Stebin Ben│Sanjeev Chaturvedi│Ajay│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
