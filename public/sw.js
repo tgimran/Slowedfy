@@ -1,5 +1,5 @@
 /* Slowedfy Service Worker - Offline Shell & Fast Asset Caching */
-const CACHE_NAME = 'slowedfy-v14';
+const CACHE_NAME = 'slowedfy-v15';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -59,6 +59,7 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('youtube.com') ||
     url.hostname.includes('youtube-nocookie.com') ||
     url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('accounts.google.com') ||
     url.hostname.includes('firebaseapp.com') ||
     url.hostname.includes('firebaseio.com') ||
     url.hostname.includes('gstatic.com') ||

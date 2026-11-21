@@ -181,8 +181,13 @@ function formatAuthError(error: unknown): string {
       return "Sign-in window was closed before completing.";
     case "auth/popup-blocked":
       return "Pop-up was blocked by your browser. Please allow pop-ups and try again.";
-    case "auth/unauthorized-domain":
-      return "This domain is not yet authorized in Firebase Authentication settings.";
+    case "auth/unauthorized-domain": {
+      const host =
+        typeof window !== "undefined" && window.location?.hostname
+          ? window.location.hostname
+          : "this domain";
+      return `Domain "${host}" is not yet authorized in Firebase Authentication settings.`;
+    }
     case "auth/operation-not-allowed":
       return "Email/Password sign-in is not enabled in Firebase Authentication yet. Please sign in with Google or enable Email/Password in Firebase Console.";
     case "auth/invalid-email":
