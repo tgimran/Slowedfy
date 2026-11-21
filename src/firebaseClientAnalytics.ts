@@ -1,6 +1,4 @@
-import { initializeApp } from "firebase/app";
 import {
-  getFirestore,
   doc,
   collection,
   query,
@@ -14,66 +12,11 @@ import {
   serverTimestamp,
   type Unsubscribe,
 } from "firebase/firestore";
-import firebaseConfig from "../firebase-applet-config.json";
-
-const OperationType = {
-  CREATE: "create",
-  UPDATE: "update",
-  DELETE: "delete",
-  LIST: "list",
-  GET: "get",
-  WRITE: "write",
-} as const;
-type OperationType = (typeof OperationType)[keyof typeof OperationType];
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-    tenantId?: string | null;
-    providerInfo?: {
-      providerId?: string | null;
-      email?: string | null;
-    }[];
-  };
-}
-
-function handleFirestoreError(
-  error: unknown,
-  operationType: OperationType,
-  path: string | null
-): never {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: null,
-      email: null,
-      emailVerified: null,
-      isAnonymous: null,
-      tenantId: null,
-      providerInfo: [],
-    },
-    operationType,
-    path,
-  };
-  console.error("Firestore Error: ", JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
-
-const app = initializeApp(firebaseConfig);
-export const db = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+import { db, OperationType, handleFirestoreError, testConnection } from "./firebaseApp";
 
 const ACTIVE_TIMEOUT_MS = 45 * 1000;
 const SESSION_WRITE_THROTTLE_MS = 15 * 1000;
 
-let connectionTested = false;
 let visitorRegistered = false;
 let sessionRegistered = false;
 let lastSessionWriteMs = 0;
@@ -87,19 +30,6 @@ let sessionsUnsub: Unsubscribe | null = null;
 
 function isValidId(id: unknown): id is string {
   return typeof id === "string" && /^[a-zA-Z0-9_-]{8,128}$/.test(id.trim());
-}
-
-async function testConnection(): Promise<void> {
-  if (connectionTested) return;
-  try {
-    await getDocFromServer(doc(db, "test", "connection"));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("the client is offline")) {
-      console.error("Please check your Firebase configuration.");
-      throw error;
-    }
-  }
-  connectionTested = true;
 }
 
 function computeActiveUsers(): number {

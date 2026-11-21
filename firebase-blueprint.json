@@ -76,6 +76,364 @@
         }
       },
       "required": ["sessionId", "visitorId", "lastSeen", "expiresAtMs"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private profile and aggregate listening statistics for an authenticated Slowedfy user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the user."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "User display name."
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 160,
+          "description": "Private user email address."
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Optional avatar photo URL."
+        },
+        "totalPlays": {
+          "type": "integer",
+          "description": "Total number of meaningful song plays recorded for this user."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last profile or stats update."
+        }
+      },
+      "required": ["uid", "displayName", "email", "photoURL", "totalPlays", "createdAt", "updatedAt"]
+    },
+    "LikedSong": {
+      "title": "LikedSong",
+      "description": "A song liked by a signed-in user.",
+      "type": "object",
+      "properties": {
+        "trackId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique song identifier."
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250,
+          "description": "Song title snapshot."
+        },
+        "artist": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Song artist snapshot."
+        },
+        "duration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20,
+          "description": "Formatted track duration."
+        },
+        "seconds": {
+          "type": "integer",
+          "description": "Track duration in seconds."
+        },
+        "thumb": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Thumbnail artwork URL."
+        },
+        "likedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the song was liked."
+        }
+      },
+      "required": ["trackId", "userId", "title", "artist", "duration", "seconds", "thumb", "likedAt"]
+    },
+    "UserPlaylist": {
+      "title": "UserPlaylist",
+      "description": "A personal music playlist created and managed by a signed-in user.",
+      "type": "object",
+      "properties": {
+        "playlistId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique playlist document ID."
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "User-chosen playlist title."
+        },
+        "trackIds": {
+          "type": "array",
+          "description": "Ordered list of track IDs in this playlist (max 500)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when playlist was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when playlist was last modified."
+        }
+      },
+      "required": ["playlistId", "userId", "name", "trackIds", "createdAt", "updatedAt"]
+    },
+    "HistoryEntry": {
+      "title": "HistoryEntry",
+      "description": "A deduplicated per-song listening history entry storing the most recent playedAt timestamp for a signed-in user.",
+      "type": "object",
+      "properties": {
+        "historyId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Canonical per-song history document ID (equals trackId)."
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "trackId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Played track ID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250,
+          "description": "Song title snapshot."
+        },
+        "artist": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Song artist snapshot."
+        },
+        "duration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20,
+          "description": "Formatted track duration."
+        },
+        "seconds": {
+          "type": "integer",
+          "description": "Track duration in seconds."
+        },
+        "thumb": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Thumbnail artwork URL."
+        },
+        "playedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the meaningful listen was recorded."
+        }
+      },
+      "required": ["historyId", "userId", "trackId", "title", "artist", "duration", "seconds", "thumb", "playedAt"]
+    },
+    "TrackPlayStat": {
+      "title": "TrackPlayStat",
+      "description": "Per-song play count statistics for a signed-in user.",
+      "type": "object",
+      "properties": {
+        "trackId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique track identifier."
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Owner Firebase Auth UID."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 250,
+          "description": "Song title snapshot."
+        },
+        "artist": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "description": "Song artist snapshot."
+        },
+        "duration": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20,
+          "description": "Formatted track duration."
+        },
+        "seconds": {
+          "type": "integer",
+          "description": "Track duration in seconds."
+        },
+        "thumb": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Thumbnail artwork URL."
+        },
+        "playCount": {
+          "type": "integer",
+          "description": "Total number of meaningful plays of this song by the user."
+        },
+        "firstPlayedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the first recorded play."
+        },
+        "lastPlayedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the most recent recorded play."
+        }
+      },
+      "required": ["trackId", "userId", "title", "artist", "duration", "seconds", "thumb", "playCount", "firstPlayedAt", "lastPlayedAt"]
+    },
+    "SongStat": {
+      "title": "SongStat",
+      "description": "Public real-time aggregate song statistics (unique users who played the song and total users who liked the song).",
+      "type": "object",
+      "properties": {
+        "trackId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique track identifier."
+        },
+        "uniquePlayCount": {
+          "type": "integer",
+          "description": "Total number of unique users/visitors who have meaningfully played this song."
+        },
+        "likeCount": {
+          "type": "integer",
+          "description": "Total number of users who currently like this song."
+        },
+        "lastGuestPlayKey": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^(|g_[a-zA-Z0-9_\\-]{8,118})$",
+          "description": "Opaque non-PII guest listener key used for atomic guest unique-play deduplication."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last statistics update."
+        }
+      },
+      "required": ["trackId", "uniquePlayCount", "likeCount", "lastGuestPlayKey", "updatedAt"]
+    },
+    "SongUniqueListener": {
+      "title": "SongUniqueListener",
+      "description": "Permanent deduplicated receipt proving a unique user or guest visitor has played a song.",
+      "type": "object",
+      "properties": {
+        "trackId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique track identifier."
+        },
+        "listenerId": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 128,
+          "pattern": "^(u|g)_[a-zA-Z0-9_\\-]{8,118}$",
+          "description": "Prefixed unique listener key (u_<uid> or g_<visitorId>)."
+        },
+        "listenerType": {
+          "type": "string",
+          "enum": ["user", "guest"],
+          "description": "Whether this listener is an authenticated user or a guest visitor."
+        },
+        "firstPlayedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when this listener first meaningfully played the song."
+        }
+      },
+      "required": ["trackId", "listenerId", "listenerType", "firstPlayedAt"]
+    },
+    "SongLiker": {
+      "title": "SongLiker",
+      "description": "Deduplicated per-user like receipt backing the real-time song likeCount.",
+      "type": "object",
+      "properties": {
+        "trackId": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Unique track identifier."
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the user who liked the song."
+        },
+        "likedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the song was liked."
+        }
+      },
+      "required": ["trackId", "userId", "likedAt"]
     }
   },
   "firestore": {
@@ -90,6 +448,38 @@
     "/analytics_sessions/{sessionId}": {
       "schema": { "$ref": "#/entities/ActiveSession" },
       "description": "Real-time active visitor sessions with automatic expiry."
+    },
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user account profile and lifetime total song play count."
+    },
+    "/users/{uid}/likedSongs/{trackId}": {
+      "schema": { "$ref": "#/entities/LikedSong" },
+      "description": "Private liked songs saved by the authenticated user."
+    },
+    "/users/{uid}/playlists/{playlistId}": {
+      "schema": { "$ref": "#/entities/UserPlaylist" },
+      "description": "Private custom playlists created and managed by the authenticated user."
+    },
+    "/users/{uid}/history/{historyId}": {
+      "schema": { "$ref": "#/entities/HistoryEntry" },
+      "description": "Private chronological listening history for the authenticated user."
+    },
+    "/users/{uid}/playStats/{trackId}": {
+      "schema": { "$ref": "#/entities/TrackPlayStat" },
+      "description": "Private per-song play counts powering user statistics and Most Played."
+    },
+    "/song_stats/{trackId}": {
+      "schema": { "$ref": "#/entities/SongStat" },
+      "description": "Public real-time aggregate unique play count and like count for each song."
+    },
+    "/song_stats/{trackId}/uniqueListeners/{listenerId}": {
+      "schema": { "$ref": "#/entities/SongUniqueListener" },
+      "description": "Immutable per-user/per-visitor play receipts preventing duplicate play counts."
+    },
+    "/song_stats/{trackId}/likers/{uid}": {
+      "schema": { "$ref": "#/entities/SongLiker" },
+      "description": "Per-user like receipts atomically synchronized with song_stats.likeCount."
     }
   }
 }

@@ -7,8 +7,32 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
     function isValidId(id) {
       return id is string && id.size() >= 8 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidTrackId(id) {
+      return id is string && id.size() >= 4 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidGuestListenerId(id) {
+      return id is string && id.size() >= 10 && id.size() <= 128 && id.matches('^g_[a-zA-Z0-9_\\-]{8,118}$');
+    }
+
+    function isValidUserListenerId(id) {
+      return id is string && id.size() >= 10 && id.size() <= 128 && id.matches('^u_[a-zA-Z0-9_\\-]{8,118}$');
+    }
+
+    function isValidListenerId(id) {
+      return isValidUserListenerId(id) || isValidGuestListenerId(id);
     }
 
     function incoming() {
@@ -17,6 +41,10 @@ service cloud.firestore {
 
     function existing() {
       return resource.data;
+    }
+
+    function userProfileExists(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid));
     }
 
     function isValidVisitorRecord(data, visitorId) {
@@ -47,6 +75,155 @@ service cloud.firestore {
         && data.lastSeen is timestamp
         && data.expiresAtMs is int
         && data.expiresAtMs > 0;
+    }
+
+    function isValidUserProfile(data, uid) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'photoURL', 'totalPlays', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'photoURL', 'totalPlays', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid)
+        && data.uid == uid
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 80
+        && data.email is string
+        && data.email.size() <= 160
+        && data.photoURL is string
+        && data.photoURL.size() <= 500
+        && data.totalPlays is int
+        && data.totalPlays >= 0
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLikedSong(data, uid, trackId) {
+      return data.keys().hasAll(['trackId', 'userId', 'title', 'artist', 'duration', 'seconds', 'thumb', 'likedAt'])
+        && data.keys().hasOnly(['trackId', 'userId', 'title', 'artist', 'duration', 'seconds', 'thumb', 'likedAt'])
+        && isValidTrackId(data.trackId)
+        && data.trackId == trackId
+        && isValidId(data.userId)
+        && data.userId == uid
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 250
+        && data.artist is string
+        && data.artist.size() >= 1
+        && data.artist.size() <= 120
+        && data.duration is string
+        && data.duration.size() >= 1
+        && data.duration.size() <= 20
+        && data.seconds is int
+        && data.seconds >= 0
+        && data.seconds <= 86400
+        && data.thumb is string
+        && data.thumb.size() <= 500
+        && data.likedAt is timestamp;
+    }
+
+    function isValidUserPlaylist(data, uid, playlistId) {
+      return data.keys().hasAll(['playlistId', 'userId', 'name', 'trackIds', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['playlistId', 'userId', 'name', 'trackIds', 'createdAt', 'updatedAt'])
+        && isValidId(data.playlistId)
+        && data.playlistId == playlistId
+        && isValidId(data.userId)
+        && data.userId == uid
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 80
+        && data.trackIds is list
+        && data.trackIds.size() <= 500
+        && (data.trackIds.size() == 0 || data.trackIds[0] is string)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidHistoryEntry(data, uid, historyId) {
+      return data.keys().hasAll(['historyId', 'userId', 'trackId', 'title', 'artist', 'duration', 'seconds', 'thumb', 'playedAt'])
+        && data.keys().hasOnly(['historyId', 'userId', 'trackId', 'title', 'artist', 'duration', 'seconds', 'thumb', 'playedAt'])
+        && isValidTrackId(data.historyId)
+        && data.historyId == historyId
+        && isValidId(data.userId)
+        && data.userId == uid
+        && isValidTrackId(data.trackId)
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 250
+        && data.artist is string
+        && data.artist.size() >= 1
+        && data.artist.size() <= 120
+        && data.duration is string
+        && data.duration.size() >= 1
+        && data.duration.size() <= 20
+        && data.seconds is int
+        && data.seconds >= 0
+        && data.seconds <= 86400
+        && data.thumb is string
+        && data.thumb.size() <= 500
+        && data.playedAt is timestamp;
+    }
+
+    function isValidTrackPlayStat(data, uid, trackId) {
+      return data.keys().hasAll(['trackId', 'userId', 'title', 'artist', 'duration', 'seconds', 'thumb', 'playCount', 'firstPlayedAt', 'lastPlayedAt'])
+        && data.keys().hasOnly(['trackId', 'userId', 'title', 'artist', 'duration', 'seconds', 'thumb', 'playCount', 'firstPlayedAt', 'lastPlayedAt'])
+        && isValidTrackId(data.trackId)
+        && data.trackId == trackId
+        && isValidId(data.userId)
+        && data.userId == uid
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 250
+        && data.artist is string
+        && data.artist.size() >= 1
+        && data.artist.size() <= 120
+        && data.duration is string
+        && data.duration.size() >= 1
+        && data.duration.size() <= 20
+        && data.seconds is int
+        && data.seconds >= 0
+        && data.seconds <= 86400
+        && data.thumb is string
+        && data.thumb.size() <= 500
+        && data.playCount is int
+        && data.playCount >= 1
+        && data.firstPlayedAt is timestamp
+        && data.lastPlayedAt is timestamp;
+    }
+
+    function isValidSongStat(data, trackId) {
+      return data.keys().hasAll(['trackId', 'uniquePlayCount', 'likeCount', 'lastGuestPlayKey', 'updatedAt'])
+        && data.keys().hasOnly(['trackId', 'uniquePlayCount', 'likeCount', 'lastGuestPlayKey', 'updatedAt'])
+        && isValidTrackId(data.trackId)
+        && data.trackId == trackId
+        && data.uniquePlayCount is int
+        && data.uniquePlayCount >= 0
+        && data.likeCount is int
+        && data.likeCount >= 0
+        && data.lastGuestPlayKey is string
+        && data.lastGuestPlayKey.size() <= 128
+        && (data.lastGuestPlayKey == '' || isValidGuestListenerId(data.lastGuestPlayKey))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSongUniqueListener(data, trackId, listenerId) {
+      return data.keys().hasAll(['trackId', 'listenerId', 'listenerType', 'firstPlayedAt'])
+        && data.keys().hasOnly(['trackId', 'listenerId', 'listenerType', 'firstPlayedAt'])
+        && isValidTrackId(data.trackId)
+        && data.trackId == trackId
+        && isValidListenerId(data.listenerId)
+        && data.listenerId == listenerId
+        && data.listenerType is string
+        && data.listenerType.size() <= 16
+        && (data.listenerType == 'user' || data.listenerType == 'guest')
+        && data.firstPlayedAt is timestamp;
+    }
+
+    function isValidSongLiker(data, uid, trackId) {
+      return data.keys().hasAll(['trackId', 'userId', 'likedAt'])
+        && data.keys().hasOnly(['trackId', 'userId', 'likedAt'])
+        && isValidTrackId(data.trackId)
+        && data.trackId == trackId
+        && isValidId(data.userId)
+        && data.userId == uid
+        && data.likedAt is timestamp;
     }
 
     // Permanent deduplicated unique visitor registry (no PII stored)
@@ -99,6 +276,239 @@ service cloud.firestore {
         && incoming().lastSeen == request.time
         && incoming().diff(existing()).affectedKeys().hasOnly(['lastSeen', 'expiresAtMs']);
       allow delete: if isValidId(sessionId);
+    }
+
+    // Public real-time song statistics (unique listeners & total likes)
+    match /song_stats/{trackId} {
+      allow get: if isValidTrackId(trackId);
+      allow list: if resource.data.uniquePlayCount >= 0;
+      allow create: if isValidTrackId(trackId)
+        && isValidSongStat(incoming(), trackId)
+        && incoming().updatedAt == request.time
+        && (
+          // Action: First Like by authenticated user
+          (
+            isSignedIn()
+            && incoming().uniquePlayCount == 0
+            && incoming().likeCount == 1
+            && incoming().lastGuestPlayKey == ''
+            && !exists(/databases/$(database)/documents/song_stats/$(trackId)/likers/$(request.auth.uid))
+            && existsAfter(/databases/$(database)/documents/song_stats/$(trackId)/likers/$(request.auth.uid))
+          )
+          // Action: First Unique Play by authenticated user
+          || (
+            isSignedIn()
+            && incoming().uniquePlayCount == 1
+            && incoming().likeCount == 0
+            && incoming().lastGuestPlayKey == ''
+            && !exists(/databases/$(database)/documents/song_stats/$(trackId)/uniqueListeners/$('u_' + request.auth.uid))
+            && existsAfter(/databases/$(database)/documents/song_stats/$(trackId)/uniqueListeners/$('u_' + request.auth.uid))
+          )
+          // Action: First Unique Play by guest visitor
+          || (
+            !isSignedIn()
+            && incoming().uniquePlayCount == 1
+            && incoming().likeCount == 0
+            && isValidGuestListenerId(incoming().lastGuestPlayKey)
+            && !exists(/databases/$(database)/documents/song_stats/$(trackId)/uniqueListeners/$(incoming().lastGuestPlayKey))
+            && existsAfter(/databases/$(database)/documents/song_stats/$(trackId)/uniqueListeners/$(incoming().lastGuestPlayKey))
+          )
+        );
+      allow update: if isValidTrackId(trackId)
+        && isValidSongStat(incoming(), trackId)
+        && incoming().trackId == existing().trackId
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Like (+1) by authenticated user
+          (
+            isSignedIn()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['likeCount', 'updatedAt'])
+            && incoming().likeCount == existing().likeCount + 1
+            && incoming().uniquePlayCount == existing().uniquePlayCount
+            && incoming().lastGuestPlayKey == existing().lastGuestPlayKey
+            && !exists(/databases/$(database)/documents/song_stats/$(trackId)/likers/$(request.auth.uid))
+            && existsAfter(/databases/$(database)/documents/song_stats/$(trackId)/likers/$(request.auth.uid))
+          )
+          // Action: Unlike (-1) by authenticated user
+          || (
+            isSignedIn()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['likeCount', 'updatedAt'])
+            && existing().likeCount >= 1
+            && incoming().likeCount == existing().likeCount - 1
+            && incoming().uniquePlayCount == existing().uniquePlayCount
+            && incoming().lastGuestPlayKey == existing().lastGuestPlayKey
+            && exists(/databases/$(database)/documents/song_stats/$(trackId)/likers/$(request.auth.uid))
+            && !existsAfter(/databases/$(database)/documents/song_stats/$(trackId)/likers/$(request.auth.uid))
+          )
+          // Action: Unique Play (+1) by authenticated user
+          || (
+            isSignedIn()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['uniquePlayCount', 'updatedAt'])
+            && incoming().uniquePlayCount == existing().uniquePlayCount + 1
+            && incoming().likeCount == existing().likeCount
+            && incoming().lastGuestPlayKey == existing().lastGuestPlayKey
+            && !exists(/databases/$(database)/documents/song_stats/$(trackId)/uniqueListeners/$('u_' + request.auth.uid))
+            && existsAfter(/databases/$(database)/documents/song_stats/$(trackId)/uniqueListeners/$('u_' + request.auth.uid))
+          )
+          // Action: Unique Play (+1) by guest visitor
+          || (
+            !isSignedIn()
+            && incoming().diff(existing()).affectedKeys().hasOnly(['uniquePlayCount', 'lastGuestPlayKey', 'updatedAt'])
+            && incoming().uniquePlayCount == existing().uniquePlayCount + 1
+            && incoming().likeCount == existing().likeCount
+            && isValidGuestListenerId(incoming().lastGuestPlayKey)
+            && !exists(/databases/$(database)/documents/song_stats/$(trackId)/uniqueListeners/$(incoming().lastGuestPlayKey))
+            && existsAfter(/databases/$(database)/documents/song_stats/$(trackId)/uniqueListeners/$(incoming().lastGuestPlayKey))
+          )
+        );
+      allow delete: if false;
+
+      // Immutable per-user/per-visitor play receipts preventing duplicate unique-play counts
+      match /uniqueListeners/{listenerId} {
+        allow get: if isValidTrackId(trackId)
+          && isValidListenerId(listenerId)
+          && (
+            isValidGuestListenerId(listenerId)
+            || (isSignedIn() && listenerId == 'u_' + request.auth.uid)
+          );
+        allow list: if false;
+        allow create: if isValidTrackId(trackId)
+          && isValidListenerId(listenerId)
+          && isValidSongUniqueListener(incoming(), trackId, listenerId)
+          && incoming().firstPlayedAt == request.time
+          && (
+            (incoming().listenerType == 'user' && isSignedIn() && listenerId == 'u_' + request.auth.uid)
+            || (incoming().listenerType == 'guest' && !isSignedIn() && isValidGuestListenerId(listenerId))
+          )
+          && existsAfter(/databases/$(database)/documents/song_stats/$(trackId));
+        allow update: if false;
+        allow delete: if false;
+      }
+
+      // Per-user like receipts atomically paired with users/{uid}/likedSongs/{trackId} & song_stats.likeCount
+      match /likers/{uid} {
+        allow get: if isOwner(uid) && isValidTrackId(trackId) && isValidId(uid);
+        allow list: if false;
+        allow create: if isOwner(uid)
+          && isValidTrackId(trackId)
+          && isValidId(uid)
+          && isValidSongLiker(incoming(), uid, trackId)
+          && incoming().likedAt == request.time
+          && existsAfter(/databases/$(database)/documents/users/$(uid)/likedSongs/$(trackId))
+          && existsAfter(/databases/$(database)/documents/song_stats/$(trackId));
+        allow update: if false;
+        allow delete: if isOwner(uid) && isValidTrackId(trackId) && isValidId(uid);
+      }
+    }
+
+    // Private per-user profile and aggregate stats
+    match /users/{uid} {
+      allow get: if isOwner(uid);
+      allow list: if false;
+      allow create: if isOwner(uid)
+        && isValidId(uid)
+        && isValidUserProfile(incoming(), uid)
+        && incoming().totalPlays == 0
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isOwner(uid)
+        && isValidId(uid)
+        && isValidUserProfile(incoming(), uid)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoURL', 'updatedAt'])
+            && incoming().totalPlays == existing().totalPlays
+          )
+          || (
+            incoming().diff(existing()).affectedKeys().hasOnly(['totalPlays', 'updatedAt'])
+            && incoming().totalPlays == existing().totalPlays + 1
+          )
+        );
+      allow delete: if false;
+
+      // Private liked songs
+      match /likedSongs/{trackId} {
+        allow get: if isOwner(uid) && isValidTrackId(trackId);
+        allow list: if isOwner(uid) && resource.data.userId == request.auth.uid;
+        allow create: if isOwner(uid)
+          && userProfileExists(uid)
+          && isValidTrackId(trackId)
+          && isValidLikedSong(incoming(), uid, trackId)
+          && incoming().likedAt == request.time;
+        allow update: if false;
+        allow delete: if isOwner(uid) && isValidTrackId(trackId);
+      }
+
+      // Private custom playlists
+      match /playlists/{playlistId} {
+        allow get: if isOwner(uid) && isValidId(playlistId);
+        allow list: if isOwner(uid) && resource.data.userId == request.auth.uid;
+        allow create: if isOwner(uid)
+          && userProfileExists(uid)
+          && isValidId(playlistId)
+          && isValidUserPlaylist(incoming(), uid, playlistId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+        allow update: if isOwner(uid)
+          && userProfileExists(uid)
+          && isValidId(playlistId)
+          && isValidUserPlaylist(incoming(), uid, playlistId)
+          && incoming().playlistId == existing().playlistId
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'trackIds', 'updatedAt']);
+        allow delete: if isOwner(uid) && isValidId(playlistId);
+      }
+
+      // Private deduplicated listening history (one canonical entry per song, keyed by trackId)
+      match /history/{historyId} {
+        allow get: if isOwner(uid) && isValidTrackId(historyId);
+        allow list: if isOwner(uid) && resource.data.userId == request.auth.uid;
+        allow create: if isOwner(uid)
+          && userProfileExists(uid)
+          && isValidTrackId(historyId)
+          && isValidHistoryEntry(incoming(), uid, historyId)
+          && incoming().historyId == incoming().trackId
+          && incoming().playedAt == request.time;
+        allow update: if isOwner(uid)
+          && userProfileExists(uid)
+          && isValidTrackId(historyId)
+          && isValidHistoryEntry(incoming(), uid, historyId)
+          && incoming().historyId == existing().historyId
+          && incoming().userId == existing().userId
+          && incoming().trackId == existing().trackId
+          && incoming().playedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'artist', 'duration', 'seconds', 'thumb', 'playedAt']);
+        allow delete: if isOwner(uid) && isValidTrackId(historyId);
+      }
+
+      // Private per-song play counts
+      match /playStats/{trackId} {
+        allow get: if isOwner(uid) && isValidTrackId(trackId);
+        allow list: if isOwner(uid) && resource.data.userId == request.auth.uid;
+        allow create: if isOwner(uid)
+          && userProfileExists(uid)
+          && isValidTrackId(trackId)
+          && isValidTrackPlayStat(incoming(), uid, trackId)
+          && incoming().playCount == 1
+          && incoming().firstPlayedAt == request.time
+          && incoming().lastPlayedAt == request.time;
+        allow update: if isOwner(uid)
+          && userProfileExists(uid)
+          && isValidTrackId(trackId)
+          && isValidTrackPlayStat(incoming(), uid, trackId)
+          && incoming().trackId == existing().trackId
+          && incoming().userId == existing().userId
+          && incoming().firstPlayedAt == existing().firstPlayedAt
+          && incoming().lastPlayedAt == request.time
+          && incoming().playCount == existing().playCount + 1
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'artist', 'duration', 'seconds', 'thumb', 'playCount', 'lastPlayedAt']);
+        allow delete: if false;
+      }
     }
   }
 }

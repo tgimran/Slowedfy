@@ -81,6 +81,7 @@
   </script>
   <script src="https://www.youtube.com/iframe_api" async></script>
   <script type="module" src="/src/firebaseClientAnalytics.ts"></script>
+  <script type="module" src="/src/firebaseUserLibrary.ts"></script>
   <!-- Standard Favicons for Google, YouTube, Chrome, Safari & Edge -->
   <link rel="shortcut icon" href="/favicon.ico" />
   <link rel="icon" type="image/x-icon" sizes="16x16 24x24 32x32 48x48 64x64 96x96 128x128 256x256" href="/favicon.ico" />
@@ -682,9 +683,25 @@
     }
 
     .pill-counter {
-      padding: 0.4rem 0.9rem;
-      font-size: 0.8rem;
-      gap: 0.45rem;
+      padding: 0.4rem 0.85rem;
+      font-size: 0.82rem;
+      gap: 0.42rem;
+    }
+
+    .pill-counter .pill-count-num {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.015em;
+      line-height: 1;
+    }
+
+    .pill-counter .pill-music-symbol {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      display: inline-block;
+      filter: drop-shadow(0 0 6px rgba(255, 118, 155, 0.55));
+      transform: translateY(-0.5px);
     }
 
     .pill-counter .pulse-dot {
@@ -900,6 +917,81 @@
       pointer-events: none;
       transform: translateZ(0);
       backface-visibility: hidden;
+    }
+
+    /* Real-Time Song Statistics Bar (Directly Below Hero Album Art) */
+    .hero-song-stats {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.72rem;
+      margin: -0.68rem auto 0.92rem auto;
+      padding: 0.34rem 0.92rem;
+      border-radius: 999px;
+      background: linear-gradient(135deg, rgba(64, 16, 30, 0.58) 0%, rgba(26, 9, 17, 0.72) 100%);
+      backdrop-filter: blur(18px) saturate(185%);
+      -webkit-backdrop-filter: blur(18px) saturate(185%);
+      border: 1px solid rgba(255, 196, 212, 0.17);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+      position: relative;
+      z-index: 3;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .hero-song-stats:hover {
+      border-color: rgba(255, 196, 212, 0.28);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    }
+
+    .hero-stat-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.34rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      color: rgba(255, 244, 247, 0.96);
+      line-height: 1;
+      user-select: none;
+    }
+
+    .hero-stat-icon {
+      width: 13px;
+      height: 13px;
+      flex-shrink: 0;
+      transition: transform 0.2s ease, filter 0.2s ease, color 0.2s ease;
+    }
+
+    .hero-stat-plays .hero-stat-icon {
+      color: #f4cad6;
+      filter: drop-shadow(0 0 6px rgba(244, 202, 214, 0.35));
+    }
+
+    .hero-stat-likes .hero-stat-icon {
+      color: #fb7185;
+      filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.4));
+    }
+
+    .hero-stat-likes.is-liked {
+      color: #fecdd3;
+    }
+
+    .hero-stat-likes.is-liked .hero-stat-icon {
+      color: #f43f5e;
+      filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.72));
+      transform: scale(1.08);
+    }
+
+    .hero-stat-value.is-loading {
+      opacity: 0.55;
+    }
+
+    .hero-stat-sep {
+      width: 1px;
+      height: 12px;
+      background: rgba(255, 210, 224, 0.18);
+      flex-shrink: 0;
     }
 
     /* Track Metadata Info */
@@ -3124,6 +3216,794 @@
       text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
     }
 
+    /* ==========================================================================
+       USER ACCOUNTS & PERSONAL MUSIC LIBRARY (Dark Burgundy Liquid Glass)
+       ========================================================================== */
+    .account-header-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.48rem;
+      height: 36px;
+      padding: 0 0.82rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.22), rgba(74, 14, 34, 0.52));
+      border: 1px solid rgba(251, 113, 133, 0.34);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.22);
+      cursor: pointer;
+      transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      max-width: 175px;
+      white-space: nowrap;
+    }
+
+    .account-header-btn:hover {
+      transform: translateY(-1px);
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.34), rgba(95, 18, 44, 0.65));
+      border-color: rgba(251, 113, 133, 0.58);
+      box-shadow: 0 8px 22px rgba(244, 63, 94, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    }
+
+    .account-header-btn.is-signed-in {
+      padding: 0 0.72rem 0 0.32rem;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(56, 12, 28, 0.62));
+      border-color: rgba(255, 255, 255, 0.24);
+    }
+
+    .account-avatar-mini {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #f43f5e, #9f1239);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+    }
+
+    .account-avatar-mini img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .account-header-label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Library Tabs Bar inside Playlist Card */
+    .library-tabs-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.36rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      margin-bottom: 0.65rem;
+      padding: 2px 1px 4px;
+    }
+
+    .library-tabs-bar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .library-tab-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.34rem;
+      padding: 0.36rem 0.68rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.045);
+      color: var(--text-secondary);
+      font-family: inherit;
+      font-size: 0.74rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+    }
+
+    .library-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    .library-tab-btn.active {
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.28), rgba(159, 18, 57, 0.42));
+      color: #ffffff;
+      border-color: rgba(251, 113, 133, 0.55);
+      box-shadow: 0 4px 14px rgba(244, 63, 94, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.24);
+    }
+
+    .library-tab-count {
+      font-size: 0.66rem;
+      font-weight: 700;
+      padding: 0.06rem 0.36rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.92);
+    }
+
+    .library-tab-btn.active .library-tab-count {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    /* Library Subbar (Playlists actions / Stats summary / Custom Playlist header) */
+    .library-subbar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.5rem 0.7rem;
+      margin-bottom: 0.65rem;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(74, 14, 34, 0.42), rgba(20, 12, 22, 0.58));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      flex-wrap: wrap;
+    }
+
+    .library-subbar.visible {
+      display: flex;
+    }
+
+    .library-subbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.48rem;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .library-subbar-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .library-subbar-meta {
+      font-size: 0.71rem;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    .library-subbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-shrink: 0;
+    }
+
+    .lib-mini-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.32rem 0.62rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.16s ease, border-color 0.16s ease, transform 0.14s ease;
+    }
+
+    .lib-mini-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.28);
+      transform: translateY(-1px);
+    }
+
+    .lib-mini-btn.primary {
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.38), rgba(159, 18, 57, 0.55));
+      border-color: rgba(251, 113, 133, 0.5);
+    }
+
+    .lib-mini-btn.danger {
+      background: rgba(239, 68, 68, 0.16);
+      border-color: rgba(248, 113, 113, 0.35);
+      color: #fecaca;
+    }
+
+    .lib-mini-btn.danger:hover {
+      background: rgba(239, 68, 68, 0.28);
+    }
+
+    /* Row Right Actions: Play Count, Heart Like, Add to Playlist, Duration */
+    .track-row-right {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      flex-shrink: 0;
+    }
+
+    .track-playcount-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.22rem;
+      padding: 0.14rem 0.44rem;
+      border-radius: 999px;
+      font-size: 0.66rem;
+      font-weight: 700;
+      color: #fda4af;
+      background: rgba(244, 63, 94, 0.16);
+      border: 1px solid rgba(251, 113, 133, 0.28);
+      white-space: nowrap;
+    }
+
+    .track-action-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+      transition: color 0.16s ease, background 0.16s ease, transform 0.16s ease, border-color 0.16s ease;
+    }
+
+    .track-action-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.13);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: scale(1.08);
+    }
+
+    .track-action-btn.like-btn.liked,
+    .dock-like-btn.liked {
+      color: #fb7185 !important;
+      background: rgba(244, 63, 94, 0.2) !important;
+      border-color: rgba(251, 113, 133, 0.45) !important;
+      box-shadow: 0 0 12px rgba(244, 63, 94, 0.3);
+    }
+
+    .track-action-btn.like-btn.liked svg,
+    .dock-like-btn.liked svg {
+      fill: #f43f5e;
+      stroke: #fda4af;
+    }
+
+    .track-action-btn.remove-pl-btn:hover {
+      color: #fca5a5;
+      background: rgba(239, 68, 68, 0.22);
+      border-color: rgba(248, 113, 113, 0.4);
+    }
+
+    /* Personal Playlist Cards inside Playlists Tab */
+    .user-playlist-card {
+      display: grid;
+      grid-template-columns: 46px 1fr auto;
+      align-items: center;
+      gap: 0.72rem;
+      padding: 0.58rem 0.7rem;
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      cursor: pointer;
+      transition: background 0.18s ease, border-color 0.18s ease, transform 0.15s ease;
+    }
+
+    .user-playlist-card:hover {
+      background: rgba(244, 63, 94, 0.12);
+      border-color: rgba(251, 113, 133, 0.34);
+      transform: translateX(3px);
+    }
+
+    .user-playlist-thumb {
+      width: 46px;
+      height: 46px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: linear-gradient(135deg, rgba(159, 18, 57, 0.55), rgba(30, 14, 24, 0.9));
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fda4af;
+      flex-shrink: 0;
+    }
+
+    .user-playlist-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .user-playlist-meta {
+      min-width: 0;
+    }
+
+    .user-playlist-name {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-playlist-sub {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .user-playlist-btns {
+      display: flex;
+      align-items: center;
+      gap: 0.28rem;
+    }
+
+    /* Empty / Guest Prompt State inside Playlist Scroll */
+    .library-empty-state {
+      padding: 2rem 1.2rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.68rem;
+      border-radius: 18px;
+      background: linear-gradient(160deg, rgba(74, 14, 34, 0.34), rgba(14, 12, 20, 0.52));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin: 0.4rem 0;
+    }
+
+    .library-empty-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.35rem;
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.25), rgba(136, 19, 55, 0.42));
+      border: 1px solid rgba(251, 113, 133, 0.35);
+    }
+
+    .library-empty-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .library-empty-desc {
+      font-size: 0.79rem;
+      color: var(--text-secondary);
+      max-width: 290px;
+      line-height: 1.48;
+    }
+
+    .library-empty-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.2rem;
+    }
+
+    /* Auth / Account / Playlist Modals */
+    .auth-modal-dialog {
+      max-width: 420px;
+      width: 92vw;
+    }
+
+    .auth-mode-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.35rem;
+      padding: 0.28rem;
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 1rem;
+    }
+
+    .auth-mode-tab {
+      border: none;
+      border-radius: 10px;
+      padding: 0.5rem 0.6rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      background: transparent;
+      cursor: pointer;
+      transition: background 0.18s ease, color 0.18s ease;
+    }
+
+    .auth-mode-tab.active {
+      background: linear-gradient(135deg, rgba(244, 63, 94, 0.34), rgba(136, 19, 55, 0.55));
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .google-oauth-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      padding: 0.72rem 1rem;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.86rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.18s ease, transform 0.16s ease, border-color 0.18s ease;
+    }
+
+    .google-oauth-btn:hover {
+      background: rgba(255, 255, 255, 0.17);
+      border-color: rgba(255, 255, 255, 0.36);
+      transform: translateY(-1px);
+    }
+
+    .google-oauth-btn:disabled,
+    .auth-submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      margin: 0.95rem 0;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .auth-divider::before,
+    .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.7rem;
+    }
+
+    .auth-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .auth-field label {
+      font-size: 0.74rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .auth-input {
+      width: 100%;
+      padding: 0.66rem 0.82rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(8, 10, 18, 0.56);
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+      box-sizing: border-box;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .auth-input:focus {
+      border-color: rgba(251, 113, 133, 0.65);
+      box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.16);
+    }
+
+    .auth-submit-btn {
+      width: 100%;
+      padding: 0.74rem 1rem;
+      border-radius: 14px;
+      border: 1px solid rgba(251, 113, 133, 0.52);
+      background: linear-gradient(135deg, #e11d48, #881337);
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.86rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 8px 22px rgba(225, 29, 72, 0.3);
+      transition: transform 0.16s ease, filter 0.16s ease;
+      margin-top: 0.2rem;
+    }
+
+    .auth-submit-btn:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+
+    .auth-msg-box {
+      display: none;
+      padding: 0.6rem 0.78rem;
+      border-radius: 12px;
+      font-size: 0.76rem;
+      line-height: 1.4;
+      margin-bottom: 0.75rem;
+    }
+
+    .auth-msg-box.show {
+      display: block;
+    }
+
+    .auth-msg-box.error {
+      background: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(248, 113, 113, 0.42);
+      color: #fecaca;
+    }
+
+    .auth-msg-box.success {
+      background: rgba(16, 185, 129, 0.16);
+      border: 1px solid rgba(52, 211, 153, 0.42);
+      color: #a7f3d0;
+    }
+
+    .auth-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.75rem;
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .auth-link-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      color: #fda4af;
+      font-family: inherit;
+      font-size: 0.74rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    /* Account Profile Modal */
+    .account-profile-header {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 0.85rem;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(136, 19, 55, 0.36), rgba(16, 12, 24, 0.58));
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      margin-bottom: 0.9rem;
+    }
+
+    .account-avatar-lg {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+      background: linear-gradient(135deg, #f43f5e, #881337);
+      border: 2px solid rgba(255, 255, 255, 0.35);
+    }
+
+    .account-avatar-lg img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .account-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.55rem;
+      margin-bottom: 0.95rem;
+    }
+
+    .account-stat-tile {
+      padding: 0.7rem 0.78rem;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.16s ease, border-color 0.16s ease, transform 0.15s ease;
+    }
+
+    .account-stat-tile:hover {
+      background: rgba(244, 63, 94, 0.14);
+      border-color: rgba(251, 113, 133, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .account-stat-val {
+      font-size: 1.22rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.15;
+    }
+
+    .account-stat-lbl {
+      font-size: 0.72rem;
+      color: var(--text-secondary);
+      margin-top: 2px;
+    }
+
+    /* Playlist Picker Modal */
+    .picker-track-preview {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.58rem 0.68rem;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 0.85rem;
+    }
+
+    .picker-track-preview img {
+      width: 40px;
+      height: 40px;
+      border-radius: 9px;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .picker-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.42rem;
+      max-height: 220px;
+      overflow-y: auto;
+      margin-bottom: 0.85rem;
+    }
+
+    .picker-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.65rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+      transition: background 0.16s ease, border-color 0.16s ease;
+    }
+
+    .picker-row:hover {
+      background: rgba(255, 255, 255, 0.09);
+    }
+
+    .picker-row.is-member {
+      background: rgba(244, 63, 94, 0.16);
+      border-color: rgba(251, 113, 133, 0.45);
+    }
+
+    .picker-check {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.76rem;
+      font-weight: 800;
+      flex-shrink: 0;
+      color: transparent;
+    }
+
+    .picker-row.is-member .picker-check {
+      background: #e11d48;
+      border-color: #fda4af;
+      color: #fff;
+    }
+
+    .picker-create-row {
+      display: flex;
+      gap: 0.45rem;
+    }
+
+    .dock-right-controls {
+      width: auto;
+      min-width: 245px;
+    }
+
+    @media (max-width: 768px) {
+      .dock-right-controls {
+        min-width: 0;
+        width: auto;
+        gap: 0.4rem;
+      }
+      #dock-add-playlist-btn {
+        display: none !important;
+      }
+      .account-header-btn {
+        height: 34px;
+        padding: 0 0.62rem;
+        font-size: 0.74rem;
+        max-width: 122px;
+      }
+      .account-header-btn.is-signed-in {
+        padding: 0 0.55rem 0 0.26rem;
+      }
+      .track-row-right {
+        gap: 0.18rem;
+      }
+      .track-action-btn {
+        width: 26px;
+        height: 26px;
+      }
+      .track-duration {
+        font-size: 0.7rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .playlist-item {
+        gap: 0.5rem;
+        padding: 0.46rem 0.48rem;
+      }
+      .hero-song-stats {
+        margin: -0.58rem auto 0.8rem auto;
+        padding: 0.3rem 0.78rem;
+        gap: 0.6rem;
+      }
+      .hero-stat-item {
+        font-size: 0.74rem;
+      }
+      .track-duration {
+        display: none;
+      }
+      .track-playcount-pill {
+        font-size: 0.62rem;
+        padding: 0.1rem 0.34rem;
+      }
+    }
 
   </style>
 </head>
@@ -3191,10 +4071,33 @@
           </svg>
         </button>
 
+        <!-- Optional Account Sign In / Profile Pill -->
+        <button type="button" class="account-header-btn" id="account-trigger-btn" title="Sign in to sync Liked Songs, Playlists & Listening Stats" aria-label="Account Sign In">
+          <span class="account-avatar-mini" id="account-header-avatar" style="display: none;">S</span>
+          <svg id="account-header-guest-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span class="account-header-label" id="account-header-label">Sign In</span>
+        </button>
+
         <!-- Active Playlist Count -->
-        <div class="glass-btn pill-counter" id="playlist-badge-top" role="status" title="Slowedfy Library (113 Tracks)">
+        <div class="glass-btn pill-counter" id="playlist-badge-top" role="status" title="Slowedfy Library (122 Tracks)" aria-label="122 Tracks">
           <div class="pulse-dot"></div>
-          <span id="header-song-count">113 Tracks</span>
+          <span id="header-song-count" class="pill-count-num">122</span>
+          <svg class="pill-music-symbol" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="pill-music-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#fff1f5"/>
+                <stop offset="50%" stop-color="#ff9ebb"/>
+                <stop offset="100%" stop-color="#f43f5e"/>
+              </linearGradient>
+            </defs>
+            <path d="M9 17.5V6.6c0-.8.56-1.48 1.34-1.64l8.8-1.82c1-.21 1.86.56 1.86 1.58V15.5" stroke="url(#pill-music-grad)" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M9 10.2l12-2.4" stroke="url(#pill-music-grad)" stroke-width="1.9" stroke-linecap="round"/>
+            <circle cx="6.25" cy="17.75" r="2.85" fill="url(#pill-music-grad)"/>
+            <circle cx="18.25" cy="15.75" r="2.85" fill="url(#pill-music-grad)"/>
+          </svg>
         </div>
       </div>
     </header>
@@ -3255,6 +4158,23 @@
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Real-Time Song Play & Like Statistics (Directly Below Hero Album Art) -->
+        <div class="hero-song-stats" id="hero-song-stats" aria-label="Song play and like statistics">
+          <div class="hero-stat-item hero-stat-plays" id="hero-stat-plays" title="Unique users who played this song">
+            <svg class="hero-stat-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8 5.14v13.72a1 1 0 0 0 1.52.85l11.02-6.86a1 1 0 0 0 0-1.7L9.52 4.29A1 1 0 0 0 8 5.14Z"/>
+            </svg>
+            <span class="hero-stat-value is-loading" id="hero-play-count">–</span>
+          </div>
+          <span class="hero-stat-sep" aria-hidden="true"></span>
+          <div class="hero-stat-item hero-stat-likes" id="hero-stat-likes" title="Users who liked this song">
+            <svg class="hero-stat-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+            <span class="hero-stat-value is-loading" id="hero-like-count">–</span>
           </div>
         </div>
 
@@ -3331,6 +4251,30 @@
               </div>
             </div>
           </div>
+
+          <!-- Personal Music Library Navigation Tabs -->
+          <div class="library-tabs-bar" id="library-tabs-bar" role="tablist" aria-label="Music Library Views">
+            <button type="button" class="library-tab-btn active" data-lib-tab="all" role="tab" aria-selected="true">
+              <span>All Songs</span>
+            </button>
+            <button type="button" class="library-tab-btn" data-lib-tab="liked" role="tab" aria-selected="false">
+              <span>❤️ Liked</span>
+              <span class="library-tab-count" id="tab-count-liked" style="display:none;">0</span>
+            </button>
+            <button type="button" class="library-tab-btn" data-lib-tab="playlists" role="tab" aria-selected="false">
+              <span>Playlists</span>
+              <span class="library-tab-count" id="tab-count-playlists" style="display:none;">0</span>
+            </button>
+            <button type="button" class="library-tab-btn" data-lib-tab="history" role="tab" aria-selected="false">
+              <span>History</span>
+            </button>
+            <button type="button" class="library-tab-btn" data-lib-tab="most-played" role="tab" aria-selected="false">
+              <span>Most Played</span>
+            </button>
+          </div>
+
+          <!-- Context Subbar for Playlists / Stats -->
+          <div class="library-subbar" id="library-subbar"></div>
 
           <div class="search-box">
             <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3519,8 +4463,19 @@
           </button>
         </div>
 
-        <!-- Right: Volume Slider & 1-Click Download Button -->
+        <!-- Right: Like, Add to Playlist, Download & Volume Slider -->
         <div class="dock-right-controls">
+          <button type="button" id="dock-like-btn" class="glass-btn ctrl-btn dock-like-btn" style="width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;" title="Like this song" aria-label="Like active song">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+          </button>
+          <button type="button" id="dock-add-playlist-btn" class="glass-btn ctrl-btn" style="width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;" title="Add active song to playlist" aria-label="Add active song to playlist">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
           <button id="dock-download-btn" class="glass-btn ctrl-btn dock-download-btn" style="width:34px;height:34px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;" title="Download active song (MP3)" aria-label="Download Song MP3">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -3833,6 +4788,132 @@
         </div>
 
       </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       SIGN IN MODAL (Optional Google Account)
+       ========================================================================== -->
+  <div class="modal-backdrop" id="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal-dialog liquid-glass-elevated auth-modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h3 id="auth-modal-title" style="font-size: 1.12rem; font-weight: 700; margin: 0;">Your Slowedfy Library</h3>
+          <p id="auth-modal-subtitle" style="font-size: 0.75rem; color: var(--text-secondary); margin: 0.2rem 0 0;">Save liked songs, custom playlists & listening stats across devices.</p>
+        </div>
+        <button type="button" class="glass-btn header-btn" id="close-auth-btn" aria-label="Close sign in modal">✕</button>
+      </div>
+
+      <div class="auth-msg-box" id="auth-msg-box" role="alert"></div>
+
+      <button type="button" class="google-oauth-btn" id="auth-google-btn" style="margin-top: 0.35rem;">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        <span id="auth-google-label">Continue with Google</span>
+      </button>
+
+      <div class="auth-footer-row" style="justify-content: center; text-align: center;">
+        <span>Login is optional — guests enjoy full playback.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       ACCOUNT PROFILE & LISTENING STATS MODAL
+       ========================================================================== -->
+  <div class="modal-backdrop" id="account-modal" role="dialog" aria-modal="true" aria-labelledby="account-modal-title">
+    <div class="modal-dialog liquid-glass-elevated auth-modal-dialog">
+      <div class="modal-header">
+        <h3 id="account-modal-title" style="font-size: 1.12rem; font-weight: 700; margin: 0;">My Account</h3>
+        <button type="button" class="glass-btn header-btn" id="close-account-btn" aria-label="Close account modal">✕</button>
+      </div>
+
+      <div class="account-profile-header">
+        <div class="account-avatar-lg" id="account-modal-avatar">S</div>
+        <div style="min-width: 0; flex: 1;">
+          <div id="account-modal-name" style="font-size: 0.98rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Slowedfy Listener</div>
+          <div id="account-modal-email" style="font-size: 0.76rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;"></div>
+          <div style="font-size: 0.69rem; color: #fda4af; margin-top: 4px; font-weight: 600;">Cloud Sync Active • Private Library</div>
+        </div>
+      </div>
+
+      <div class="account-stats-grid">
+        <button type="button" class="account-stat-tile" data-jump-tab="most-played">
+          <div class="account-stat-val" id="acc-stat-total-plays">0</div>
+          <div class="account-stat-lbl">Total Song Plays</div>
+        </button>
+        <button type="button" class="account-stat-tile" data-jump-tab="liked">
+          <div class="account-stat-val" id="acc-stat-liked">0</div>
+          <div class="account-stat-lbl">Liked Songs</div>
+        </button>
+        <button type="button" class="account-stat-tile" data-jump-tab="playlists">
+          <div class="account-stat-val" id="acc-stat-playlists">0</div>
+          <div class="account-stat-lbl">Personal Playlists</div>
+        </button>
+        <button type="button" class="account-stat-tile" data-jump-tab="history">
+          <div class="account-stat-val" id="acc-stat-history">0</div>
+          <div class="account-stat-lbl">History Entries</div>
+        </button>
+      </div>
+
+      <button type="button" class="lib-mini-btn danger" id="account-logout-btn" style="width: 100%; justify-content: center; padding: 0.68rem 1rem; font-size: 0.84rem;">
+        Sign Out
+      </button>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       ADD TO PLAYLIST PICKER MODAL
+       ========================================================================== -->
+  <div class="modal-backdrop" id="playlist-picker-modal" role="dialog" aria-modal="true" aria-labelledby="picker-modal-title">
+    <div class="modal-dialog liquid-glass-elevated auth-modal-dialog">
+      <div class="modal-header">
+        <h3 id="picker-modal-title" style="font-size: 1.06rem; font-weight: 700; margin: 0;">Add to Playlist</h3>
+        <button type="button" class="glass-btn header-btn" id="close-picker-btn" aria-label="Close playlist picker">✕</button>
+      </div>
+
+      <div class="picker-track-preview" id="picker-track-preview">
+        <img id="picker-track-img" src="/assets/logo.png" alt="Track cover" />
+        <div style="min-width:0;flex:1;">
+          <div id="picker-track-title" style="font-size:0.84rem;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Song</div>
+          <div style="font-size:0.72rem;color:var(--text-secondary);">Tap a playlist to add or remove</div>
+        </div>
+      </div>
+
+      <div class="picker-list" id="picker-playlists-list"></div>
+
+      <form class="picker-create-row" id="picker-quick-create-form">
+        <input type="text" id="picker-new-name-input" class="auth-input" placeholder="New playlist name..." maxlength="80" />
+        <button type="submit" class="lib-mini-btn primary" style="white-space:nowrap;padding:0 0.85rem;">Create</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       PLAYLIST CREATE / RENAME / DELETE DIALOG MODAL
+       ========================================================================== -->
+  <div class="modal-backdrop" id="playlist-edit-modal" role="dialog" aria-modal="true" aria-labelledby="pl-edit-modal-title">
+    <div class="modal-dialog liquid-glass-elevated auth-modal-dialog">
+      <div class="modal-header">
+        <h3 id="pl-edit-modal-title" style="font-size: 1.06rem; font-weight: 700; margin: 0;">New Playlist</h3>
+        <button type="button" class="glass-btn header-btn" id="close-pl-edit-btn" aria-label="Close playlist dialog">✕</button>
+      </div>
+
+      <form id="pl-edit-form" class="auth-form">
+        <p id="pl-edit-desc" style="font-size:0.8rem;color:var(--text-secondary);margin:0;"></p>
+        <div class="auth-field" id="pl-edit-input-wrap">
+          <label for="pl-edit-name-input">Playlist Name</label>
+          <input type="text" id="pl-edit-name-input" class="auth-input" placeholder="e.g. Late Night Reverb" maxlength="80" />
+        </div>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;margin-top:0.25rem;">
+          <button type="button" class="lib-mini-btn" id="pl-edit-cancel-btn">Cancel</button>
+          <button type="submit" class="lib-mini-btn primary" id="pl-edit-confirm-btn">Save</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -6686,71 +7767,189 @@
 
     const playlistItemElements = new Map();
     let currentActiveItemRow = null;
+    let masterLibraryTracks = [];
+    let currentRenderedTracks = [];
+    let activeLibraryTab = 'all'; // 'all' | 'liked' | 'playlists' | 'history' | 'most-played'
+    let activeCustomPlaylistId = null;
+
+    function getHeartSvg() {
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+    }
+
+    function getPlusSvg() {
+      return '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>';
+    }
+
+    function getRemoveSvg() {
+      return '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    }
+
+    function formatRelativeTime(ms) {
+      if (!ms || !Number.isFinite(ms)) return 'Recently';
+      const diffSec = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+      if (diffSec < 60) return 'Just now';
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return `${diffMin}m ago`;
+      const diffHr = Math.floor(diffMin / 60);
+      if (diffHr < 24) return `${diffHr}h ago`;
+      const diffDay = Math.floor(diffHr / 24);
+      if (diffDay === 1) return 'Yesterday';
+      if (diffDay < 30) return `${diffDay}d ago`;
+      try {
+        return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      } catch (e) {
+        return 'Earlier';
+      }
+    }
+
+    function resolveTrackFromMaster(trackId, fallback = null) {
+      const found = (masterLibraryTracks || []).find(t => t.id === trackId)
+        || (state.playlist || []).find(t => t.id === trackId)
+        || OFFICIAL_PLAYLIST.find(t => t.id === trackId);
+      if (found) return found;
+      if (!fallback) return null;
+      return {
+        id: trackId,
+        title: fallback.title || 'Untitled Track',
+        artist: fallback.artist || 'Beat Badge x Slowedfy',
+        album: 'Slowed & Reverb Master Collection',
+        duration: fallback.duration || formatTime(fallback.seconds || 240),
+        seconds: fallback.seconds || 240,
+        format: 'MP3',
+        streamUrl: `/api/stream?id=${encodeURIComponent(trackId)}`,
+        driveUrl: `https://drive.usercontent.google.com/download?id=${encodeURIComponent(trackId)}&export=download`,
+        thumb: fallback.thumb || `/covers/thumbs/${trackId}.jpg`,
+        hdThumb: `/covers/${trackId}.jpg`,
+        isPremiere: false,
+      };
+    }
+
+    function createTrackRowElement(item, index, options = {}) {
+      const currentPlayingTrack = state.playlist[state.currentIndex];
+      const isCurrent = Boolean(currentPlayingTrack && currentPlayingTrack.id === item.id);
+      let ytThumb = item.thumb;
+      if (!ytThumb || ytThumb.includes('unsplash.com') || ytThumb.includes('ytimg.com')) {
+        ytThumb = `/covers/thumbs/${item.id}.jpg`;
+        item.thumb = ytThumb;
+      }
+      if (!item.hdThumb || item.hdThumb.includes('unsplash.com') || item.hdThumb.includes('ytimg.com')) {
+        item.hdThumb = `/covers/${item.id}.jpg`;
+      }
+
+      const row = document.createElement('div');
+      row.className = `playlist-item ${isCurrent ? 'active' : ''} ${isCurrent && state.isPlaying ? 'playing' : ''}`;
+      row.dataset.trackId = item.id;
+      row.dataset.index = String(index);
+      if (options.playlistId) row.dataset.playlistId = options.playlistId;
+      row.setAttribute('role', 'listitem');
+      row.setAttribute('tabindex', '0');
+
+      const safeTitle = escapeHtml(item.title);
+      const safeArtist = 'Beat Badge x Slowedfy';
+      const safeId = encodeURIComponent(item.id);
+      const subtitleExtra = options.subtitleExtra
+        ? escapeHtml(options.subtitleExtra)
+        : (item.date ? escapeHtml(item.date) : '');
+      const durDisplay = item.isPremiere
+        ? 'PREMIERE'
+        : (item.duration && !item.duration.includes(':60') ? item.duration : formatTime(item.seconds || 240));
+
+      const account = window.SlowedfyAccount;
+      const isLiked = Boolean(account && account.isLiked(item.id));
+      const playCount = options.playCount !== undefined
+        ? options.playCount
+        : (account ? account.getTrackPlayCount(item.id) : 0);
+
+      const showNewBadge = Boolean(options.showNewReleaseBadge && index === 0);
+      const showPlayCountPill = activeLibraryTab === 'most-played' && playCount > 0;
+      const playCountHtml = showPlayCountPill
+        ? `<span class="track-playcount-pill" title="Your play count: ${playCount}">${playCount} ${playCount === 1 ? 'play' : 'plays'}</span>`
+        : '';
+
+      const secondaryActionBtn = options.allowRemoveFromPlaylist
+        ? `<button type="button" class="track-action-btn remove-pl-btn" data-row-action="remove-from-playlist" data-track-id="${escapeHtml(item.id)}" data-playlist-id="${escapeHtml(options.playlistId || '')}" title="Remove from playlist" aria-label="Remove from playlist">${getRemoveSvg()}</button>`
+        : `<button type="button" class="track-action-btn add-pl-btn" data-row-action="add-to-playlist" data-track-id="${escapeHtml(item.id)}" title="Add to playlist" aria-label="Add to playlist">${getPlusSvg()}</button>`;
+
+      row.innerHTML = `
+        <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
+        <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
+          <img class="track-thumb" src="${ytThumb}" alt="${safeTitle}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="window.handleThumbError(this, '${safeId}')" />
+          <div class="track-playing-eq">
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+            <div class="eq-bar"></div>
+          </div>
+        </div>
+        <div class="track-text-details">
+          <div class="track-item-title">${safeTitle} ${showNewBadge ? '<span class="new-track-pill">NEW RELEASE</span>' : ''}</div>
+          <div class="track-item-artist">${safeArtist} ${subtitleExtra ? `• <span class="track-date-subtle">${subtitleExtra}</span>` : ''}</div>
+        </div>
+        <div class="track-row-right">
+          ${playCountHtml}
+          <button type="button" class="track-action-btn like-btn ${isLiked ? 'liked' : ''}" data-row-action="like" data-track-id="${escapeHtml(item.id)}" title="${isLiked ? 'Unlike song' : 'Like song'}" aria-label="${isLiked ? 'Unlike song' : 'Like song'}">${getHeartSvg()}</button>
+          ${secondaryActionBtn}
+          <div class="track-duration ${item.isPremiere ? 'track-premiere-duration' : ''}">${durDisplay}</div>
+        </div>
+      `;
+
+      if (isCurrent) currentActiveItemRow = row;
+      if (!playlistItemElements.has(item.id)) {
+        playlistItemElements.set(item.id, row);
+      }
+      return row;
+    }
 
     function buildPlaylistDOM() {
+      const sourceTracks = masterLibraryTracks.length > 0 ? masterLibraryTracks : state.playlist;
+      if (activeLibraryTab !== 'all' && typeof window.LibraryUI !== 'undefined') {
+        window.LibraryUI.renderCurrentView();
+        // Still keep header total track counter synced with master Drive catalog
+        DOM.headerSongCount.textContent = String(sourceTracks.length);
+        if (DOM.playlistBadgeTop) {
+          DOM.playlistBadgeTop.title = `Slowedfy Library (${sourceTracks.length} Tracks)`;
+          DOM.playlistBadgeTop.setAttribute('aria-label', `${sourceTracks.length} Tracks`);
+        }
+        return;
+      }
+
+      const subbar = document.getElementById('library-subbar');
+      if (subbar) {
+        subbar.classList.remove('visible');
+        subbar.innerHTML = '';
+      }
+
       const fragment = document.createDocumentFragment();
       playlistItemElements.clear();
+      currentActiveItemRow = null;
+      currentRenderedTracks = [...sourceTracks];
 
-      state.playlist.forEach((item, index) => {
-        const isCurrent = index === state.currentIndex;
-        let ytThumb = item.thumb;
-        if (!ytThumb || ytThumb.includes('unsplash.com') || ytThumb.includes('ytimg.com')) {
-          ytThumb = `/covers/thumbs/${item.id}.jpg`;
-          item.thumb = ytThumb;
-        }
-        if (!item.hdThumb || item.hdThumb.includes('unsplash.com') || item.hdThumb.includes('ytimg.com')) {
-          item.hdThumb = `/covers/${item.id}.jpg`;
-        }
-
-        const row = document.createElement('div');
-        row.className = `playlist-item ${isCurrent ? 'active' : ''} ${isCurrent && state.isPlaying ? 'playing' : ''}`;
-        row.dataset.trackId = item.id;
-        row.dataset.index = index;
-        row.setAttribute('role', 'listitem');
-        row.setAttribute('tabindex', '0');
-
-        const safeTitle = escapeHtml(item.title);
-        const safeArtist = "Beat Badge x Slowedfy";
-        const safeId = encodeURIComponent(item.id);
-        const safeDate = item.date ? escapeHtml(item.date) : '';
-        const durDisplay = item.isPremiere ? 'PREMIERE' : (item.duration && !item.duration.includes(':60') ? item.duration : formatTime(item.seconds || 240));
-
-        row.innerHTML = `
-          <div class="track-num">${index + 1 < 10 ? '0' : ''}${index + 1}</div>
-          <div class="track-thumb-box ${item.isPremiere ? 'is-premiere-thumb' : ''}">
-            <img class="track-thumb" src="${ytThumb}" alt="${safeTitle}" loading="lazy" decoding="async" referrerpolicy="no-referrer" width="44" height="44" onerror="window.handleThumbError(this, '${safeId}')" />
-            <div class="track-playing-eq">
-              <div class="eq-bar"></div>
-              <div class="eq-bar"></div>
-              <div class="eq-bar"></div>
-            </div>
-          </div>
-          <div class="track-text-details">
-            <div class="track-item-title">${safeTitle} ${index === 0 ? '<span class="new-track-pill">NEW RELEASE</span>' : ''}</div>
-            <div class="track-item-artist">${safeArtist} ${safeDate ? `• <span class="track-date-subtle">${safeDate}</span>` : ''}</div>
-          </div>
-          <div class="track-duration ${item.isPremiere ? 'track-premiere-duration' : ''}">${durDisplay}</div>
-        `;
-
-        if (isCurrent) currentActiveItemRow = row;
-        playlistItemElements.set(item.id, row);
+      sourceTracks.forEach((item, index) => {
+        const row = createTrackRowElement(item, index, { showNewReleaseBadge: true });
         fragment.appendChild(row);
       });
 
       DOM.playlistContainer.innerHTML = '';
       DOM.playlistContainer.appendChild(fragment);
 
-      const countStr = `${state.playlist.length} Songs`;
+      const countStr = `${sourceTracks.length} Songs`;
       DOM.playlistCountLabel.textContent = countStr;
-      DOM.headerSongCount.textContent = `${state.playlist.length} Tracks`;
+      DOM.headerSongCount.textContent = String(sourceTracks.length);
+      if (DOM.playlistBadgeTop) {
+        DOM.playlistBadgeTop.title = `Slowedfy Library (${sourceTracks.length} Tracks)`;
+        DOM.playlistBadgeTop.setAttribute('aria-label', `${sourceTracks.length} Tracks`);
+      }
       const finalStatEl = document.getElementById('sync-stat-final');
-      if (finalStatEl) finalStatEl.textContent = `${state.playlist.length} Tracks`;
+      if (finalStatEl) finalStatEl.textContent = `${sourceTracks.length} Tracks`;
       const importedStatEl = document.getElementById('sync-stat-imported');
-      if (importedStatEl) importedStatEl.textContent = state.playlist.length;
+      if (importedStatEl) importedStatEl.textContent = sourceTracks.length;
       const discoveredStatEl = document.getElementById('sync-stat-discovered');
-      if (discoveredStatEl) discoveredStatEl.textContent = state.playlist.length;
+      if (discoveredStatEl) discoveredStatEl.textContent = sourceTracks.length;
       const supportedStatEl = document.getElementById('sync-stat-supported');
-      if (supportedStatEl) supportedStatEl.textContent = state.playlist.length;
+      if (supportedStatEl) supportedStatEl.textContent = sourceTracks.length;
+
+      if (DOM.playlistSearchInput && DOM.playlistSearchInput.value.trim().length > 0) {
+        applyPlaylistSearchFilter(DOM.playlistSearchInput.value);
+      }
     }
 
     function updatePlaylistHighlight() {
@@ -6775,24 +7974,82 @@
       }
     }
 
-    // Single delegated listener for the entire playlist (0 duplicate listeners, O(1) index lookup)
+    function playFromCurrentViewAtIndex(index) {
+      if (!currentRenderedTracks || index < 0 || index >= currentRenderedTracks.length) return;
+      const prevTrack = state.playlist && state.playlist[state.currentIndex];
+      const nextTrack = currentRenderedTracks[index];
+      const isDifferentTrack = !prevTrack || !nextTrack || prevTrack.id !== nextTrack.id;
+      state.playlist = [...currentRenderedTracks];
+      state.originalPlaylist = [...currentRenderedTracks];
+      playTrackAtIndex(index, isDifferentTrack);
+    }
+
+    // Single delegated listener for the entire playlist (handles track actions + playback)
     DOM.playlistContainer.addEventListener('click', (e) => {
+      const actionBtn = e.target.closest('[data-row-action]');
+      if (actionBtn) {
+        e.stopPropagation();
+        e.preventDefault();
+        const action = actionBtn.dataset.rowAction;
+        const trackId = actionBtn.dataset.trackId;
+        const playlistId = actionBtn.dataset.playlistId;
+        if (window.LibraryUI) {
+          window.LibraryUI.handleRowAction(action, trackId, playlistId);
+        }
+        return;
+      }
+
+      const plActionBtn = e.target.closest('[data-pl-card-action]');
+      if (plActionBtn) {
+        e.stopPropagation();
+        e.preventDefault();
+        const action = plActionBtn.dataset.plCardAction;
+        const playlistId = plActionBtn.dataset.playlistId;
+        if (window.LibraryUI) {
+          window.LibraryUI.handlePlaylistCardAction(action, playlistId);
+        }
+        return;
+      }
+
+      const plCard = e.target.closest('.user-playlist-card');
+      if (plCard) {
+        const playlistId = plCard.dataset.playlistId;
+        if (playlistId && window.LibraryUI) {
+          window.LibraryUI.openCustomPlaylist(playlistId);
+        }
+        return;
+      }
+
+      const emptyBtn = e.target.closest('[data-empty-action]');
+      if (emptyBtn) {
+        const emptyAction = emptyBtn.dataset.emptyAction;
+        if (window.LibraryUI) {
+          window.LibraryUI.handleEmptyAction(emptyAction);
+        }
+        return;
+      }
+
       const row = e.target.closest('.playlist-item');
       if (!row) return;
-      const index = row.dataset.index !== undefined ? parseInt(row.dataset.index, 10) : state.playlist.findIndex(p => p.id === row.dataset.trackId);
-      if (index >= 0 && index < state.playlist.length) {
-        playTrackAtIndex(index);
+      const index = row.dataset.index !== undefined
+        ? parseInt(row.dataset.index, 10)
+        : currentRenderedTracks.findIndex(p => p.id === row.dataset.trackId);
+      if (index >= 0 && index < currentRenderedTracks.length) {
+        playFromCurrentViewAtIndex(index);
       }
     });
 
     DOM.playlistContainer.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
+        if (e.target.closest('button')) return;
         const row = e.target.closest('.playlist-item');
         if (!row) return;
         e.preventDefault();
-        const index = row.dataset.index !== undefined ? parseInt(row.dataset.index, 10) : state.playlist.findIndex(p => p.id === row.dataset.trackId);
-        if (index >= 0 && index < state.playlist.length) {
-          playTrackAtIndex(index);
+        const index = row.dataset.index !== undefined
+          ? parseInt(row.dataset.index, 10)
+          : currentRenderedTracks.findIndex(p => p.id === row.dataset.trackId);
+        if (index >= 0 && index < currentRenderedTracks.length) {
+          playFromCurrentViewAtIndex(index);
         }
       }
     });
@@ -6806,7 +8063,7 @@
       if (!trackId) return;
       if (playlistHoverPreloadTimer) clearTimeout(playlistHoverPreloadTimer);
       playlistHoverPreloadTimer = setTimeout(() => {
-        const item = state.playlist && state.playlist.find(p => p.id === trackId);
+        const item = currentRenderedTracks && currentRenderedTracks.find(p => p.id === trackId);
         if (item && item.streamUrl && (!DOM.audioEngine.src || !DOM.audioEngine.src.includes(trackId))) {
           fetch(item.streamUrl, { headers: { Range: 'bytes=0-262143' } }).catch(() => {});
         }
@@ -6935,6 +8192,12 @@
         DOM.dockDownloadBtn.title = `Download MP3: ${track.title}`;
         DOM.dockDownloadBtn.setAttribute('aria-label', `Download ${track.title}`);
       }
+      if (window.LibraryUI) {
+        window.LibraryUI.syncDockLikeState();
+        if (typeof window.LibraryUI.syncHeroSongStats === 'function') {
+          window.LibraryUI.syncHeroSongStats();
+        }
+      }
 
       // Handle Premiere / Upcoming Badge on Main Hero Artwork
       if (DOM.heroPremiereBadge) {
@@ -7033,7 +8296,14 @@
       if (index >= state.playlist.length) index = 0;
 
       // Avoid redundant re-rendering if already playing this exact track
-      if (!forceReload && state.currentIndex === index && state.isPlaying && ytPlayer && ytApiReady) {
+      const targetTrack = state.playlist[index];
+      const activeAudioSrc = (DOM.audioEngine && DOM.audioEngine.src) || '';
+      const isSameActiveAudio = Boolean(
+        targetTrack &&
+        activeAudioSrc &&
+        (activeAudioSrc.includes(encodeURIComponent(targetTrack.id)) || activeAudioSrc.includes(targetTrack.id))
+      );
+      if (!forceReload && state.currentIndex === index && state.isPlaying && isSameActiveAudio) {
         return;
       }
 
@@ -7047,6 +8317,9 @@
       lastRenderedCurrentSecs = -1;
       lastRenderedDurationSecs = -1;
       lastRenderedPct = -1;
+      if (window.SlowedfyAccount && typeof window.SlowedfyAccount.onTrackStarted === 'function') {
+        window.SlowedfyAccount.onTrackStarted(track);
+      }
       updateActiveTrackUI();
       updateProgressUI(true);
 
@@ -7543,6 +8816,16 @@
         if (!isSeeking && isTabVisible) {
           pollPlayerProgress();
         }
+        const curTrack = state.playlist && state.playlist[state.currentIndex];
+        if (curTrack && window.SlowedfyAccount && typeof window.SlowedfyAccount.onPlaybackTick === 'function') {
+          const playingNow = !DOM.audioEngine.paused && !DOM.audioEngine.ended && DOM.audioEngine.readyState >= 2;
+          window.SlowedfyAccount.onPlaybackTick(
+            curTrack,
+            playingNow,
+            DOM.audioEngine.currentTime || 0,
+            Number.isFinite(DOM.audioEngine.duration) ? DOM.audioEngine.duration : (curTrack.seconds || 0)
+          );
+        }
       }, { passive: true });
 
       function syncCurrentTrackAudioDuration(rawDuration) {
@@ -7583,6 +8866,10 @@
       });
 
       DOM.audioEngine.addEventListener('pause', () => {
+        const curTrack = state.playlist && state.playlist[state.currentIndex];
+        if (curTrack && window.SlowedfyAccount && typeof window.SlowedfyAccount.onPlaybackTick === 'function') {
+          window.SlowedfyAccount.onPlaybackTick(curTrack, false, DOM.audioEngine.currentTime || 0, DOM.audioEngine.duration || curTrack.seconds || 0);
+        }
         if (!isSeeking && state.userInitiatedPause) {
           state.isPlaying = false;
           updatePlayPauseBtnUI(false);
@@ -8379,48 +9666,52 @@
       window.addEventListener('touchend', onTouchEnd, { once: true });
     }, { passive: true });
 
-    // Debounced Search Filter (Show/Hide rows using CSS class instead of rebuilding DOM)
+    // Debounced Search Filter (Works across All Songs, Liked, Playlists, History & Most Played)
     let searchDebounceTimer = null;
     let searchRafId = null;
+
+    function applyPlaylistSearchFilter(rawQuery) {
+      const query = (rawQuery || '').toLowerCase().trim();
+      const isQueryEmpty = query.length === 0;
+      const rows = DOM.playlistContainer.querySelectorAll('.playlist-item, .user-playlist-card');
+      let matchCount = 0;
+
+      rows.forEach((row) => {
+        if (isQueryEmpty) {
+          row.classList.remove('search-hidden');
+          matchCount++;
+        } else {
+          const text = (row.textContent || '').toLowerCase();
+          if (text.includes(query)) {
+            row.classList.remove('search-hidden');
+            matchCount++;
+          } else {
+            row.classList.add('search-hidden');
+          }
+        }
+      });
+
+      if (isQueryEmpty) {
+        if (activeLibraryTab === 'playlists' && !activeCustomPlaylistId) {
+          DOM.playlistCountLabel.textContent = `${rows.length} Playlists`;
+        } else {
+          DOM.playlistCountLabel.textContent = `${currentRenderedTracks.length} Songs`;
+        }
+      } else {
+        DOM.playlistCountLabel.textContent = `${matchCount} Results`;
+      }
+    }
+
     DOM.playlistSearchInput.addEventListener('input', (e) => {
       if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
       if (searchRafId) cancelAnimationFrame(searchRafId);
 
       searchDebounceTimer = setTimeout(() => {
-        const query = e.target.value.toLowerCase().trim();
-
         searchRafId = requestAnimationFrame(() => {
-          let matchCount = 0;
-          const isQueryEmpty = query.length === 0;
-
-          state.playlist.forEach((song) => {
-            const row = playlistItemElements.get(song.id);
-            if (!row) return;
-
-            if (isQueryEmpty) {
-              if (row.classList.contains('search-hidden')) {
-                row.classList.remove('search-hidden');
-              }
-              matchCount++;
-            } else {
-              const matches = song.title.toLowerCase().includes(query) || song.artist.toLowerCase().includes(query);
-              if (matches) {
-                if (row.classList.contains('search-hidden')) {
-                  row.classList.remove('search-hidden');
-                }
-                matchCount++;
-              } else {
-                if (!row.classList.contains('search-hidden')) {
-                  row.classList.add('search-hidden');
-                }
-              }
-            }
-          });
-
-          DOM.playlistCountLabel.textContent = isQueryEmpty ? `${state.playlist.length} Songs` : `${matchCount} Results`;
+          applyPlaylistSearchFilter(e.target.value);
           searchRafId = null;
         });
-      }, 160);
+      }, 140);
     });
 
     // Header buttons
@@ -8597,6 +9888,7 @@
         DOM.themeModal.classList.remove('open');
         if (DOM.aboutModal) DOM.aboutModal.classList.remove('open');
         if (DOM.syncModal) DOM.syncModal.classList.remove('open');
+        if (window.LibraryUI) window.LibraryUI.closeAllModals();
       }
     });
 
@@ -8821,7 +10113,10 @@
           if (changed) {
             const currentActiveTrackId = state.playlist[state.currentIndex]?.id;
 
-            state.playlist = mergedPlaylist;
+            masterLibraryTracks = [...mergedPlaylist];
+            if (activeLibraryTab === 'all' || isSwitchingPlaylist) {
+              state.playlist = mergedPlaylist;
+            }
             if (state.activePlaylistId === PLAYLIST_ID) {
               try {
                 localStorage.setItem('slowedfy_drive_master_v19', JSON.stringify(mergedPlaylist));
@@ -8829,13 +10124,15 @@
             }
 
             if (isSwitchingPlaylist) {
+              activeLibraryTab = 'all';
+              activeCustomPlaylistId = null;
               state.currentIndex = 0;
-            } else if (currentActiveTrackId) {
+            } else if (activeLibraryTab === 'all' && currentActiveTrackId) {
               const newIndex = state.playlist.findIndex(t => t.id === currentActiveTrackId);
               if (newIndex !== -1) {
                 state.currentIndex = newIndex;
               }
-            } else if (!state.isPlaying && state.currentTime === 0) {
+            } else if (activeLibraryTab === 'all' && !state.isPlaying && state.currentTime === 0) {
               state.currentIndex = 0;
             }
 
@@ -8936,25 +10233,29 @@
         }
       }
 
-      const currentIds = new Set(state.playlist.map(t => t.id));
+      const masterSource = masterLibraryTracks.length > 0 ? masterLibraryTracks : state.playlist;
+      const currentIds = new Set(masterSource.map(t => t.id));
       const newTracks = latest.filter(t => !currentIds.has(t.id));
 
-      const isOrderOrContentChanged = latest.length !== state.playlist.length ||
-        (state.playlist.length > 0 && latest[0] && state.playlist[0].id !== latest[0].id) ||
-        latest.some((lat, i) => !state.playlist[i] || state.playlist[i].id !== lat.id);
+      const isOrderOrContentChanged = latest.length !== masterSource.length ||
+        (masterSource.length > 0 && latest[0] && masterSource[0].id !== latest[0].id) ||
+        latest.some((lat, i) => !masterSource[i] || masterSource[i].id !== lat.id);
 
       if (newTracks.length > 0 || isOrderOrContentChanged) {
         const currentActiveTrackId = state.playlist[state.currentIndex]?.id;
 
-        state.playlist = latest;
-        state.originalPlaylist = [...latest];
+        masterLibraryTracks = [...latest];
+        if (activeLibraryTab === 'all') {
+          state.playlist = latest;
+          state.originalPlaylist = [...latest];
+        }
         if (state.activePlaylistId === PLAYLIST_ID) {
           try {
             localStorage.setItem('slowedfy_drive_master_v19', JSON.stringify(latest));
           } catch (e) {}
         }
 
-        if (currentActiveTrackId) {
+        if (activeLibraryTab === 'all' && currentActiveTrackId) {
           const newIndex = state.playlist.findIndex(t => t.id === currentActiveTrackId);
           if (newIndex !== -1) {
             state.currentIndex = newIndex;
@@ -9520,10 +10821,17 @@
       // Setup HTML5 Audio Engine event listeners
       if (DOM.audioEngine) {
         DOM.audioEngine.addEventListener('ended', () => {
+          const finishedTrack = state.playlist && state.playlist[state.currentIndex];
+          if (finishedTrack && window.SlowedfyAccount && typeof window.SlowedfyAccount.onTrackEnded === 'function') {
+            window.SlowedfyAccount.onTrackEnded(finishedTrack);
+          }
           if (state.isLooping || state.isRepeat) {
             DOM.audioEngine.currentTime = 0;
             state.currentTime = 0;
             updateProgressUI(true);
+            if (finishedTrack && window.SlowedfyAccount && typeof window.SlowedfyAccount.onTrackStarted === 'function') {
+              window.SlowedfyAccount.onTrackStarted(finishedTrack);
+            }
             DOM.audioEngine.play().then(() => {
               state.isPlaying = true;
               updatePlayPauseBtnUI(true);
@@ -9617,9 +10925,11 @@
       state.playlist = state.playlist.filter(t => !isShortTrack(t.id, t.title));
 
       state.originalPlaylist = [...state.playlist];
+      masterLibraryTracks = [...state.playlist];
 
       initTheme();
       PerfEngine.init();
+      LibraryUI.init();
       buildPlaylistDOM();
       setupPlayerViewportObserver();
       const firstTrack = state.playlist[0];
@@ -9686,6 +10996,938 @@
 
       showToast("Welcome to Slowedfy • Press Space to Play", "🎧");
     }
+
+    /* ==========================================================================
+       USER ACCOUNTS & PERSONAL MUSIC LIBRARY UI CONTROLLER
+       ========================================================================== */
+    const LibraryUI = (() => {
+      let snapshot = null;
+      let pickerTrackId = null;
+      let editModalMode = 'create'; // 'create' | 'rename' | 'delete'
+      let editModalPlaylistId = null;
+      let pendingPostAuthAction = null;
+      let subscribed = false;
+
+      const els = {};
+
+      function cacheElements() {
+        els.accountTriggerBtn = document.getElementById('account-trigger-btn');
+        els.accountHeaderAvatar = document.getElementById('account-header-avatar');
+        els.accountHeaderGuestIcon = document.getElementById('account-header-guest-icon');
+        els.accountHeaderLabel = document.getElementById('account-header-label');
+
+        els.tabsBar = document.getElementById('library-tabs-bar');
+        els.tabCountLiked = document.getElementById('tab-count-liked');
+        els.tabCountPlaylists = document.getElementById('tab-count-playlists');
+        els.subbar = document.getElementById('library-subbar');
+
+        els.dockLikeBtn = document.getElementById('dock-like-btn');
+        els.dockAddPlaylistBtn = document.getElementById('dock-add-playlist-btn');
+
+        // Auth Modal
+        els.authModal = document.getElementById('auth-modal');
+        els.closeAuthBtn = document.getElementById('close-auth-btn');
+        els.authSubtitle = document.getElementById('auth-modal-subtitle');
+        els.authMsgBox = document.getElementById('auth-msg-box');
+        els.authGoogleBtn = document.getElementById('auth-google-btn');
+        els.authGoogleLabel = document.getElementById('auth-google-label');
+
+        // Account Modal
+        els.accountModal = document.getElementById('account-modal');
+        els.closeAccountBtn = document.getElementById('close-account-btn');
+        els.accountModalAvatar = document.getElementById('account-modal-avatar');
+        els.accountModalName = document.getElementById('account-modal-name');
+        els.accountModalEmail = document.getElementById('account-modal-email');
+        els.accStatTotalPlays = document.getElementById('acc-stat-total-plays');
+        els.accStatLiked = document.getElementById('acc-stat-liked');
+        els.accStatPlaylists = document.getElementById('acc-stat-playlists');
+        els.accStatHistory = document.getElementById('acc-stat-history');
+        els.accountLogoutBtn = document.getElementById('account-logout-btn');
+
+        // Playlist Picker Modal
+        els.pickerModal = document.getElementById('playlist-picker-modal');
+        els.closePickerBtn = document.getElementById('close-picker-btn');
+        els.pickerTrackImg = document.getElementById('picker-track-img');
+        els.pickerTrackTitle = document.getElementById('picker-track-title');
+        els.pickerList = document.getElementById('picker-playlists-list');
+        els.pickerQuickForm = document.getElementById('picker-quick-create-form');
+        els.pickerNewNameInput = document.getElementById('picker-new-name-input');
+
+        // Playlist Edit Modal
+        els.editModal = document.getElementById('playlist-edit-modal');
+        els.closeEditBtn = document.getElementById('close-pl-edit-btn');
+        els.editTitle = document.getElementById('pl-edit-modal-title');
+        els.editDesc = document.getElementById('pl-edit-desc');
+        els.editInputWrap = document.getElementById('pl-edit-input-wrap');
+        els.editNameInput = document.getElementById('pl-edit-name-input');
+        els.editForm = document.getElementById('pl-edit-form');
+        els.editCancelBtn = document.getElementById('pl-edit-cancel-btn');
+        els.editConfirmBtn = document.getElementById('pl-edit-confirm-btn');
+      }
+
+      function renderAvatar(container, user) {
+        if (!container) return;
+        const initial = ((user && user.displayName) || (user && user.email) || 'S').trim().charAt(0).toUpperCase() || 'S';
+        if (user && user.photoURL) {
+          container.innerHTML = `<img src="${escapeHtml(user.photoURL)}" alt="${escapeHtml(user.displayName || 'Account')}" referrerpolicy="no-referrer" />`;
+        } else {
+          container.textContent = initial;
+        }
+      }
+
+      function showAuthMessage(text, type = 'error') {
+        if (!els.authMsgBox) return;
+        if (!text) {
+          els.authMsgBox.className = 'auth-msg-box';
+          els.authMsgBox.textContent = '';
+          return;
+        }
+        els.authMsgBox.className = `auth-msg-box show ${type}`;
+        els.authMsgBox.textContent = text;
+      }
+
+      function openAuthModal(customSubtitle, postAction = null) {
+        pendingPostAuthAction = postAction;
+        if (els.authSubtitle) {
+          els.authSubtitle.textContent = customSubtitle || 'Save liked songs, custom playlists & listening stats across devices.';
+        }
+        showAuthMessage('');
+        if (els.authModal) els.authModal.classList.add('open');
+      }
+
+      function openAccountModal() {
+        if (!snapshot || !snapshot.user) {
+          openAuthModal();
+          return;
+        }
+        syncAccountModalUI();
+        if (els.accountModal) els.accountModal.classList.add('open');
+      }
+
+      function closeAllModals() {
+        if (els.authModal) els.authModal.classList.remove('open');
+        if (els.accountModal) els.accountModal.classList.remove('open');
+        if (els.pickerModal) els.pickerModal.classList.remove('open');
+        if (els.editModal) els.editModal.classList.remove('open');
+      }
+
+      function syncHeaderUI() {
+        const user = snapshot && snapshot.user;
+        if (!els.accountTriggerBtn) return;
+
+        if (user) {
+          els.accountTriggerBtn.classList.add('is-signed-in');
+          els.accountTriggerBtn.title = `${user.displayName} • ${snapshot.totalPlays || 0} Total Plays`;
+          els.accountTriggerBtn.setAttribute('aria-label', `Account: ${user.displayName}`);
+          if (els.accountHeaderGuestIcon) els.accountHeaderGuestIcon.style.display = 'none';
+          if (els.accountHeaderAvatar) {
+            els.accountHeaderAvatar.style.display = 'inline-flex';
+            renderAvatar(els.accountHeaderAvatar, user);
+          }
+          if (els.accountHeaderLabel) {
+            const firstName = (user.displayName || 'Account').split(/\s+/)[0];
+            els.accountHeaderLabel.textContent = firstName;
+          }
+        } else {
+          els.accountTriggerBtn.classList.remove('is-signed-in');
+          els.accountTriggerBtn.title = 'Sign in to sync Liked Songs, Playlists & Listening Stats';
+          els.accountTriggerBtn.setAttribute('aria-label', 'Account Sign In');
+          if (els.accountHeaderGuestIcon) els.accountHeaderGuestIcon.style.display = 'inline-block';
+          if (els.accountHeaderAvatar) els.accountHeaderAvatar.style.display = 'none';
+          if (els.accountHeaderLabel) els.accountHeaderLabel.textContent = 'Sign In';
+        }
+
+        if (els.tabCountLiked) {
+          const likedCount = user ? (snapshot.likedSongs?.length || 0) : 0;
+          els.tabCountLiked.textContent = String(likedCount);
+          els.tabCountLiked.style.display = user && likedCount > 0 ? 'inline-flex' : 'none';
+        }
+        if (els.tabCountPlaylists) {
+          const plCount = user ? (snapshot.playlists?.length || 0) : 0;
+          els.tabCountPlaylists.textContent = String(plCount);
+          els.tabCountPlaylists.style.display = user && plCount > 0 ? 'inline-flex' : 'none';
+        }
+      }
+
+      function syncAccountModalUI() {
+        if (!snapshot || !snapshot.user) return;
+        const user = snapshot.user;
+        renderAvatar(els.accountModalAvatar, user);
+        if (els.accountModalName) els.accountModalName.textContent = user.displayName || 'Slowedfy Listener';
+        if (els.accountModalEmail) els.accountModalEmail.textContent = user.email || 'Signed in';
+        if (els.accStatTotalPlays) els.accStatTotalPlays.textContent = String(snapshot.totalPlays || 0);
+        if (els.accStatLiked) els.accStatLiked.textContent = String(snapshot.likedSongs?.length || 0);
+        if (els.accStatPlaylists) els.accStatPlaylists.textContent = String(snapshot.playlists?.length || 0);
+        if (els.accStatHistory) els.accStatHistory.textContent = String(snapshot.history?.length || 0);
+      }
+
+      function syncDockLikeState() {
+        const curTrack = state.playlist && state.playlist[state.currentIndex];
+        const isLiked = Boolean(curTrack && window.SlowedfyAccount && window.SlowedfyAccount.isLiked(curTrack.id));
+        if (els.dockLikeBtn) {
+          els.dockLikeBtn.classList.toggle('liked', isLiked);
+          els.dockLikeBtn.title = isLiked ? 'Remove from Liked Songs' : 'Like this song';
+          els.dockLikeBtn.setAttribute('aria-pressed', isLiked ? 'true' : 'false');
+        }
+        syncHeroSongStats();
+      }
+
+      function setActiveTab(tab) {
+        activeLibraryTab = tab;
+        if (tab !== 'playlists') {
+          activeCustomPlaylistId = null;
+        }
+        if (els.tabsBar) {
+          els.tabsBar.querySelectorAll('.library-tab-btn').forEach(btn => {
+            const match = btn.dataset.libTab === tab;
+            btn.classList.toggle('active', match);
+            btn.setAttribute('aria-selected', match ? 'true' : 'false');
+          });
+        }
+        if (DOM.playlistSearchInput) {
+          DOM.playlistSearchInput.value = '';
+          DOM.playlistSearchInput.placeholder =
+            tab === 'playlists' && !activeCustomPlaylistId
+              ? 'Search your playlists...'
+              : 'Search track or artist...';
+        }
+        renderCurrentView();
+      }
+
+      function renderGuestPrompt(icon, title, desc) {
+        currentRenderedTracks = [];
+        playlistItemElements.clear();
+        currentActiveItemRow = null;
+        if (els.subbar) {
+          els.subbar.classList.remove('visible');
+          els.subbar.innerHTML = '';
+        }
+        DOM.playlistCountLabel.textContent = 'Sign In';
+        DOM.playlistContainer.innerHTML = `
+          <div class="library-empty-state">
+            <div class="library-empty-icon">${icon}</div>
+            <div class="library-empty-title">${escapeHtml(title)}</div>
+            <div class="library-empty-desc">${escapeHtml(desc)}</div>
+            <div class="library-empty-actions">
+              <button type="button" class="lib-mini-btn primary" data-empty-action="signin">Sign In with Google</button>
+              <button type="button" class="lib-mini-btn" data-empty-action="all-songs">Back to All Songs</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderEmptySignedIn(icon, title, desc, primaryBtnHtml = '') {
+        currentRenderedTracks = [];
+        playlistItemElements.clear();
+        currentActiveItemRow = null;
+        DOM.playlistContainer.innerHTML = `
+          <div class="library-empty-state">
+            <div class="library-empty-icon">${icon}</div>
+            <div class="library-empty-title">${escapeHtml(title)}</div>
+            <div class="library-empty-desc">${escapeHtml(desc)}</div>
+            <div class="library-empty-actions">
+              ${primaryBtnHtml}
+              <button type="button" class="lib-mini-btn" data-empty-action="all-songs">Browse All Songs</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTracksList(tracks, rowOptionsFactory) {
+        const fragment = document.createDocumentFragment();
+        playlistItemElements.clear();
+        currentActiveItemRow = null;
+        currentRenderedTracks = tracks;
+
+        tracks.forEach((item, index) => {
+          const opts = typeof rowOptionsFactory === 'function' ? rowOptionsFactory(item, index) : {};
+          const row = createTrackRowElement(item, index, opts);
+          fragment.appendChild(row);
+        });
+
+        DOM.playlistContainer.innerHTML = '';
+        DOM.playlistContainer.appendChild(fragment);
+        DOM.playlistCountLabel.textContent = `${tracks.length} Songs`;
+
+        if (DOM.playlistSearchInput && DOM.playlistSearchInput.value.trim().length > 0) {
+          applyPlaylistSearchFilter(DOM.playlistSearchInput.value);
+        }
+      }
+
+      function renderCurrentView() {
+        const user = snapshot && snapshot.user;
+
+        if (activeLibraryTab === 'all') {
+          buildPlaylistDOM();
+          return;
+        }
+
+        if (!user) {
+          if (activeLibraryTab === 'liked') {
+            renderGuestPrompt('❤️', 'Your Liked Songs', 'Sign in with Google to heart your favorite Slowed + Reverb tracks and access them on any device.');
+          } else if (activeLibraryTab === 'playlists') {
+            renderGuestPrompt('🎵', 'Personal Playlists', 'Create, rename, and manage your own custom playlists synced securely to your account.');
+          } else if (activeLibraryTab === 'history') {
+            renderGuestPrompt('🕒', 'Listening History', 'Sign in to automatically save your recently played tracks in chronological order.');
+          } else if (activeLibraryTab === 'most-played') {
+            renderGuestPrompt('🔥', 'Most Played & Stats', 'Track your accurate per-song play counts, total plays, and personal top tracks.');
+          }
+          return;
+        }
+
+        if (activeLibraryTab === 'liked') {
+          const likedPairs = (snapshot.likedSongs || [])
+            .map(item => ({ track: resolveTrackFromMaster(item.trackId, item), raw: item }))
+            .filter(pair => Boolean(pair.track));
+          const liked = likedPairs.map(pair => pair.track);
+
+          if (els.subbar) {
+            els.subbar.classList.add('visible');
+            els.subbar.innerHTML = `
+              <div class="library-subbar-left">
+                <span class="library-subbar-title">❤️ Liked Songs</span>
+                <span class="library-subbar-meta">• ${liked.length} ${liked.length === 1 ? 'song' : 'songs'}</span>
+              </div>
+              <div class="library-subbar-actions">
+                ${liked.length > 0 ? '<button type="button" class="lib-mini-btn primary" id="subbar-play-all-btn">▶ Play All</button>' : ''}
+              </div>
+            `;
+            const playAllBtn = document.getElementById('subbar-play-all-btn');
+            if (playAllBtn) playAllBtn.addEventListener('click', () => playFromCurrentViewAtIndex(0));
+          }
+
+          if (liked.length === 0) {
+            DOM.playlistCountLabel.textContent = '0 Songs';
+            renderEmptySignedIn('❤️', 'No Liked Songs Yet', 'Tap the heart button on any song or in the mini player to build your personal Liked Songs playlist.');
+            return;
+          }
+
+          renderTracksList(liked, (_track, i) => {
+            const raw = likedPairs[i]?.raw;
+            return { subtitleExtra: raw && raw.likedAtMs ? `Liked ${formatRelativeTime(raw.likedAtMs)}` : '' };
+          });
+          return;
+        }
+
+        if (activeLibraryTab === 'playlists') {
+          const playlists = snapshot.playlists || [];
+
+          if (activeCustomPlaylistId) {
+            const pl = playlists.find(p => p.playlistId === activeCustomPlaylistId);
+            if (!pl) {
+              activeCustomPlaylistId = null;
+            } else {
+              const tracks = (pl.trackIds || [])
+                .map(id => resolveTrackFromMaster(id, null))
+                .filter(Boolean);
+
+              if (els.subbar) {
+                els.subbar.classList.add('visible');
+                els.subbar.innerHTML = `
+                  <div class="library-subbar-left">
+                    <button type="button" class="lib-mini-btn" id="subbar-back-pl-btn" title="Back to all playlists">← Back</button>
+                    <span class="library-subbar-title">${escapeHtml(pl.name)}</span>
+                    <span class="library-subbar-meta">(${tracks.length})</span>
+                  </div>
+                  <div class="library-subbar-actions">
+                    ${tracks.length > 0 ? '<button type="button" class="lib-mini-btn primary" id="subbar-play-all-btn">▶ Play</button>' : ''}
+                    <button type="button" class="lib-mini-btn" id="subbar-rename-pl-btn">Rename</button>
+                    <button type="button" class="lib-mini-btn danger" id="subbar-delete-pl-btn">Delete</button>
+                  </div>
+                `;
+                document.getElementById('subbar-back-pl-btn')?.addEventListener('click', () => {
+                  activeCustomPlaylistId = null;
+                  if (DOM.playlistSearchInput) {
+                    DOM.playlistSearchInput.value = '';
+                    DOM.playlistSearchInput.placeholder = 'Search your playlists...';
+                  }
+                  renderCurrentView();
+                });
+                document.getElementById('subbar-play-all-btn')?.addEventListener('click', () => playFromCurrentViewAtIndex(0));
+                document.getElementById('subbar-rename-pl-btn')?.addEventListener('click', () => openEditModal('rename', pl.playlistId, pl.name));
+                document.getElementById('subbar-delete-pl-btn')?.addEventListener('click', () => openEditModal('delete', pl.playlistId, pl.name));
+              }
+
+              if (tracks.length === 0) {
+                DOM.playlistCountLabel.textContent = '0 Songs';
+                renderEmptySignedIn('🎵', `${pl.name} is empty`, 'Tap the + button on any song in All Songs or the mini player to add tracks here.');
+                return;
+              }
+
+              renderTracksList(tracks, () => ({
+                allowRemoveFromPlaylist: true,
+                playlistId: pl.playlistId,
+              }));
+              return;
+            }
+          }
+
+          // Playlists overview
+          if (els.subbar) {
+            els.subbar.classList.add('visible');
+            els.subbar.innerHTML = `
+              <div class="library-subbar-left">
+                <span class="library-subbar-title">My Playlists</span>
+                <span class="library-subbar-meta">• ${playlists.length} total</span>
+              </div>
+              <div class="library-subbar-actions">
+                <button type="button" class="lib-mini-btn primary" id="subbar-new-pl-btn">+ New Playlist</button>
+              </div>
+            `;
+            document.getElementById('subbar-new-pl-btn')?.addEventListener('click', () => openEditModal('create'));
+          }
+
+          DOM.playlistCountLabel.textContent = `${playlists.length} Playlists`;
+
+          if (playlists.length === 0) {
+            renderEmptySignedIn(
+              '🎵',
+              'No Personal Playlists Yet',
+              'Organize your favorite Slowed + Reverb moods into custom playlists synced across all your devices.',
+              '<button type="button" class="lib-mini-btn primary" data-empty-action="new-playlist">+ Create Playlist</button>'
+            );
+            return;
+          }
+
+          currentRenderedTracks = [];
+          playlistItemElements.clear();
+          currentActiveItemRow = null;
+          const fragment = document.createDocumentFragment();
+          playlists.forEach(pl => {
+            const firstTrack = pl.trackIds && pl.trackIds.length > 0 ? resolveTrackFromMaster(pl.trackIds[0], null) : null;
+            const thumbHtml = firstTrack
+              ? `<img src="${escapeHtml(firstTrack.thumb || `/covers/thumbs/${firstTrack.id}.jpg`)}" alt="${escapeHtml(pl.name)}" loading="lazy" />`
+              : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
+
+            const card = document.createElement('div');
+            card.className = 'user-playlist-card';
+            card.dataset.playlistId = pl.playlistId;
+            card.innerHTML = `
+              <div class="user-playlist-thumb">${thumbHtml}</div>
+              <div class="user-playlist-meta">
+                <div class="user-playlist-name">${escapeHtml(pl.name)}</div>
+                <div class="user-playlist-sub">${pl.trackIds.length} ${pl.trackIds.length === 1 ? 'song' : 'songs'}</div>
+              </div>
+              <div class="user-playlist-btns">
+                ${pl.trackIds.length > 0 ? `<button type="button" class="track-action-btn" data-pl-card-action="play" data-playlist-id="${escapeHtml(pl.playlistId)}" title="Play playlist" aria-label="Play ${escapeHtml(pl.name)}">▶</button>` : ''}
+                <button type="button" class="track-action-btn" data-pl-card-action="rename" data-playlist-id="${escapeHtml(pl.playlistId)}" title="Rename playlist" aria-label="Rename ${escapeHtml(pl.name)}">✎</button>
+                <button type="button" class="track-action-btn remove-pl-btn" data-pl-card-action="delete" data-playlist-id="${escapeHtml(pl.playlistId)}" title="Delete playlist" aria-label="Delete ${escapeHtml(pl.name)}">✕</button>
+              </div>
+            `;
+            fragment.appendChild(card);
+          });
+          DOM.playlistContainer.innerHTML = '';
+          DOM.playlistContainer.appendChild(fragment);
+          if (DOM.playlistSearchInput && DOM.playlistSearchInput.value.trim().length > 0) {
+            applyPlaylistSearchFilter(DOM.playlistSearchInput.value);
+          }
+          return;
+        }
+
+        if (activeLibraryTab === 'history') {
+          const histPairs = (snapshot.history || [])
+            .map(h => ({ track: resolveTrackFromMaster(h.trackId, h), raw: h }))
+            .filter(pair => Boolean(pair.track));
+          const tracks = histPairs.map(pair => pair.track);
+
+          if (els.subbar) {
+            els.subbar.classList.add('visible');
+            els.subbar.innerHTML = `
+              <div class="library-subbar-left">
+                <span class="library-subbar-title">🕒 Listening History</span>
+                <span class="library-subbar-meta">• ${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'}</span>
+              </div>
+            `;
+          }
+
+          if (tracks.length === 0) {
+            DOM.playlistCountLabel.textContent = '0 Songs';
+            renderEmptySignedIn('🕒', 'No Listening History Yet', 'Play any song for a meaningful listen and it will appear here automatically in chronological order.');
+            return;
+          }
+
+          renderTracksList(tracks, (_track, i) => {
+            const raw = histPairs[i]?.raw;
+            return { subtitleExtra: raw && raw.playedAtMs ? formatRelativeTime(raw.playedAtMs) : 'Played' };
+          });
+          return;
+        }
+
+        if (activeLibraryTab === 'most-played') {
+          const rankedPairs = (snapshot.mostPlayed || [])
+            .map(s => ({ track: resolveTrackFromMaster(s.trackId, s), raw: s }))
+            .filter(pair => Boolean(pair.track));
+          const tracks = rankedPairs.map(pair => pair.track);
+
+          if (els.subbar) {
+            els.subbar.classList.add('visible');
+            els.subbar.innerHTML = `
+              <div class="library-subbar-left">
+                <span class="library-subbar-title">🔥 Most Played</span>
+                <span class="library-subbar-meta">• ${snapshot.totalPlays || 0} Total Plays • ${rankedPairs.length} Unique Songs</span>
+              </div>
+              <div class="library-subbar-actions">
+                ${tracks.length > 0 ? '<button type="button" class="lib-mini-btn primary" id="subbar-play-all-btn">▶ Play Top</button>' : ''}
+              </div>
+            `;
+            document.getElementById('subbar-play-all-btn')?.addEventListener('click', () => playFromCurrentViewAtIndex(0));
+          }
+
+          if (tracks.length === 0) {
+            DOM.playlistCountLabel.textContent = '0 Songs';
+            renderEmptySignedIn('🔥', 'Your Top Tracks Will Appear Here', 'Start listening while signed in — your most-played songs and total play count will update automatically.');
+            return;
+          }
+
+          renderTracksList(tracks, (_track, i) => {
+            const stat = rankedPairs[i]?.raw;
+            return {
+              playCount: stat ? stat.playCount : 0,
+              alwaysShowPlayCount: true,
+              subtitleExtra: stat && stat.lastPlayedAtMs ? `Last played ${formatRelativeTime(stat.lastPlayedAtMs)}` : '',
+            };
+          });
+        }
+      }
+
+      function resolveTrackForAction(trackId) {
+        const direct = resolveTrackFromMaster(trackId, null);
+        if (direct) return direct;
+        const rendered = (currentRenderedTracks || []).find(t => t.id === trackId);
+        if (rendered) return rendered;
+        const fallbackMeta =
+          (snapshot && (
+            (snapshot.likedSongs || []).find(item => item.trackId === trackId) ||
+            (snapshot.history || []).find(item => item.trackId === trackId) ||
+            (snapshot.mostPlayed || []).find(item => item.trackId === trackId)
+          )) || null;
+        return fallbackMeta ? resolveTrackFromMaster(trackId, fallbackMeta) : null;
+      }
+
+      async function handleLikeTrack(trackId, options = {}) {
+        const track = resolveTrackForAction(trackId);
+        if (!track) return;
+        if (!window.SlowedfyAccount || !snapshot || !snapshot.user) {
+          openAuthModal('Sign in to save Liked Songs to your personal library.', () => handleLikeTrack(trackId, { ensureLikeOnly: true }));
+          return;
+        }
+        const res = options.ensureLikeOnly && typeof window.SlowedfyAccount.ensureLiked === 'function'
+          ? await window.SlowedfyAccount.ensureLiked(track)
+          : await window.SlowedfyAccount.toggleLike(track);
+        if (res.requiresAuth) {
+          openAuthModal('Sign in to save Liked Songs to your personal library.', () => handleLikeTrack(trackId, { ensureLikeOnly: true }));
+          return;
+        }
+        if (res.ok) {
+          if (res.alreadyLiked) {
+            showToast(`Already in Liked Songs: ${track.title.slice(0, 28)}`, '❤️');
+          } else {
+            showToast(res.liked ? `Liked: ${track.title.slice(0, 32)}` : 'Removed from Liked Songs', res.liked ? '❤️' : '💔');
+          }
+          syncDockLikeState();
+        } else if (res.error) {
+          showToast('Could not update like right now.', '⚠️');
+        }
+      }
+
+      function openPlaylistPicker(trackId) {
+        const track = resolveTrackForAction(trackId);
+        if (!track) return;
+        if (!snapshot || !snapshot.user) {
+          openAuthModal('Sign in to create playlists and organize your favorite songs.', () => openPlaylistPicker(trackId));
+          return;
+        }
+        pickerTrackId = trackId;
+        if (els.pickerTrackImg) els.pickerTrackImg.src = track.thumb || `/covers/thumbs/${track.id}.jpg`;
+        if (els.pickerTrackTitle) els.pickerTrackTitle.textContent = track.title;
+        if (els.pickerNewNameInput) els.pickerNewNameInput.value = '';
+        renderPickerList();
+        if (els.pickerModal) els.pickerModal.classList.add('open');
+      }
+
+      function renderPickerList() {
+        if (!els.pickerList || !pickerTrackId) return;
+        const playlists = (snapshot && snapshot.playlists) || [];
+        if (playlists.length === 0) {
+          els.pickerList.innerHTML = '<div style="font-size:0.78rem;color:var(--text-secondary);text-align:center;padding:0.85rem 0.5rem;">You have no playlists yet. Create your first one below!</div>';
+          return;
+        }
+        els.pickerList.innerHTML = '';
+        playlists.forEach(pl => {
+          const isMember = pl.trackIds.includes(pickerTrackId);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `picker-row ${isMember ? 'is-member' : ''}`;
+          btn.innerHTML = `
+            <div style="min-width:0;flex:1;">
+              <div style="font-size:0.84rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(pl.name)}</div>
+              <div style="font-size:0.71rem;color:var(--text-muted);">${pl.trackIds.length} ${pl.trackIds.length === 1 ? 'song' : 'songs'}</div>
+            </div>
+            <span class="picker-check">✓</span>
+          `;
+          btn.addEventListener('click', async () => {
+            if (!window.SlowedfyAccount) return;
+            const res = await window.SlowedfyAccount.toggleTrackInPlaylist(pl.playlistId, pickerTrackId);
+            if (res.ok) {
+              showToast(res.added ? `Added to "${pl.name}"` : `Removed from "${pl.name}"`, res.added ? '✓' : '−');
+            } else if (res.error) {
+              showToast(res.error, '⚠️');
+            }
+          });
+          els.pickerList.appendChild(btn);
+        });
+      }
+
+      function openEditModal(mode, playlistId = null, currentName = '') {
+        editModalMode = mode;
+        editModalPlaylistId = playlistId;
+        if (!els.editModal) return;
+
+        if (mode === 'create') {
+          els.editTitle.textContent = 'Create Personal Playlist';
+          els.editDesc.textContent = 'Give your new playlist a name:';
+          els.editInputWrap.style.display = 'flex';
+          els.editNameInput.value = '';
+          els.editConfirmBtn.textContent = 'Create';
+          els.editConfirmBtn.className = 'lib-mini-btn primary';
+        } else if (mode === 'rename') {
+          els.editTitle.textContent = 'Rename Playlist';
+          els.editDesc.textContent = 'Enter a new name for this playlist:';
+          els.editInputWrap.style.display = 'flex';
+          els.editNameInput.value = currentName || '';
+          els.editConfirmBtn.textContent = 'Save Name';
+          els.editConfirmBtn.className = 'lib-mini-btn primary';
+        } else if (mode === 'delete') {
+          els.editTitle.textContent = 'Delete Playlist';
+          els.editDesc.textContent = `Are you sure you want to permanently delete "${currentName || 'this playlist'}"?`;
+          els.editInputWrap.style.display = 'none';
+          els.editConfirmBtn.textContent = 'Delete';
+          els.editConfirmBtn.className = 'lib-mini-btn danger';
+        }
+
+        els.editModal.classList.add('open');
+        if (mode !== 'delete' && els.editNameInput) {
+          setTimeout(() => els.editNameInput.focus(), 60);
+        }
+      }
+
+      async function handleRowAction(action, trackId, playlistId) {
+        if (action === 'like') {
+          await handleLikeTrack(trackId);
+        } else if (action === 'add-to-playlist') {
+          openPlaylistPicker(trackId);
+        } else if (action === 'remove-from-playlist' && playlistId) {
+          if (!window.SlowedfyAccount) return;
+          const res = await window.SlowedfyAccount.removeTrackFromPlaylist(playlistId, trackId);
+          if (res.ok) showToast('Removed from playlist', '✓');
+        }
+      }
+
+      function openCustomPlaylist(playlistId) {
+        activeCustomPlaylistId = playlistId;
+        if (DOM.playlistSearchInput) {
+          DOM.playlistSearchInput.value = '';
+          DOM.playlistSearchInput.placeholder = 'Search track or artist...';
+        }
+        renderCurrentView();
+      }
+
+      function handlePlaylistCardAction(action, playlistId) {
+        const pl = (snapshot && snapshot.playlists || []).find(p => p.playlistId === playlistId);
+        if (!pl) return;
+        if (action === 'play') {
+          const tracks = pl.trackIds.map(id => resolveTrackFromMaster(id, null)).filter(Boolean);
+          if (tracks.length > 0) {
+            openCustomPlaylist(playlistId);
+            playFromCurrentViewAtIndex(0);
+          }
+        } else if (action === 'rename') {
+          openEditModal('rename', playlistId, pl.name);
+        } else if (action === 'delete') {
+          openEditModal('delete', playlistId, pl.name);
+        }
+      }
+
+      function handleEmptyAction(action) {
+        if (action === 'signin') {
+          openAuthModal();
+        } else if (action === 'all-songs') {
+          setActiveTab('all');
+        } else if (action === 'new-playlist') {
+          openEditModal('create');
+        }
+      }
+
+      function bindEvents() {
+        // Header button
+        els.accountTriggerBtn?.addEventListener('click', () => {
+          if (snapshot && snapshot.user) {
+            openAccountModal();
+          } else {
+            openAuthModal();
+          }
+        });
+
+        // Library tabs
+        els.tabsBar?.addEventListener('click', (e) => {
+          const btn = e.target.closest('.library-tab-btn');
+          if (!btn) return;
+          const tab = btn.dataset.libTab;
+          if (tab) setActiveTab(tab);
+        });
+
+        // Dock ❤️ & + buttons
+        els.dockLikeBtn?.addEventListener('click', () => {
+          const cur = state.playlist && state.playlist[state.currentIndex];
+          if (cur) handleLikeTrack(cur.id);
+        });
+
+        els.dockAddPlaylistBtn?.addEventListener('click', () => {
+          const cur = state.playlist && state.playlist[state.currentIndex];
+          if (cur) openPlaylistPicker(cur.id);
+        });
+
+        // Auth modal controls
+        els.closeAuthBtn?.addEventListener('click', () => els.authModal?.classList.remove('open'));
+        els.authModal?.addEventListener('click', (e) => {
+          if (e.target === els.authModal) els.authModal.classList.remove('open');
+        });
+
+        els.authGoogleBtn?.addEventListener('click', async () => {
+          if (!window.SlowedfyAccount) {
+            showAuthMessage('Account service is still loading. Please try again in a moment.');
+            return;
+          }
+          showAuthMessage('');
+          els.authGoogleBtn.disabled = true;
+          if (els.authGoogleLabel) els.authGoogleLabel.textContent = 'Connecting to Google...';
+          const res = await window.SlowedfyAccount.signInWithGoogle();
+          els.authGoogleBtn.disabled = false;
+          if (els.authGoogleLabel) els.authGoogleLabel.textContent = 'Continue with Google';
+          if (res.ok) {
+            els.authModal?.classList.remove('open');
+            showToast('Signed in with Google • Library synced', '✨');
+          } else {
+            showAuthMessage(res.error || 'Google sign-in failed.');
+          }
+        });
+
+        // Account modal controls
+        els.closeAccountBtn?.addEventListener('click', () => els.accountModal?.classList.remove('open'));
+        els.accountModal?.addEventListener('click', (e) => {
+          if (e.target === els.accountModal) els.accountModal.classList.remove('open');
+        });
+        els.accountModal?.querySelectorAll('[data-jump-tab]').forEach(tile => {
+          tile.addEventListener('click', () => {
+            const tab = tile.dataset.jumpTab;
+            els.accountModal?.classList.remove('open');
+            if (tab) setActiveTab(tab);
+          });
+        });
+        els.accountLogoutBtn?.addEventListener('click', async () => {
+          if (!window.SlowedfyAccount) return;
+          els.accountLogoutBtn.disabled = true;
+          await window.SlowedfyAccount.logout();
+          els.accountLogoutBtn.disabled = false;
+          els.accountModal?.classList.remove('open');
+          setActiveTab('all');
+          showToast('Signed out • Continuing as guest', '👋');
+        });
+
+        // Playlist picker modal
+        els.closePickerBtn?.addEventListener('click', () => els.pickerModal?.classList.remove('open'));
+        els.pickerModal?.addEventListener('click', (e) => {
+          if (e.target === els.pickerModal) els.pickerModal.classList.remove('open');
+        });
+        els.pickerQuickForm?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!window.SlowedfyAccount || !pickerTrackId) return;
+          const submitBtn = els.pickerQuickForm.querySelector('button[type="submit"]');
+          if (submitBtn && submitBtn.disabled) return;
+          const name = els.pickerNewNameInput ? els.pickerNewNameInput.value.trim() : '';
+          if (!name) return;
+          if (submitBtn) submitBtn.disabled = true;
+          try {
+            const res = await window.SlowedfyAccount.createPlaylist(name, pickerTrackId);
+            if (res.ok) {
+              if (els.pickerNewNameInput) els.pickerNewNameInput.value = '';
+              showToast(`Created "${name}" & added song`, '🎵');
+            } else if (res.error) {
+              showToast(res.error, '⚠️');
+            }
+          } finally {
+            if (submitBtn) submitBtn.disabled = false;
+          }
+        });
+
+        // Playlist create/rename/delete modal
+        els.closeEditBtn?.addEventListener('click', () => els.editModal?.classList.remove('open'));
+        els.editCancelBtn?.addEventListener('click', () => els.editModal?.classList.remove('open'));
+        els.editModal?.addEventListener('click', (e) => {
+          if (e.target === els.editModal) els.editModal.classList.remove('open');
+        });
+        els.editForm?.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!window.SlowedfyAccount) return;
+          els.editConfirmBtn.disabled = true;
+          let res = { ok: false };
+          if (editModalMode === 'create') {
+            res = await window.SlowedfyAccount.createPlaylist(els.editNameInput.value.trim());
+            if (res.ok) showToast('Playlist created', '🎵');
+          } else if (editModalMode === 'rename' && editModalPlaylistId) {
+            res = await window.SlowedfyAccount.renamePlaylist(editModalPlaylistId, els.editNameInput.value.trim());
+            if (res.ok) showToast('Playlist renamed', '✓');
+          } else if (editModalMode === 'delete' && editModalPlaylistId) {
+            res = await window.SlowedfyAccount.deletePlaylist(editModalPlaylistId);
+            if (res.ok) {
+              if (activeCustomPlaylistId === editModalPlaylistId) activeCustomPlaylistId = null;
+              showToast('Playlist deleted', '🗑️');
+            }
+          }
+          els.editConfirmBtn.disabled = false;
+          if (res.ok) {
+            els.editModal?.classList.remove('open');
+          } else if (res.error) {
+            showToast(res.error, '⚠️');
+          }
+        });
+
+        // Lightweight background-safe play-count heartbeat (works even if tab is minimized)
+        setInterval(() => {
+          if (!state.isPlaying || !window.SlowedfyAccount) return;
+          const curTrack = state.playlist && state.playlist[state.currentIndex];
+          if (!curTrack) return;
+          if (DOM.audioEngine && !DOM.audioEngine.paused && !DOM.audioEngine.ended && DOM.audioEngine.readyState >= 2) {
+            window.SlowedfyAccount.onPlaybackTick(
+              curTrack,
+              true,
+              DOM.audioEngine.currentTime || 0,
+              Number.isFinite(DOM.audioEngine.duration) ? DOM.audioEngine.duration : (curTrack.seconds || 0)
+            );
+          } else if (ytPlayer && ytApiReady && typeof ytPlayer.getCurrentTime === 'function' && typeof ytPlayer.getPlayerState === 'function') {
+            try {
+              const ytPlaying = ytPlayer.getPlayerState() === 1;
+              window.SlowedfyAccount.onPlaybackTick(
+                curTrack,
+                ytPlaying,
+                ytPlayer.getCurrentTime() || 0,
+                (typeof ytPlayer.getDuration === 'function' ? ytPlayer.getDuration() : 0) || curTrack.seconds || 0
+              );
+            } catch (e) {}
+          }
+        }, 1000);
+      }
+
+      function attachAccountSubscription() {
+        if (subscribed) return;
+        if (!window.SlowedfyAccount || typeof window.SlowedfyAccount.subscribe !== 'function') {
+          setTimeout(attachAccountSubscription, 120);
+          return;
+        }
+        subscribed = true;
+        window.SlowedfyAccount.subscribe((nextSnap) => {
+          const prevUid = snapshot && snapshot.user ? snapshot.user.uid : null;
+          const nextUid = nextSnap && nextSnap.user ? nextSnap.user.uid : null;
+          snapshot = nextSnap;
+
+          syncHeaderUI();
+          syncAccountModalUI();
+          syncDockLikeState();
+
+          if (els.pickerModal && els.pickerModal.classList.contains('open')) {
+            renderPickerList();
+          }
+
+          // Re-render list smoothly (preserves scroll position)
+          const prevScroll = DOM.playlistContainer ? DOM.playlistContainer.scrollTop : 0;
+          renderCurrentView();
+          if (DOM.playlistContainer) DOM.playlistContainer.scrollTop = prevScroll;
+
+          // Execute deferred action only after user library snapshots are hydrated from Firestore
+          if (nextUid && nextSnap.libraryReady && pendingPostAuthAction) {
+            const fn = pendingPostAuthAction;
+            pendingPostAuthAction = null;
+            setTimeout(() => { try { fn(); } catch (e) {} }, 60);
+          }
+        });
+      }
+
+      function formatCompactCount(val, loaded) {
+        if (!loaded) return '–';
+        const n = typeof val === 'number' && Number.isFinite(val) && val >= 0 ? Math.floor(val) : 0;
+        if (n < 1000) return String(n);
+        if (n < 10000) return `${(n / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+        if (n < 1000000) return `${Math.floor(n / 1000)}K`;
+        return `${(n / 1000000).toFixed(1).replace(/\.0$/, '')}M`;
+      }
+
+      function syncHeroSongStats() {
+        const curTrack = state.playlist && state.playlist[state.currentIndex];
+        const playValEl = document.getElementById('hero-play-count');
+        const likeValEl = document.getElementById('hero-like-count');
+        const playsWrap = document.getElementById('hero-stat-plays');
+        const likesWrap = document.getElementById('hero-stat-likes');
+        if (!curTrack || !playValEl || !likeValEl) return;
+
+        const mgr = window.SlowedfySongStats;
+        const stats = mgr && typeof mgr.getSongStats === 'function'
+          ? mgr.getSongStats(curTrack.id)
+          : { uniquePlayCount: 0, likeCount: 0, loaded: false };
+
+        const playsTxt = formatCompactCount(stats.uniquePlayCount, stats.loaded);
+        const likesTxt = formatCompactCount(stats.likeCount, stats.loaded);
+        if (playValEl.textContent !== playsTxt) playValEl.textContent = playsTxt;
+        if (likeValEl.textContent !== likesTxt) likeValEl.textContent = likesTxt;
+        playValEl.classList.toggle('is-loading', !stats.loaded);
+        likeValEl.classList.toggle('is-loading', !stats.loaded);
+
+        if (playsWrap) {
+          playsWrap.title = stats.loaded
+            ? `${stats.uniquePlayCount.toLocaleString()} unique ${stats.uniquePlayCount === 1 ? 'user' : 'users'} played this song`
+            : 'Loading play count...';
+        }
+        if (likesWrap) {
+          const isLiked = Boolean(window.SlowedfyAccount && window.SlowedfyAccount.isLiked(curTrack.id));
+          likesWrap.classList.toggle('is-liked', isLiked);
+          likesWrap.title = stats.loaded
+            ? `${stats.likeCount.toLocaleString()} ${stats.likeCount === 1 ? 'user' : 'users'} liked this song`
+            : 'Loading like count...';
+        }
+      }
+
+      let songStatsSubscribed = false;
+      function attachSongStatsSubscription() {
+        if (songStatsSubscribed) return;
+        if (!window.SlowedfySongStats || typeof window.SlowedfySongStats.subscribe !== 'function') {
+          setTimeout(attachSongStatsSubscription, 120);
+          return;
+        }
+        songStatsSubscribed = true;
+        window.SlowedfySongStats.subscribe(() => {
+          syncHeroSongStats();
+        });
+      }
+
+      function init() {
+        cacheElements();
+        bindEvents();
+        attachAccountSubscription();
+        attachSongStatsSubscription();
+      }
+
+      return {
+        init,
+        renderCurrentView,
+        syncDockLikeState,
+        syncHeroSongStats,
+        handleRowAction,
+        handlePlaylistCardAction,
+        handleEmptyAction,
+        openCustomPlaylist,
+        closeAllModals,
+      };
+    })();
+    window.LibraryUI = LibraryUI;
 
     init();
   </script>

@@ -1,5 +1,5 @@
 /* Slowedfy Service Worker - Offline Shell & Fast Asset Caching */
-const CACHE_NAME = 'slowedfy-v8';
+const CACHE_NAME = 'slowedfy-v14';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -43,12 +43,13 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // Do NOT intercept heavy media/audio streams, Google Drive proxy, Range requests, YouTube, dynamic playlist sync, analytics, or covers
+  // Do NOT intercept heavy media/audio streams, Google Drive proxy, Range requests, YouTube, dynamic playlist sync, analytics, Firebase Auth/Firestore, or covers
   if (
     url.pathname.startsWith('/api/stream') ||
     url.pathname.startsWith('/api/artwork') ||
     url.pathname.startsWith('/api/playlist') ||
     url.pathname.startsWith('/api/analytics') ||
+    url.pathname.startsWith('/__/') ||
     url.pathname.startsWith('/covers/') ||
     url.pathname.includes('/audio_cache/') ||
     url.hostname.includes('drive.google.com') ||
@@ -57,6 +58,10 @@ self.addEventListener('fetch', (event) => {
     url.hostname.includes('googlevideo.com') ||
     url.hostname.includes('youtube.com') ||
     url.hostname.includes('youtube-nocookie.com') ||
+    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('firebaseapp.com') ||
+    url.hostname.includes('firebaseio.com') ||
+    url.hostname.includes('gstatic.com') ||
     request.headers.get('range') ||
     request.destination === 'audio' ||
     request.destination === 'video'
