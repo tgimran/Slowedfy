@@ -1,6 +1,6 @@
 // Auto-generated Slowedfy Master Library from Google Drive Folder: 194R85uwyR_UyKRn6RC9xGsmN87kNC4bF
-// Total Tracks: 121 (Newest Uploads First)
-// Verified at: 2026-11-15T11:37:30.565Z
+// Total Tracks: 122 (Newest Uploads First)
+// Verified at: 2026-11-21T10:19:45.296Z
 
 export interface PlaylistItem {
   id: string;
@@ -37,6 +37,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 ];
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
+  {
+    "id": "12iVNwyMZFxyMXOE5XFp2lnSdjN6SfJte",
+    "originalFilename": "Dilruba Dilnasheen│Rito Riba│Siddhant kaushal│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Dilruba Dilnasheen│Rito Riba│Siddhant kaushal│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge x Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "02:42",
+    "seconds": 162,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "3.1 MB",
+    "date": "21 Nov 2026",
+    "uploadTime": 1795254453640,
+    "streamUrl": "/api/stream?id=12iVNwyMZFxyMXOE5XFp2lnSdjN6SfJte",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=12iVNwyMZFxyMXOE5XFp2lnSdjN6SfJte&export=download",
+    "thumb": "/covers/thumbs/12iVNwyMZFxyMXOE5XFp2lnSdjN6SfJte.jpg",
+    "hdThumb": "/covers/12iVNwyMZFxyMXOE5XFp2lnSdjN6SfJte.jpg",
+    "isPremiere": false
+  },
   {
     "id": "1m-t7iflQ4p_IGV0D2B4jlLFjqi8jr2Rk",
     "originalFilename": "I Met Her Again│Maan Panu│tav│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
