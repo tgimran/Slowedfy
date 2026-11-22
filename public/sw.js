@@ -1,5 +1,6 @@
 /* Slowedfy Service Worker - Offline Shell & Fast Asset Caching */
-const CACHE_NAME = 'slowedfy-v9';
+const CACHE_NAME = 'slowedfy-v10';
+const MEDIA_NOTIFICATION_TAG = 'slowedfy-media-controls';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -121,3 +122,103 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Mobile Notification Bar Media Controls (Repeat One / Repeat All + Prev / Next)
+self.addEventListener('message', (event) => {
+  const data = event.data;
+  if (!data || typeof data !== 'object') return;
+
+  if (data.type === 'SHOW_MEDIA_REPEAT_NOTIFICATION') {
+    const title = data.title || 'Slowedfy';
+    const artist = data.artist || 'Beat Badge x Slowedfy';
+    const repeatMode = data.repeatMode || 'all';
+    const isPlaying = Boolean(data.isPlaying);
+    const repeatStatusText =
+      repeatMode === 'one'
+        ? 'Repeat One'
+        : repeatMode === 'all'
+        ? 'Repeat All'
+        : 'Repeat Off';
+    const repeatActionTitle =
+      repeatMode === 'one'
+        ? 'Repeat: One'
+        : repeatMode === 'all'
+        ? 'Repeat: All'
+        : 'Repeat: Off';
+
+    const options = {
+      body: `${artist} • ${isPlaying ? 'Playing' : 'Paused'} • ${repeatStatusText}`,
+      icon: data.artwork || '/pwa-192x192.png',
+      badge: '/pwa-192x192.png',
+      tag: MEDIA_NOTIFICATION_TAG,
+      silent: true,
+      renotify: false,
+      requireInteraction: false,
+      data: {
+        trackId: data.trackId || '',
+        repeatMode,
+        url: '/'
+      },
+      actions: [
+        { action: 'prev', title: 'Prev' },
+        { action: 'toggle-repeat', title: repeatActionTitle },
+        { action: 'next', title: 'Next' }
+      ]
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(title, options).catch(() => {})
+    );
+    return;
+  }
+
+  if (data.type === 'CLEAR_MEDIA_REPEAT_NOTIFICATION') {
+    event.waitUntil(
+      self.registration
+        .getNotifications({ tag: MEDIA_NOTIFICATION_TAG })
+        .then((list) => {
+          list.forEach((n) => n.close());
+        })
+        .catch(() => {})
+    );
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  const action = event.action || '';
+
+  if (action === 'toggle-repeat' || action === 'prev' || action === 'next' || action === 'toggle-play') {
+    event.waitUntil(
+      self.clients
+        .matchAll({ type: 'window', includeUncontrolled: true })
+        .then((clientList) => {
+          clientList.forEach((client) => {
+            try {
+              client.postMessage({
+                type: 'SLOWEDFY_NOTIFICATION_ACTION',
+                action
+              });
+            } catch (e) {}
+          });
+        })
+    );
+    return;
+  }
+
+  event.notification.close();
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if ('focus' in client) {
+            return client.focus();
+          }
+        }
+        if (self.clients.openWindow) {
+          return self.clients.openWindow('/');
+        }
+      })
+  );
+});
+
