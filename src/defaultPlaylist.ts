@@ -1,6 +1,6 @@
 // Auto-generated Slowedfy Master Library from Google Drive Folder: 194R85uwyR_UyKRn6RC9xGsmN87kNC4bF
-// Total Tracks: 122 (Newest Uploads First)
-// Verified at: 2026-11-21T10:19:45.296Z
+// Total Tracks: 123 (Newest Uploads First)
+// Verified at: 2026-11-22T11:35:06.257Z
 
 export interface PlaylistItem {
   id: string;
@@ -37,6 +37,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 ];
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
+  {
+    "id": "1Vo61uy87s9jMY8xoKwObowkEx6_LVjyl",
+    "originalFilename": "Alfaaz│Hamza Malik│Zain Zohaib│Najaf Ali│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Alfaaz│Hamza Malik│Zain Zohaib│Najaf Ali│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge x Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "02:58",
+    "seconds": 178,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "3.4 MB",
+    "date": "22 Nov 2026",
+    "uploadTime": 1795323449605,
+    "streamUrl": "/api/stream?id=1Vo61uy87s9jMY8xoKwObowkEx6_LVjyl",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=1Vo61uy87s9jMY8xoKwObowkEx6_LVjyl&export=download",
+    "thumb": "/covers/thumbs/1Vo61uy87s9jMY8xoKwObowkEx6_LVjyl.jpg",
+    "hdThumb": "/covers/1Vo61uy87s9jMY8xoKwObowkEx6_LVjyl.jpg",
+    "isPremiere": false
+  },
   {
     "id": "12iVNwyMZFxyMXOE5XFp2lnSdjN6SfJte",
     "originalFilename": "Dilruba Dilnasheen│Rito Riba│Siddhant kaushal│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
