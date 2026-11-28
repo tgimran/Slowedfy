@@ -1,5 +1,5 @@
 /* Slowedfy Service Worker - Offline Shell & Fast Asset Caching */
-const CACHE_NAME = 'slowedfy-v11';
+const CACHE_NAME = 'slowedfy-v12';
 const MEDIA_NOTIFICATION_TAG = 'slowedfy-media-controls';
 const PRECACHE_ASSETS = [
   '/',

@@ -1,6 +1,6 @@
 // Auto-generated Slowedfy Master Library from Google Drive Folder: 194R85uwyR_UyKRn6RC9xGsmN87kNC4bF
-// Total Tracks: 123 (Newest Uploads First)
-// Verified at: 2026-11-22T11:35:06.257Z
+// Total Tracks: 124 (Newest Uploads First)
+// Verified at: 2026-11-28T03:15:05.683Z
 
 export interface PlaylistItem {
   id: string;
@@ -37,6 +37,25 @@ export const AESTHETIC_ARTWORKS: string[] = [
 ];
 
 export const OFFICIAL_PLAYLIST: PlaylistItem[] = [
+  {
+    "id": "15miYQqWHtinuxvEfe9lTOdeakARUJ6wh",
+    "originalFilename": "Tum Ho Toh│Vishal Mishra│Hansika Pareek│Raj Shekhar│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
+    "title": "Tum Ho Toh│Vishal Mishra│Hansika Pareek│Raj Shekhar│(Slowed + Reverb) By Beat Badge × Slowedfy",
+    "artist": "Beat Badge x Slowedfy",
+    "album": "Slowed & Reverb Master Collection",
+    "duration": "05:00",
+    "seconds": 300,
+    "format": "MP3",
+    "quality": "320 kbps HQ Audio",
+    "size": "5.7 MB",
+    "date": "28 Nov 2026",
+    "uploadTime": 1795835601663,
+    "streamUrl": "/api/stream?id=15miYQqWHtinuxvEfe9lTOdeakARUJ6wh",
+    "driveUrl": "https://drive.usercontent.google.com/download?id=15miYQqWHtinuxvEfe9lTOdeakARUJ6wh&export=download",
+    "thumb": "/covers/thumbs/15miYQqWHtinuxvEfe9lTOdeakARUJ6wh.jpg",
+    "hdThumb": "/covers/15miYQqWHtinuxvEfe9lTOdeakARUJ6wh.jpg",
+    "isPremiere": false
+  },
   {
     "id": "1Vo61uy87s9jMY8xoKwObowkEx6_LVjyl",
     "originalFilename": "Alfaaz│Hamza Malik│Zain Zohaib│Najaf Ali│(Slowed + Reverb) By Beat Badge × Slowedfy.mp3",
